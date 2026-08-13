@@ -79,6 +79,8 @@ import { CarteProchaineFois } from '@/features/rec/CarteProchaineFois';
 import { bio1GuardKey, runBio1, type Bio1Deps } from '@/features/rec/bio1Trigger';
 import {
   buildFinSummary,
+  constatSeanceMuette,
+  lireTotalFrames,
   finBilanRoute,
   FIN_ERROR_MESSAGE,
   finDurationMin,
@@ -92,12 +94,32 @@ import { enqueueIncident, replayQueue, type PendingIncident } from '@/features/r
 const PRESERVE_MIN_VISIBLE_MS = 3_500;
 const PRESERVE_SAFETY_MS = 30_000;
 
+/**
+ * Intervalle de relecture de la file de synchro, tant qu'elle n'est pas vide.
+ *
+ * Une seconde et demie : assez court pour que le message disparaisse pendant
+ * que le pilote lit encore l'écran, assez long pour ne pas relire le disque en
+ * boucle. Le sondage s'arrête dès que la file est vide — voir `BandeauSynchro`.
+ */
+const RELECTURE_SYNCHRO_MS = 1_500;
+
 export default function FinScreen() {
   const insets = useSafeAreaInsets();
   const door = useDoorTransition();
-  const params = useLocalSearchParams<{ sessionId?: string; ubxUri?: string }>();
+  const params = useLocalSearchParams<{
+    sessionId?: string;
+    ubxUri?: string;
+    totalFrames?: string;
+  }>();
   const sessionId = params.sessionId ?? '';
   const ubxUri = params.ubxUri ?? '';
+  /**
+   * LE PARAMÈTRE ÉTAIT ENVOYÉ ET N'ÉTAIT PAS LU. `useLocalSearchParams` ne
+   * déclarait que deux champs ; `totalFrames`, transmis par le roulage
+   * précisément pour que cet écran puisse annoncer une séance vide, n'arrivait
+   * nulle part. Voir `constatSeanceMuette`.
+   */
+  const constatMuet = constatSeanceMuette(lireTotalFrames(params.totalFrames));
 
   const userId = useAuthStore((s) => s.profile?.id ?? null);
   const lapCount = useSessionStore((s) => s.lapCount);
@@ -288,6 +310,7 @@ export default function FinScreen() {
         {phase === 'fini' ? (
           <FiniPhase
             summary={summary}
+            constatMuet={constatMuet}
             faitsDuJour={faitsDuJour}
             phraseTrous={phraseTrous}
             durationMin={finDurationMin(
@@ -376,12 +399,14 @@ function FiniPhase({
   phraseTrous,
   faitsDuJour,
   summary,
+  constatMuet,
   durationMin,
   onPreserve,
 }: {
   phraseTrous: string | null;
   faitsDuJour: ReturnType<typeof faitsJournee>;
   summary: ReturnType<typeof buildFinSummary>;
+  constatMuet: ReturnType<typeof constatSeanceMuette>;
   durationMin: number | null;
   onPreserve: () => void;
 }) {
@@ -390,6 +415,19 @@ function FiniPhase({
       <Text style={styles.finiTitle} accessibilityRole="header">
         {finPhaseTitle('fini')}
       </Text>
+      {/*
+        LE CONSTAT DE SÉANCE MUETTE PASSE DEVANT LE RÉSUMÉ.
+        Placé après, il aurait commenté des chiffres qu'il contredit : « 20
+        Minutes » suivi de « rien n'a été enregistré » se lit comme une panne
+        d'affichage. Devant, il cadre la lecture de tout ce qui suit.
+      */}
+      {constatMuet ? (
+        <View style={styles.constatMuet} accessible accessibilityRole="alert">
+          <Text style={styles.constatMuetTitre}>{constatMuet.titre}</Text>
+          <Text style={styles.constatMuetCorps}>{constatMuet.corps}</Text>
+        </View>
+      ) : null}
+
       {summary.length > 0 ? (
         <View style={styles.summaryRow}>
           {/* Groupé : séparés, « 12 » et « 34 » étaient des chiffres orphelins.
@@ -696,15 +734,53 @@ function BandeauSynchro({ sessionId }: { sessionId: string }) {
   const [etat, setEtat] = useState<EtatSynchro | null>(null);
   const [enCours, setEnCours] = useState(false);
 
+  /**
+   * ===========================================================================
+   * IL LISAIT LA FILE UNE SEULE FOIS, ET ANNONÇAIT UNE PANNE QUI N'EN ÉTAIT PAS
+   * ===========================================================================
+   *
+   * `useEffect(..., [])` : une lecture au montage, aucune autre.
+   *
+   * Or l'enchaînement de fin de séance est exactement celui-ci :
+   * `stopCaptureSession` enfile les tours, la clôture et l'envoi du `.ubx`, puis
+   * lance `processQueue()` SANS l'attendre (`void`), et le roulage navigue
+   * aussitôt. Les fichiers d'opérations sont donc sur le disque à l'instant
+   * précis où cet écran les compte — alors même que le drain est en train de
+   * réussir.
+   *
+   * Sur une fin de séance parfaitement en ligne, le pilote lisait donc :
+   * « 3 opérations attendent le réseau. Elles partiront toutes seules dès qu'il
+   * revient. » Et la phrase restait, inchangée, tant qu'il ne quittait pas
+   * l'écran.
+   *
+   * Le seul message censé être rare devenait le message ordinaire — et un
+   * message d'alerte qu'on voit à chaque fois cesse d'être lu.
+   *
+   * On relit donc tant qu'il reste quelque chose à voir. Le sondage s'arrête de
+   * lui-même dès que la file est vide, et au démontage : il n'y a pas de veille
+   * permanente sur un écran de fin de séance.
+   */
   useEffect(() => {
     let vivant = true;
-    lireEtatSynchro()
-      .then((e) => {
-        if (vivant) setEtat(e);
-      })
-      .catch(() => undefined);
+    let minuteur: ReturnType<typeof setTimeout> | null = null;
+
+    const relire = () => {
+      lireEtatSynchro()
+        .then((e) => {
+          if (!vivant) return;
+          setEtat(e);
+          // Plus rien en attente ni en quarantaine : le drain a abouti, on
+          // cesse de regarder.
+          if (e.enAttente === 0 && e.enQuarantaine === 0) return;
+          minuteur = setTimeout(relire, RELECTURE_SYNCHRO_MS);
+        })
+        .catch(() => undefined);
+    };
+    relire();
+
     return () => {
       vivant = false;
+      if (minuteur !== null) clearTimeout(minuteur);
     };
   }, []);
 
@@ -831,6 +907,29 @@ const styles = StyleSheet.create({
     fontSize: 15,
     color: colors.text.mid,
     textAlign: 'center',
+  },
+  constatMuet: {
+    borderLeftWidth: 2,
+    borderLeftColor: colors.text.mid,
+    paddingLeft: 12,
+    marginBottom: 20,
+    gap: 4,
+  },
+  constatMuetTitre: {
+    // Même registre que le bandeau de synchro, deux blocs plus bas : ce sont
+    // deux constats de même nature, ils ne doivent pas se parler de deux voix.
+    fontFamily: typo.mono,
+    fontSize: 11,
+    letterSpacing: 2,
+    color: colors.text.hi,
+  },
+  constatMuetCorps: {
+    fontFamily: typo.body,
+    fontSize: 14,
+    lineHeight: 20,
+    // `text.mid`, jamais `text.low` : cet écran se lit au circuit, de nuit ou
+    // en plein soleil selon l'heure. Plancher de contraste 7:1.
+    color: colors.text.mid,
   },
   summaryRow: {
     flexDirection: 'row',

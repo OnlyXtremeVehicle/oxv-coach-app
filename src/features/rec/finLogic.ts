@@ -123,6 +123,73 @@ export function buildFinSummary(input: FinSummaryInput): FinSummaryItem[] {
 }
 
 // ---------------------------------------------------------------------------
+// La séance qui n'a rien enregistré — et qui doit le DIRE
+// ---------------------------------------------------------------------------
+
+export interface ConstatMuet {
+  /** Titre court, registre du constat. */
+  titre: string;
+  /** Une phrase factuelle. Aucune instruction — la doctrine l'interdit. */
+  corps: string;
+}
+
+/**
+ * La séance a-t-elle enregistré quelque chose, et si non, comment le dire ?
+ *
+ * ===========================================================================
+ * CE QUI S'EST PASSÉ LA NUIT DU 13/08/2026
+ * ===========================================================================
+ *
+ * `stopCaptureSession` rend `totalFrames` depuis toujours. L'écran de roulage le
+ * transmet — avec, en commentaire, la phrase exacte de l'intention : « Une
+ * séance sans données doit s'annoncer, pas se deviner. »
+ *
+ * L'écran de fin ne lisait pas le paramètre. Son `useLocalSearchParams` ne
+ * déclarait que `sessionId` et `ubxUri`.
+ *
+ * Une séance à ZÉRO trame arrivait donc avec « 20 Minutes » et aucun tour —
+ * c'est-à-dire le rendu exact d'une séance normale où le pilote n'a bouclé
+ * aucun tour. Rien ne distinguait « vous avez roulé sans boucler » de « rien
+ * n'a été enregistré ». Le pilote devait le déduire, et il l'a découvert au
+ * retour.
+ *
+ * L'intention était écrite des deux côtés du fil. Le fil n'était pas branché.
+ *
+ * ===========================================================================
+ * CE QUE CETTE FONCTION REFUSE DE FAIRE
+ * ===========================================================================
+ *
+ * Sur un compte INCONNU (`null`) elle se tait. Ne pas savoir combien de trames
+ * sont arrivées n'autorise pas à annoncer qu'il n'y en a aucune : ce serait
+ * fabriquer un constat, dans l'autre sens, et alarmer sur une séance saine.
+ *
+ * Et elle ne dit pas quoi faire. Elle décrit.
+ */
+export function constatSeanceMuette(totalFrames: number | null | undefined): ConstatMuet | null {
+  if (typeof totalFrames !== 'number' || !Number.isFinite(totalFrames)) return null;
+  if (totalFrames > 0) return null;
+  return {
+    titre: 'AUCUNE DONNÉE ENREGISTRÉE',
+    corps: 'Le boîtier n’a transmis aucune mesure pendant cette séance. Il n’y a rien à relire.',
+  };
+}
+
+/**
+ * Lit le paramètre de navigation `totalFrames`, qui voyage en CHAÎNE.
+ *
+ * Expo Router sérialise tout en chaîne : `String(res.totalFrames ?? 0)` côté
+ * roulage, `'0'` à l'arrivée. `Number('0')` vaut 0, mais `Number('')` vaut 0
+ * AUSSI — et un paramètre absent annoncerait alors une séance muette qui ne
+ * l'est pas. La chaîne vide et l'indéfini rendent donc `null`.
+ */
+export function lireTotalFrames(param: string | string[] | undefined): number | null {
+  const brut = Array.isArray(param) ? param[0] : param;
+  if (brut === undefined || brut === null || brut.trim() === '') return null;
+  const n = Number(brut);
+  return Number.isFinite(n) ? n : null;
+}
+
+// ---------------------------------------------------------------------------
 // Transitions — transitions machine INCHANGÉES (parité v1)
 // ---------------------------------------------------------------------------
 

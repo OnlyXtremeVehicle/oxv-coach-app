@@ -1,5 +1,7 @@
 import {
   buildFinSummary,
+  constatSeanceMuette,
+  lireTotalFrames,
   finBilanRoute,
   finDurationMin,
   finPhaseTitle,
@@ -75,5 +77,74 @@ describe('mapPreservationResult — parité v1', () => {
 describe('finBilanRoute', () => {
   it('cible le Bilan V2 de la séance', () => {
     expect(finBilanRoute('abc-123')).toBe('/(app2)/bilan/abc-123');
+  });
+});
+
+/**
+ * ===========================================================================
+ * LA SÉANCE MUETTE DOIT S'ANNONCER, PAS SE DEVINER
+ * ===========================================================================
+ *
+ * `stopCaptureSession` rend `totalFrames` depuis toujours, et le roulage le
+ * transmet — avec, en commentaire, exactement cette phrase. L'écran de fin ne
+ * lisait pas le paramètre : son `useLocalSearchParams` ne déclarait que
+ * `sessionId` et `ubxUri`.
+ *
+ * Une séance à ZÉRO trame arrivait donc avec « 20 Minutes » et aucun tour — le
+ * rendu exact d'une séance normale où l'on n'a bouclé aucun tour. Le pilote a
+ * dû le déduire, la nuit du 13/08, et il ne l'a compris qu'au retour.
+ *
+ * L'intention était écrite des deux côtés du fil. Le fil n'était pas branché.
+ */
+describe('constatSeanceMuette', () => {
+  it('zéro trame : le constat est explicite', () => {
+    const c = constatSeanceMuette(0);
+    expect(c).not.toBeNull();
+    expect(c!.titre).toBe('AUCUNE DONNÉE ENREGISTRÉE');
+    expect(c!.corps).toContain('aucune mesure');
+  });
+
+  it('des trames : aucun constat, l’écran reste silencieux', () => {
+    expect(constatSeanceMuette(1)).toBeNull();
+    expect(constatSeanceMuette(26999)).toBeNull();
+  });
+
+  /**
+   * NE PAS SAVOIR N'AUTORISE PAS À AFFIRMER. Un compte inconnu doit se taire :
+   * annoncer « aucune donnée » sur une séance saine est le même défaut, dans
+   * l'autre sens, et il alarmerait un pilote qui n'a rien perdu.
+   */
+  it('compte inconnu : on ne se prononce pas', () => {
+    expect(constatSeanceMuette(null)).toBeNull();
+    expect(constatSeanceMuette(undefined)).toBeNull();
+    expect(constatSeanceMuette(Number.NaN)).toBeNull();
+  });
+
+  /** Le message DÉCRIT. Aucun verbe d'instruction — la doctrine les interdit. */
+  it('le message ne prescrit rien', () => {
+    const c = constatSeanceMuette(0)!;
+    expect(c.corps).not.toMatch(/vous devriez|il faut|évitez|vérifiez|recommenc/i);
+  });
+});
+
+describe('lireTotalFrames — le paramètre voyage en chaîne', () => {
+  it('lit un nombre transmis par Expo Router', () => {
+    expect(lireTotalFrames('0')).toBe(0);
+    expect(lireTotalFrames('26999')).toBe(26999);
+  });
+
+  /**
+   * LE PIÈGE. `Number('')` vaut 0 : un paramètre ABSENT aurait donc annoncé
+   * une séance muette qui ne l'est pas — précisément le défaut symétrique.
+   */
+  it('la chaîne vide et l’absence rendent null, pas zéro', () => {
+    expect(lireTotalFrames('')).toBeNull();
+    expect(lireTotalFrames('   ')).toBeNull();
+    expect(lireTotalFrames(undefined)).toBeNull();
+    expect(lireTotalFrames('pas-un-nombre')).toBeNull();
+  });
+
+  it('tolère la forme tableau des paramètres répétés', () => {
+    expect(lireTotalFrames(['42', '7'])).toBe(42);
   });
 });
