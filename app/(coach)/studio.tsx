@@ -348,14 +348,12 @@ function SortiesLecture({ sessionId }: { sessionId: string }) {
 
       <PressableScale
         accessibilityRole="button"
-        accessibilityLabel="Ouvrir le mode présentation du débrief"
+        accessibilityLabel="Ouvrir le fil de la séance"
         hitSlop={{ top: 4, bottom: 16, left: 12, right: 12 }}
-        onPress={() =>
-          router.push({ pathname: '/(coach)/debrief', params: { sessionId } } as never)
-        }
+        onPress={() => router.push({ pathname: '/(coach)/fil', params: { sessionId } } as never)}
         style={{ marginTop: spacing.md }}
       >
-        <Text style={s.link}>Mode présentation ›</Text>
+        <Text style={s.link}>Le fil de la séance ›</Text>
       </PressableScale>
     </View>
   );
@@ -564,10 +562,10 @@ function WatchPanel({ triage, sessionId }: { triage: StudioSession['triage']; se
         {triage.length > 0 ? (
           <PressableScale
             accessibilityRole="button"
-            accessibilityLabel="Voir le triage sur la carte"
+            accessibilityLabel="Voir la séance sur la carte, dans le fil"
             hitSlop={{ top: 16, bottom: 16, left: 12, right: 12 }}
             onPress={() =>
-              router.push({ pathname: '/(coach)/triage', params: { sessionId } } as never)
+              router.push({ pathname: '/(coach)/fil', params: { sessionId } } as never)
             }
           >
             <Text style={s.link}>Sur la carte ›</Text>

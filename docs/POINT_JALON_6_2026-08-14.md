@@ -29,7 +29,7 @@ part, deux attendent qu'un compte coach existe.
 | **`users.is_admin` peut partir** | **prêt** | Migration écrite, avec le piège des deux triggers |
 | **Suppression de `payment_link` (colonne)** | **votre commande** | `PROPOSITION_J6_payment_link_et_testimonials.sql` |
 | **Suppression de `coach_testimonials`** | **bloqué par la RLS** | Voir ci-dessous — il manque une fonction serveur |
-| **Suppression des quatre écrans** | **votre mot** | Plus rien ne s'y perd depuis aujourd'hui |
+| **Suppression des quatre écrans** | **DEUX supprimés, deux gardés** | Voir ci-dessous — le plan se trompe sur deux d'entre eux |
 | **`rapport` devient la carte de séance** | **non commencé** | |
 | **`assistant` devient le transcripteur** | **non commencé** | |
 | **Phase 5bis — statut fondateur** | **colonnes en base** | `founder_since`, `founder_number` existent |
@@ -102,20 +102,68 @@ Rien à perdre au remplacement : **zéro témoignage en base.**
 
 ---
 
+## Les quatre écrans — deux partent, deux restent
+
+Le plan dit que le fil rend inutiles `debrief`, `triage`, `lecture` et
+`priorites`. **Il se trompe sur deux d'entre eux**, et la règle qui le montre
+vient du fondateur, le 14/08 :
+
+> *« Avant de supprimer un écran, chercher ce qu'il monte en exclusivité. »*
+
+Appliquée aux quatre :
+
+| écran | ce qu'il détient en exclusivité | verdict |
+|---|---|---|
+| `triage` | la carte (`PilotPreset`) et la chaîne de freinage | **supprimé** — la carte est réhébergée dans le fil ; le tri, doctrinalement douteux, ne l'a pas suivi |
+| `debrief` | rien. Que des services partagés | **supprimé** — mode présentation en lecture seule, ce que le fil fait |
+| `lecture` | **le seul consommateur de `coachReadingService`** | **gardé.** C'est l'unique écrivain de `coach_reading_weights` : le supprimer orpheline la pondération entière |
+| `priorites` | un écran d'ÉCRITURE — le coach désigne des virages pour un pilote | **gardé.** Le fil LIT ; supprimer `priorites` retire un chemin d'écriture, pas une redite |
+
+Deux écrans partis, 933 lignes. Les deux autres ne sont pas des fenêtres sur le
+même objet : ce sont des outils qui écrivent.
+
+Une garde existante — `coachNav.test.ts` — a attrapé les deux entrées de
+navigation devenues orphelines. Elle a fait exactement son travail.
+
+---
+
 ## Les quatre critères d'acceptation
 
-Le plan en pose quatre. **Aucun ne se vérifie sans matériel et sans compte
-coach** — et il n'existe **aucun compte coach en production**.
+Le plan en pose quatre. **Aucun ne se vérifie sans matériel et sans deux comptes
+coach.**
 
 | | critère | ce qui manque |
 |---|---|---|
 | 1 | Le fil se remplit-il en temps réel pendant un run ? | un run, un boîtier |
 | 2 | Un marqueur posé sur les lunettes se résout-il en tour, virage, mesures ? | les lunettes |
-| 3 | Une carte de séance est-elle reçue par un pilote, avec l'audio ? | un compte coach |
+| 3 | Une carte de séance est-elle reçue par un pilote, avec l'audio ? | un compte coach — **et l'affiliation acceptée** |
 | 4 | Le canal par coach émet-il au bon destinataire, et à lui seul ? | deux comptes coach |
 
 Le code du 4 est écrit et lisible ; sans deux comptes, personne ne peut le
 prouver.
+
+### Le blocage n'est PAS celui que j'avais écrit
+
+J'avais noté « zéro compte coach en production ». C'est vrai sur
+`users.role = 'coach'`, et cela raconte l'inverse de ce qui se passe. **Le
+dispositif est monté** — relevé par le fondateur, vérifié :
+
+| | |
+|---|---|
+| `coach_profiles` | une ligne, `administration@oxvehicle.fr`, publiée, depuis le **07/07** |
+| `coach_pilots` | `administration@` → `fillatgabin@gmail.com`, niveau `programme`, depuis le **22/06** |
+| statut de ce lien | **`pending`** — jamais accepté |
+
+Ce qui empêche de s'en servir : **`role` est unique.** Un compte ne peut pas être
+administrateur ET coach. Passer `administration@` en coach lui retirerait
+l'administration — et c'est le seul compte dont `is_admin()` soit vrai de manière
+assumée (cf. § 0.4, les deux autres admins attendent votre oui ou non).
+
+Il faut donc **deux comptes distincts** de l'admin et du pilote de test :
+comptes dédiés, ou une branche Supabase si le budget le permet.
+
+**Et l'affiliation du 22/06 est à accepter** : `pending`, elle bloquera le
+critère 3 même une fois les comptes créés.
 
 ---
 

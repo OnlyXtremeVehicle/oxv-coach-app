@@ -118,7 +118,9 @@ describe('coachNav — rail console tablette (§12, deux formats)', () => {
     expect(coachRailItemOfRoute('/')).toBe('poste');
     expect(coachRailItemOfRoute('/en-direct')).toBe('poste');
     expect(coachRailItemOfRoute('/file-lecture')).toBe('file');
-    expect(coachRailItemOfRoute('/triage')).toBe('studio');
+    // '/triage' a été supprimé le 14/08/2026 — remplacé par le fil, qui
+    // porte désormais la carte de séance. Le rail garde son entrée Studio.
+    expect(coachRailItemOfRoute('/fil')).toBe('studio');
     expect(coachRailItemOfRoute('/pilote/abc')).toBe('pilotes');
     expect(coachRailItemOfRoute('/calendrier')).toBe('agenda');
     expect(coachRailItemOfRoute('/facturation')).toBe('business');

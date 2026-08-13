@@ -46,9 +46,10 @@ export const COACH_ROUTE_TO_ZONE: Record<string, CoachTabZone> = {
   // Pilotes (lecture, guidance, CRM lecture)
   pilote: 'pilotes',
   studio: 'pilotes',
-  triage: 'pilotes',
-  debrief: 'pilotes',
-  // Le fil réunit triage/debrief/lecture/priorites : même zone qu'eux.
+  // `triage` et `debrief` sont supprimés le 14/08/2026 : le fil les remplace.
+  // `lecture` et `priorites` RESTENT — ce sont des écrans d'ÉCRITURE, pas de
+  // lecture, et le fil ne les remplace pas. Voir POINT_JALON_6.
+  // Le fil réunit ce que triage et debrief disaient : même zone qu'eux.
   fil: 'pilotes',
   'file-lecture': 'pilotes',
   lecture: 'pilotes',
@@ -126,8 +127,6 @@ export const COACH_ROUTE_TO_RAIL: Record<string, CoachRailItem> = {
   'en-direct': 'poste',
   'file-lecture': 'file',
   studio: 'studio',
-  triage: 'studio',
-  debrief: 'studio',
   fil: 'studio',
   annoter: 'studio',
   rapport: 'studio',

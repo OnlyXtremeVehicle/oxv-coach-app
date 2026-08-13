@@ -45,9 +45,51 @@
 -- (elle balaye les séances dont `margin_global IS NULL`) et n'écrira que ce
 -- qu'elle peut réellement calculer.
 --
--- ORDRE IMPÉRATIF : déployer la fonction D'ABORD. Appliquée avant, cette
--- migration ferait recalculer les lignes par l'ANCIEN code, qui les
--- refabriquerait à l'identique.
+-- ORDRE IMPÉRATIF : déployer la fonction D'ABORD. Deux raisons, et la seconde
+-- est celle qui compte.
+--
+--   1. Appliquée avant, cette migration ferait recalculer les lignes par
+--      l'ANCIEN code, qui les refabriquerait à l'identique.
+--
+--   2. ELLE INSTALLAIT UNE BOUCLE INFINIE — relevé par le fondateur le
+--      14/08/2026, et vérifié.
+--
+-- -----------------------------------------------------------------------------
+-- LA BOUCLE, ET POURQUOI ELLE NE SE VOYAIT PAS
+--
+-- La fonction déployée n'exclut pas les séances QUI ONT une analyse. Elle exclut
+-- celles dont la marge n'est pas nulle :
+--
+--     .not('id','in','(SELECT telemetry_session_id FROM app_session_analyses
+--                      WHERE margin_global IS NOT NULL)')
+--
+-- Vider les marges, c'est poser `NULL` — donc remettre ces séances dans la file.
+-- Or dix des onze séances closes n'ont AUCUN tour : aucune fonction, si juste
+-- soit-elle, ne pourra jamais rien en conclure. Elle les reprendrait toutes les
+-- heures, indéfiniment.
+--
+-- Aujourd'hui zéro ligne porte une marge nulle : c'est pour cela que la file est
+-- vide et que rien ne tourne à vide. Cette migration y aurait créé dix entrées
+-- permanentes.
+--
+-- LA SORTIE APPARTIENT AU DÉPLOIEMENT, et elle était gratuite puisque la
+-- fonction est de toute façon redéployée. Elle porte donc deux changements de
+-- plus :
+--
+--   • l'exclusion passe sur l'EXISTENCE d'une ligne d'analyse ;
+--   • une séance sans matière reçoit une ligne AUX MARGES NULLES, avec
+--     `computed_at` et `algo_version` renseignés. Elle dit « examinée, rien à
+--     mesurer » — ce qui est vrai, et ce que le principe de non-fabrication
+--     demande.
+--
+-- Avec ces deux changements, la présente migration devient sûre : les lignes
+-- vidées EXISTENT toujours, donc restent hors de la file.
+--
+-- CE QU'ELLE NE FAIT TOUJOURS PAS : recalculer une séance mesurable. Bouteville
+-- garde sa constance de l'ancienne formule jusqu'à ce que l'application rouvre
+-- la séance. Pour la reprendre côté serveur, il faudrait SUPPRIMER sa ligne — ce
+-- que cette migration ne fait pas, délibérément : effacer une analyse réelle
+-- n'est pas du nettoyage.
 -- =============================================================================
 
 UPDATE public.app_session_analyses a

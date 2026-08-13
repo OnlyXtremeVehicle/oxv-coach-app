@@ -40,10 +40,13 @@ import { createClient } from 'jsr:@supabase/supabase-js@2';
 // « analyze-pending-sessions », actif, toutes les heures.
 //
 // Précision utile, parce qu'elle change la gravité : le balayage ne prend que
-// les séances DÉPOURVUES d'analyse (`margin_global IS NULL`). Tant qu'elle
-// n'est pas redéployée, elle ne réécrit donc PAS les lignes déjà converties —
-// mais chaque séance neuve repart avec l'ancienne clé, et la colonne se met à
-// porter deux formes. C'est cela qu'il faut éviter, pas une régression massive.
+// les séances dépourvues d'analyse. Tant qu'elle n'est pas redéployée, elle ne
+// réécrit donc PAS les lignes existantes — mais chaque séance neuve repart avec
+// l'ancienne clé, et la colonne se met à porter deux formes.
+//
+// Le CRITÈRE de ce balayage a lui-même changé le 14/08 : il portait sur
+// `margin_global IS NOT NULL`, et c'était une boucle en attente. Voir la
+// requête, plus bas.
 const MAX_SESSIONS_PER_RUN = 50;
 const CONSISTENCY_WEIGHT = 0.6;
 const SMOOTHNESS_WEIGHT = 0.4;
@@ -126,16 +129,28 @@ Deno.serve(async (req: Request) => {
       { auth: { persistSession: false } }
     );
 
-    // Sessions completed sans analyse persistée
+    // Séances closes SANS LIGNE D'ANALYSE.
+    //
+    // L'EXCLUSION PORTAIT SUR `margin_global IS NOT NULL` JUSQU'AU 14/08/2026,
+    // ET C'ÉTAIT UNE BOUCLE EN ATTENTE.
+    //
+    // Dix des onze séances closes n'ont AUCUN tour : quelle que soit la qualité
+    // du calcul, il ne pourra jamais rien en conclure. Tant que le critère est
+    // « marge nulle », ces séances restent éligibles pour toujours — reprises à
+    // chaque heure, examinées, abandonnées, reprises.
+    //
+    // Aujourd'hui la file est vide parce qu'aucune ligne ne porte de marge
+    // nulle. Le jour où l'on vide les marges fabriquées, elle en compterait dix,
+    // définitivement.
+    //
+    // Le critère juste est l'EXISTENCE de la ligne : « cette séance a-t-elle été
+    // examinée ? », et non « en a-t-on tiré un chiffre ? ». Une séance sans
+    // matière est examinée une fois, et c'est tout.
     const { data: pending, error } = await supabase
       .from('telemetry_sessions')
       .select('id, user_id, max_g_lateral')
       .eq('status', 'completed')
-      .not(
-        'id',
-        'in',
-        `(SELECT telemetry_session_id FROM app_session_analyses WHERE margin_global IS NOT NULL)`
-      )
+      .not('id', 'in', `(SELECT telemetry_session_id FROM app_session_analyses)`)
       .limit(MAX_SESSIONS_PER_RUN);
 
     if (error) {
@@ -146,10 +161,13 @@ Deno.serve(async (req: Request) => {
         .select('id, user_id, max_g_lateral')
         .eq('status', 'completed')
         .limit(MAX_SESSIONS_PER_RUN * 4);
+      // Même critère que la requête principale : l'existence de la ligne. Un
+      // repli qui filtrerait autrement rouvrirait la boucle par la porte de
+      // derrière, et seulement quand la sous-requête échoue — donc rarement,
+      // donc invisiblement.
       const { data: existingAnalyses } = await supabase
         .from('app_session_analyses')
-        .select('telemetry_session_id')
-        .not('margin_global', 'is', null);
+        .select('telemetry_session_id');
       const analyzedIds = new Set(
         (existingAnalyses ?? []).map((r: { telemetry_session_id: string }) => r.telemetry_session_id)
       );
@@ -224,10 +242,39 @@ async function processSessions(supabase: any, sessions: any[]) {
             : null;
       }
 
-      // Une composante absente ne se pondère pas. Sans l'une des deux, il n'y a
-      // pas de marge globale — et surtout pas « une marge de 100 % ».
+      // RIEN À MESURER : ON ÉCRIT QUAND MÊME LA LIGNE, SANS AUCUNE MARGE.
+      //
+      // Une composante absente ne se pondère pas — sans l'une des deux, il n'y a
+      // pas de marge globale, et surtout pas « une marge de 100 % ».
+      //
+      // Mais ne rien écrire du tout laisserait la séance éligible à jamais : le
+      // balayage prend celles qui n'ont pas de ligne. La ligne est donc posée
+      // avec ses marges nulles, `computed_at` et `algo_version` renseignés.
+      //
+      // Elle dit exactement ce qui s'est passé : EXAMINÉE, RIEN À MESURER. C'est
+      // vrai, c'est utile, et c'est ce que le principe de non-fabrication
+      // demande — l'absence est une information, pas un trou à combler.
       if (pilotMargin === null || vehicleMargin === null) {
-        results.push({ sessionId: session.id, ok: true, skipped: 'marge non calculable' });
+        const { error: videErr } = await supabase.from('app_session_analyses').upsert(
+          {
+            telemetry_session_id: session.id,
+            user_id: session.user_id,
+            margin_global: null,
+            margin_zone: null,
+            margin_vehicle: vehicleMargin,
+            margin_pilot: pilotMargin,
+            margin_breakdown: null,
+            algo_version: 'cron-v1.0',
+            computed_at: new Date().toISOString(),
+          },
+          { onConflict: 'telemetry_session_id' }
+        );
+        results.push({
+          sessionId: session.id,
+          ok: videErr === null,
+          skipped: 'examinée, rien à mesurer',
+          error: videErr?.message,
+        });
         continue;
       }
 
