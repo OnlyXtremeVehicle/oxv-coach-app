@@ -1761,6 +1761,20 @@ est une décision, pas un câblage.
 nulle part dans l'application vivante, et `kinematics.ts` n'a aucun appelant
 hors tests.
 
+> **MIS À JOUR LE 13/08/2026.** `detectBrakingZones` reste sans appelant — le
+> constat ci-dessus tient. Mais le module n'est plus orphelin : il exporte
+> désormais `SEUIL_FREINAGE_G`, la constante que consomme
+> `brakingPointsService`, armé le même jour sur l'écran de triage du coach.
+>
+> `DETTE.md` relevait « trois seuils de freinage sans constante partagée ». Il
+> n'y en a plus qu'un, et il est sourcé.
+>
+> **Critère de réouverture de D-40, à écrire ici comme l'arbitrage le demande :**
+> trois séances réelles sur circuit FERMÉ, et une comparaison chiffrée module
+> contre code en place sur les mêmes trames. Avant cela la question ne se pose
+> pas ; après, elle se tranchera seule. Une séance sur une boucle de routes
+> ouvertes ne suffit pas.
+
 ### Ce que le lot T1bis a bien tenu
 
 Son critère d'acceptation était unique et vérifiable : le delta cumulé se
@@ -1798,13 +1812,30 @@ prend pas de paramètre `closed`, donc il ne sait pas refermer un tour.
 
 ### Trois constats de bord, à vous
 
-**La chaîne freinage est morte de bout en bout, à une ligne d'être vivante.**
-`brakingPointsService.ts` (115 lignes) n'est importé que par son test. Il rend
-exactement le `BrakingMarker` qu'attend `BrakingPointsLayer.tsx`, lequel est
-monté dans `PilotPreset.tsx:58` derrière une garde `brakingPoints && length > 0`
-— et **aucun appelant ne passe jamais cette prop**. Un layer entier qui ne peut
-pas s'allumer. Deux issues, et c'est un choix produit : l'armer, ou le retirer
-franchement.
+**~~La chaîne freinage est morte de bout en bout~~ — ARMÉE LE 13/08/2026.**
+
+Le constat était juste : `brakingPointsService.ts` n'était importé que par son
+test, et `BrakingPointsLayer` était monté dans `PilotPreset.tsx:58` derrière une
+garde `brakingPoints && length > 0` qu'aucun appelant ne satisfaisait.
+
+**Décision fondateur du 13/08, contre l'arbitrage qui proposait de retirer :
+garder ET rendre fiable.** Les deux moitiés comptaient — un layer allumé sur une
+détection fragile aurait été pire qu'un layer éteint, parce qu'il affirme.
+
+*Armée* : `app/(coach)/triage.tsx` chargeait déjà la trajectoire pour sa carte,
+et `TrajectoryPoint` est structurellement identique à `TrajPoint`. Il manquait le
+calcul et une ligne.
+
+*Fiable* : la détection ne retenait une zone que sur la CHUTE TOTALE de vitesse,
+sans aucune notion de distance. Une voiture décélérant de 120 à 100 en levant le
+pied sur 400 m produisait exactement le même signal qu'un freinage sur 40 m. La
+décélération se dérive désormais des seules vitesses et de la distance —
+`a = (v₂² − v₁²) / (2·d)` — et se compare au seuil PARTAGÉ `SEUIL_FREINAGE_G`.
+
+*Et le test qui prouvait la détection employait un lever de pied* : son helper
+espaçait les points de 55 m, un choix fait pour passer le seuil de séparation.
+Ses 120 → 60 km/h s'étalaient donc sur 278 m, soit −0,15 g. Il ne mentait pas sur
+le code d'alors ; il mentait sur ce que ce code croyait détecter.
 
 **Deux commentaires affirment un mécanisme inexistant.**
 `src/components/telemetry/CourbeDelta.tsx:82` et
@@ -2080,8 +2111,26 @@ parce que D-12 s'attribuait une « décision fondateur » dont je ne trouvais
 aucune trace. L'autonomie accordée le referme : le motif juridique tient seul,
 indépendamment de qui l'a écrit.
 
-*Reste ouvert et distinct* : le dépôt porte CINQ familles là où trois sont
-prévues — Michroma et Syncopate s'y sont ajoutées avant le plan. Consolider
-touche l'identité visuelle de dizaines d'écrans et ne se décide pas dans un
-correctif ; c'est un lot, et il est au dossier.
+**RATIFIÉ LE 13/08/2026.** L'arbitrage fondateur confirme le refus et corrige
+la datation : *« une décision qui ne vit que dans le fichier qu'elle justifie
+n'est pas une décision. Datez-la du 13/08 et non du 28/07. »* Le refus cesse
+d'être une auto-attribution. Il tombera avec l'achat d'une licence Klim, et pas
+autrement.
+
+*Reste ouvert et distinct*, et la mesure du 13/08 en change la nature : le dépôt
+porte CINQ familles parce qu'il porte **DEUX tables de jetons en parallèle** —
+`src/theme/v2.ts` (Hanken Grotesk + JetBrains Mono, 170 fichiers) et
+`src/ui/v2/tokens.ts` (Michroma + Inter + JetBrains Mono, 57). La première est le
+système V3 adopté ; la seconde est l'ancien kit, dont la bascule était annoncée
+« jusqu'à L6 » et n'a jamais eu lieu.
+
+Ce n'est donc pas une accumulation de goûts, c'est une migration à l'arrêt.
+
+**Inter est sorti le 13/08** — l'arbitrage le qualifie de « redondance pure, à
+retirer sans regarder », et 66 fichiers ont basculé sans être touchés.
+**Michroma reste**, sur la réserve du même arbitrage : `typo.display` porte
+39 écrans, dont tout le flux REC et tout l'espace Club. Le remplacer sans l'avoir
+vu changerait l'identité visuelle de l'application pilote entière, et le quota de
+builds iOS est épuisé jusqu'au 1er septembre. La ligne est prête en commentaire
+dans `tokens.ts`.
 
