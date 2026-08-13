@@ -4,9 +4,10 @@
 > Bouteville**. Un seul endroit pour tout ce qui est arrêté faute d'un arbitrage,
 > à travers les neuf jalons du programme V3 et la coordination avec le site.
 >
-> **Si vous ne lisez qu'une section, lisez la § 0.** Six points courts. Le § 0.4
-> se répond par oui ou par non et vous seul le pouvez ; le § 0.2 arrête l'envoi
-> de deux mesures inventées à vos clients.
+> **Si vous ne lisez qu'une section, lisez la § 0.** Le § 0.4 se répond par oui ou
+> par non et vous seul le pouvez ; le § 0.2 arrête l'envoi de deux mesures
+> inventées à vos clients ; le § 0.9 explique pourquoi votre marge de Bouteville
+> vaut 39 quand elle devrait en valoir 51.
 >
 > **Ce document ne remplace pas `docs/DETTE.md`.** La dette recense ce qui est
 > constaté ; celui-ci recense ce qui est *bloqué*, et par quoi.
@@ -37,7 +38,7 @@ rien aujourd'hui, et c'est écrit aussi.
 
 # 0 · APRÈS L'ESSAI TERRAIN DU 13/08 — le plus court chemin
 
-*Ajouté le 13/08, étendu le même jour après l'arbitrage. Ces neuf points sont en
+*Ajouté le 13/08, étendu le même jour après l'arbitrage, puis le 14/08. Ces dix points sont en
 tête parce qu'ils sont courts, qu'ils touchent des données ou des clients réels,
 et qu'aucun ne demande de réfléchir longtemps.*
 
@@ -48,7 +49,8 @@ reste.*
 *Le § 0.7 a été TRANCHÉ le 13/08 — il est conservé, clos, parce que le
 raisonnement vaut d'être gardé. Il tenait la dernière ligne ouverte du jalon 5.*
 
-*Restent donc SEPT points ouverts : 0.1 à 0.6, et 0.8.*
+*Restent donc HUIT points ouverts : 0.1 à 0.6, 0.8, et 0.9 — ce dernier ajouté
+le 14/08, après que j'ai dû corriger ce que j'avais écrit la veille.*
 
 ## 0.1 — GESTE · Renseigner la longueur de vos trois tours
 
@@ -285,6 +287,76 @@ débriefing sont calculés, stockés, et affichés nulle part.
   de l'écran coach. C'est la couleur de la BRANCHE QDI : l'employer là rejoue en
   couleur l'homonymie qu'on vient de retirer des mots. Une teinte propre à la
   marge est à trancher.
+
+---
+
+## 0.9 — DÉCISION · La marge note zéro une régularité de 3,98 %
+
+**Et j'ai d'abord raconté cette affaire de travers. La correction d'abord.**
+
+### Ce que j'avais écrit, et qui était faux
+
+Le 13/08 au soir, dans quatre fichiers et dans un commit, j'ai écrit que
+`qdi.regularite` et `margin_breakdown.regularity` étaient **deux mesures
+différentes** — « le QDI mesure la constance du geste, la marge la dispersion
+des temps au tour ».
+
+`qdiLogic.computeRegularite` reçoit `laps.map((l) => l.durationSeconds)`. **Les
+deux partent des mêmes temps au tour.** Ce n'était pas une homonymie entre deux
+grandeurs : c'est **une grandeur, deux formules qui ne s'accordent pas**.
+
+Le renommage reste justifié — deux formules d'une même grandeur doivent porter
+deux noms —, mais le motif n'était pas celui que j'avais écrit. Les quatre
+fichiers portent la correction.
+
+### Le vrai défaut, reproduit sur vos trois tours
+
+| | |
+|---|---:|
+| Vos tours de Bouteville | 360,485 · 327,542 · 339,483 s |
+| Moyenne | 342,503 s |
+| Écart-type | 13,617 s |
+| **Dispersion relative** | **3,98 %** |
+| QDI (coefficient de variation) | **34** |
+| Marge (écart-type absolu) | **0** |
+
+Les deux valeurs de la base sont reproduites à l'unité par un test
+(`deuxFormulesUneGrandeur.test.ts`).
+
+**Le seuil de la marge est ABSOLU** : une seconde, cinq secondes, quelle que
+soit la longueur du tour. Sur un tour de kart de 60 s, cinq secondes d'écart-type
+valent 8 % — dispersé, la note zéro est méritée. Sur vos tours de 5 min 42, elles
+valent **1,5 %**, et la formule rend zéro quand même. Elle compare un temps à un
+seuil sans le rapporter à la durée du tour.
+
+Autrement dit : **plus le circuit est long, plus la formule vous punit** — et
+Bouteville est long.
+
+### Ce que je n'ai pas fait, et pourquoi
+
+Le correctif tient en une division : rapporter l'écart-type à la moyenne, comme
+le fait déjà le QDI. **Je ne l'ai pas appliqué.**
+
+`consistency` pèse 0,6 de la marge pilote, elle-même 0,6 de `margin_global` —
+**le seul chiffre que l'écran affiche**, celui du Principe 5. Le passer en
+relatif ferait passer votre séance de **39 à 51**, et changerait de zone.
+
+Déplacer le chiffre central du produit sur sa seule séance réelle n'est pas une
+correction de bord. C'est un choix d'algorithme, et il est à vous.
+
+### Trois façons d'en sortir
+
+1. **Passer en relatif** — cohérent avec le QDI, et la contradiction disparaît.
+   Les quatorze analyses existantes sont à recalculer.
+2. **Garder l'absolu, mais le rapporter au tour** — un seuil exprimé en
+   pourcentage de la durée médiane. Même effet, formulation plus explicite.
+3. **Ne rien changer** — mais alors la marge et le QDI continueront de dire
+   deux choses opposées de la même séance, et le premier pilote qui compare
+   posera la question.
+
+**Coût de ne rien décider** : `margin_global` est le chiffre du Principe 5. Tant
+que ce seuil ne tient pas compte de la longueur du tour, il sous-note toutes les
+séances sur circuit long — c'est-à-dire les vôtres.
 
 ---
 

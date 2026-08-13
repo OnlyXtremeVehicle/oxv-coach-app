@@ -61,18 +61,55 @@ export const DEFAULT_VEHICLE: VehicleParameters = {
  *     qdi.regularite              = 34
  *     margin_breakdown.regularity = 0
  *
- * Deux mots à une lettre près, deux mesures qui n'ont rien à voir, deux
- * chiffres qui se contredisent — dans le même objet. Le QDI mesure la
- * constance du geste sur le tour ; la marge mesure la dispersion des TEMPS au
- * tour. Rien dans les noms ne le disait.
+ * ---------------------------------------------------------------------------
+ * CE QUE J'AI ÉCRIT ICI LE 13/08 AU SOIR ÉTAIT FAUX, ET CORRIGÉ LE LENDEMAIN
+ * ---------------------------------------------------------------------------
  *
- * Cette homonymie-là était plus vicieuse que celle des libellés d'écran :
- * **elle ne se voit pas.** Personne ne la remarque tant qu'il n'ouvre pas les
- * deux colonnes côte à côte — et le jour où quelqu'un le fait, il cherche un
- * bug qui n'existe pas.
+ * J'avais écrit : *« deux mesures qui n'ont rien à voir — le QDI mesure la
+ * constance du geste, la marge la dispersion des temps au tour »*. **Non.**
  *
- * `consistency` nomme ce que la grandeur mesure réellement, et n'a plus
- * d'homonyme nulle part.
+ * `qdiLogic.computeRegularite` reçoit `laps.map((l) => l.durationSeconds)`.
+ * Les deux partent des MÊMES temps au tour. Ce n'est pas une homonymie entre
+ * deux grandeurs : c'est **une seule grandeur, calculée deux fois, par deux
+ * formules qui ne s'accordent pas**.
+ *
+ *     QDI    — coefficient de variation (écart-type / moyenne), noté sur
+ *              [0 ; 6 %] ;
+ *     marge  — écart-type ABSOLU en secondes, pénalisé de 25 points par
+ *              seconde au-delà d'une seconde.
+ *
+ * Reproduit sur les trois tours réels de Bouteville — 360,485 · 327,542 ·
+ * 339,483 s :
+ *
+ *     moyenne 342,503 s · écart-type 13,617 s · coef. de variation 3,98 %
+ *     → QDI 34    ·    marge 0
+ *
+ * Les deux valeurs de la base sortent à l'unité près. Le renommage reste juste
+ * — deux formules d'une même grandeur doivent porter deux noms — mais le motif
+ * n'était pas celui que j'avais écrit.
+ *
+ * Cette confusion-là ne se voit pas. Personne ne la remarque tant qu'il n'ouvre
+ * pas les deux colonnes côte à côte — et le jour où quelqu'un le fait, il
+ * cherche un bug là où il y a un désaccord de calibration.
+ *
+ * ---------------------------------------------------------------------------
+ * ET LA CALIBRATION DE LA MARGE EST DIMENSIONNELLEMENT FAUSSE
+ * ---------------------------------------------------------------------------
+ *
+ * Le seuil de `computeConsistency` est ABSOLU : une seconde, quelle que soit la
+ * longueur du tour. Il atteint zéro à cinq secondes d'écart-type.
+ *
+ * Sur un tour de kart de 60 s, cinq secondes d'écart-type, c'est 8 % — un
+ * pilotage effectivement dispersé. Sur les tours de 5 min 42 de Bouteville,
+ * c'est **1,5 %**, c'est-à-dire une régularité remarquable, et la formule la
+ * note zéro. Elle compare un temps à un seuil sans le rapporter à la durée du
+ * tour.
+ *
+ * **Ce n'est pas corrigé ici, et c'est délibéré.** `consistency` pèse 0,6 de la
+ * marge pilote, qui pèse 0,6 de `margin_global` — LE chiffre central du
+ * produit. Le passer en relatif ferait passer Bouteville de 39 à 51, et ce
+ * n'est pas à moi de déplacer le seul chiffre que l'écran affiche. Porté au
+ * registre fondateur (§ 0.9) avec la reproduction.
  *
  * Le renommage porte sur les TROIS endroits, sans quoi il n'en corrige aucun :
  * le calcul ici, l'écrivain serveur (`cron-analyze-pending-sessions`, qui
@@ -239,9 +276,29 @@ function computePilotMargin(laps: Lap[]): PilotMarginResult {
 }
 
 /**
- * Régularité : stddev des temps au tour, mappé sur [0, 100].
- * stddev ≤ 1s → 100 (parfaitement régulier)
- * stddev = 5s → 0 (très irrégulier)
+ * Constance : écart-type des temps au tour, mappé sur [0, 100].
+ * écart-type ≤ 1 s → 100 · écart-type ≥ 5 s → 0.
+ *
+ * ---------------------------------------------------------------------------
+ * CE SEUIL EST ABSOLU, ET C'EST LE DÉFAUT — vu le 14/08/2026, NON corrigé ici
+ * ---------------------------------------------------------------------------
+ *
+ * Une seconde, cinq secondes : les mêmes bornes quelle que soit la longueur du
+ * tour. Or un écart-type ne se lit qu'en proportion de ce qu'il disperse.
+ *
+ *   tour de kart, 60 s      → 5 s d'écart-type = 8 %   → « dispersé », vrai ;
+ *   tour de Bouteville, 342 s → 5 s d'écart-type = 1,5 % → remarquable, et
+ *                               cette formule le note ZÉRO.
+ *
+ * Sur la seule séance réelle de la base, elle rend 0 là où le QDI — qui part
+ * des MÊMES temps, en coefficient de variation — rend 34. Les deux ont été
+ * reproduits à l'unité (voir l'en-tête de `MarginBreakdown`).
+ *
+ * Le correctif tient en une ligne : diviser par la moyenne avant de comparer.
+ * Il n'est PAS appliqué parce que `consistency` pèse 0,6 de la marge pilote,
+ * elle-même 0,6 de `margin_global` — le seul chiffre que l'écran affiche.
+ * Bouteville passerait de 39 à 51. Déplacer le chiffre central du produit n'est
+ * pas une correction de bord : c'est au fondateur (registre § 0.9).
  */
 function computeConsistency(lapSecondsList: number[]): number {
   const stddev = standardDeviation(lapSecondsList);

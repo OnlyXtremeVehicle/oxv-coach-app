@@ -11,13 +11,22 @@
 --     qdi -> 'regularite'              = 34
 --     margin_breakdown -> 'regularity' = 0
 --
--- Deux mots à une lettre près, deux mesures qui n'ont rien à voir, deux chiffres
--- qui se contredisent. Le QDI mesure la constance du geste sur le tour ; la
--- marge mesure la dispersion des TEMPS au tour.
+-- CORRIGÉ LE 14/08 : ce ne sont PAS deux mesures différentes.
+-- `qdiLogic.computeRegularite` reçoit `laps.map((l) => l.durationSeconds)` — les
+-- deux partent des MÊMES temps au tour. C'est UNE grandeur, calculée par deux
+-- formules qui ne s'accordent pas : coefficient de variation pour le QDI,
+-- écart-type ABSOLU en secondes pour la marge. Sur les trois tours de Bouteville
+-- (360,485 · 327,542 · 339,483 s) : moyenne 342,503 s, écart-type 13,617 s,
+-- coefficient de variation 3,98 % — les deux valeurs de la base sont reproduites
+-- à l'unité.
 --
--- Cette homonymie ne se voit pas : personne ne la remarque tant qu'il n'ouvre
--- pas les deux colonnes côte à côte. Le jour où quelqu'un le fait, il cherche un
--- bug qui n'existe pas.
+-- Le renommage reste justifié : deux formules d'une même grandeur doivent porter
+-- deux noms, sinon on croit lire un bug là où il y a un désaccord de calibration.
+-- Et cette confusion ne se voit pas tant qu'on n'ouvre pas les deux colonnes.
+--
+-- Le défaut de calibration lui-même (seuil ABSOLU d'une seconde, insensible à la
+-- longueur du tour) n'est PAS corrigé ici : il déplacerait `margin_global`, le
+-- chiffre central du produit. Registre fondateur § 0.9.
 --
 -- -----------------------------------------------------------------------------
 -- CE QUI ACCOMPAGNE CETTE MIGRATION, ET SANS QUOI ELLE NE SERT À RIEN

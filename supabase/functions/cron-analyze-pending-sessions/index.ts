@@ -29,9 +29,12 @@ import { createClient } from 'jsr:@supabase/supabase-js@2';
 //
 // `app_session_analyses` porte deux colonnes voisines, `qdi` et
 // `margin_breakdown` : sur la même ligne, `qdi.regularite` valait 34 et
-// `margin_breakdown.regularity` valait 0. Deux mesures différentes, deux mots à
-// une lettre près, et rien pour les distinguer. Le QDI mesure la constance du
-// geste ; ici on mesure la dispersion des TEMPS au tour.
+// `margin_breakdown.regularity` valait 0.
+//
+// CORRIGÉ LE 14/08 : ce ne sont pas deux mesures. Les deux partent des MÊMES
+// temps au tour — le QDI en coefficient de variation, la marge en écart-type
+// absolu. Une grandeur, deux formules qui ne s'accordent pas, deux noms qui ne
+// le disaient pas.
 //
 // CETTE FONCTION EST L'UN DES DEUX ÉCRIVAINS, et elle tourne : pg_cron job 4,
 // « analyze-pending-sessions », actif, toutes les heures.

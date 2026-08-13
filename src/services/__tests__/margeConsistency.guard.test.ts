@@ -12,9 +12,16 @@
  *     qdi.regularite              = 34
  *     margin_breakdown.regularity = 0
  *
- * Deux mots à une lettre près, deux mesures sans rapport, deux chiffres qui se
- * contredisent. Le QDI mesure la constance du geste sur le tour ; la marge
- * mesure la dispersion des TEMPS au tour.
+ * CE N'EST PAS UNE HOMONYMIE ENTRE DEUX MESURES — je l'avais écrit ainsi le
+ * 13/08 au soir, et c'était faux. `qdiLogic.computeRegularite` reçoit
+ * `laps.map((l) => l.durationSeconds)` : les deux partent des MÊMES temps au
+ * tour. C'est **une seule grandeur, calculée par deux formules qui ne
+ * s'accordent pas** — coefficient de variation d'un côté, écart-type absolu de
+ * l'autre. Reproduit à l'unité sur les trois tours de Bouteville (360,485 ·
+ * 327,542 · 339,483 s → coef. de variation 3,98 %, écart-type 13,617 s).
+ *
+ * Le renommage reste juste : deux formules d'une même grandeur doivent porter
+ * deux noms. Le motif, lui, n'était pas celui que j'avais écrit.
  *
  * Cette homonymie-là ne se voit pas. Elle ne produit aucune erreur, aucun test
  * rouge, aucun symptôme — jusqu'au jour où quelqu'un ouvre les deux colonnes
