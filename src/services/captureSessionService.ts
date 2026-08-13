@@ -62,6 +62,7 @@ import {
 } from '@/ble/lapDetectionRunner';
 import { supabase } from '@/lib/supabase';
 import { forgetPendingIntention, peekPendingIntentionId } from '@/services/intentionsService';
+import { fetchCurrentWeather, saveWeatherSnapshot } from '@/services/weatherService';
 import { useSessionStore } from '@/store/useSessionStore';
 import type { RaceBoxData } from '@/types/telemetry';
 
@@ -474,6 +475,40 @@ export async function startCaptureSession(input: StartCaptureInput): Promise<Sta
   };
   current = state;
   setLinkStatus('recording');
+
+  /**
+   * ===========================================================================
+   * LA MÉTÉO DE LA SÉANCE ÉTAIT LUE PAR QUATRE CHEMINS ET ÉCRITE PAR AUCUN
+   * ===========================================================================
+   *
+   * `saveWeatherSnapshot` existe depuis l'origine, avec ses dix-sept colonnes et
+   * son soin de l'absence. Elle n'avait AUCUN appelant : `weather_snapshots`
+   * n'a jamais reçu une ligne venant de l'application.
+   *
+   * Conséquence en bout de chaîne : la section « Conditions » du bilan affiche
+   * « Aucune météo capturée pour cette séance » sur TOUTES les séances, pour
+   * toujours ; les puces météo du carnet sont vides ; et les trois modules de
+   * corrélation météo ne peuvent structurellement jamais produire un résultat.
+   *
+   * L'instant du DÉPART est le bon : c'est le ciel sous lequel la séance
+   * commence, et il est encore lisible même si le réseau tombe ensuite.
+   *
+   * ---
+   *
+   * NON BLOQUANT, ET SANS CONSÉQUENCE EN CAS D'ÉCHEC. La capture ne dépend pas
+   * du réseau — c'est toute sa raison d'être en rase campagne. Une météo
+   * indisponible laisse simplement la séance sans instantané, ce qui est l'état
+   * d'aujourd'hui, et l'écran sait déjà le dire.
+   *
+   * `circuitLatLon` n'est renseigné que si le circuit porte une ligne
+   * d'arrivée : sans position, on ne va pas interroger un ciel au hasard.
+   */
+  if (input.finishLine) {
+    const { lat, lon } = input.finishLine;
+    void fetchCurrentWeather(lat, lon)
+      .then((w) => (w ? saveWeatherSnapshot(sessionId, w, 'before') : false))
+      .catch(() => false);
+  }
   // Le chien de garde part AVEC la capture : si la première trame n'arrive
   // jamais, c'est lui qui le dira. Sans lui, « connecté » et « qui émet » sont
   // indiscernables à l'écran — c'est ce qui a coûté la séance du 13/08.

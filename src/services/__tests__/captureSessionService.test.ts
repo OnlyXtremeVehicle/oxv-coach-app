@@ -128,6 +128,26 @@ jest.mock('@/services/liveRelayRunner', () => ({
   stopPilotLiveRelay: jest.fn(),
 }));
 
+/**
+ * L'INSTANTANÉ MÉTÉO DU DÉPART N'A RIEN À FAIRE DANS CES TESTS.
+ *
+ * `startCaptureSession` déclenche depuis le 13/08/2026 une lecture Open-Meteo
+ * suivie d'un `insert` dans `weather_snapshots` — la table était lue par quatre
+ * chemins et écrite par aucun. C'est délibérément NON BLOQUANT : la capture ne
+ * dépend pas du réseau.
+ *
+ * Mais « non bloquant » ne veut pas dire « invisible ». La promesse se résout
+ * pendant que les tests de bornage de lot comptent les écritures, et son insert
+ * s'ajoutait au décompte — de façon dépendante de l'ordonnancement, donc
+ * intermittente : `npx jest src/services` passait, la suite complète échouait.
+ *
+ * Ces tests portent sur le découpage des lots de trames, pas sur la météo.
+ */
+jest.mock('@/services/weatherService', () => ({
+  fetchCurrentWeather: jest.fn(async () => null),
+  saveWeatherSnapshot: jest.fn(async () => true),
+}));
+
 jest.mock('@/services/intentionsService', () => ({
   peekPendingIntentionId: jest.fn(() => (globalThis as any).__OXV_CS__.pendingIntentionId),
   forgetPendingIntention: jest.fn(() => {

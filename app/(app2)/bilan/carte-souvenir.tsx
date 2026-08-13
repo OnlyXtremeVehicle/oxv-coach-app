@@ -47,6 +47,7 @@ import { fetchSessionCircuitCenterline } from '@/services/circuitsService';
 import { logMediaExport } from '@/services/mediaExportsService';
 import { computeRegularity } from '@/services/regularityService';
 import { fetchSessionLaps } from '@/services/sessionsService';
+import { nombresDeSeance } from '@/lib/numeriquesPostgrest';
 import { supabase } from '@/lib/supabase';
 import type { TelemetrySession } from '@/types/telemetry';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -155,7 +156,14 @@ export default function CarteSouvenirScreen() {
         .select('*')
         .eq('id', sessionId)
         .maybeSingle();
-      const session = (row as TelemetrySession | null) ?? null;
+      /**
+       * `best_lap_seconds` et `distance_km` sont des colonnes `numeric` :
+       * PostgREST les rend en CHAÎNE. Sans conversion, le repli de la ligne 176
+       * — celui prévu pour une séance dont les `laps` ne sont pas encore
+       * synchronisées — affichait « — » sur un chrono présent en base, sur le
+       * seul objet OXV pensé pour sortir de l'application.
+       */
+      const session = row !== null ? nombresDeSeance(row as TelemetrySession) : null;
       if (cancelled) return;
       if (!session) {
         setLoading(false);
