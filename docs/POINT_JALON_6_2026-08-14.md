@@ -31,7 +31,7 @@ part, deux attendent qu'un compte coach existe.
 | **Suppression de `coach_testimonials`** | **bloqué par la RLS** | Voir ci-dessous — il manque une fonction serveur |
 | **Suppression des quatre écrans** | **DEUX supprimés, deux gardés** | Voir ci-dessous — le plan se trompe sur deux d'entre eux |
 | **`rapport` devient la carte de séance** | **non commencé** | |
-| **`assistant` devient le transcripteur** | **non commencé** | |
+| **`assistant` devient le transcripteur** | **hors de ma portée** | Aucune transcription n'existe dans le dépôt. Voir ci-dessous |
 | **Phase 5bis — statut fondateur** | **colonnes en base** | `founder_since`, `founder_number` existent |
 | **Phase 5ter — écuries** | **non commencé** | Aucun écran. Le plan note lui-même que l'annuaire *« restera vide toute la première saison »* |
 
@@ -100,6 +100,24 @@ deux.
 
 Rien à perdre au remplacement : **zéro témoignage en base.**
 
+### `assistant` : le plan demande un backend qui n'existe pas
+
+*« `assistant` devient le transcripteur des notes vocales, plus l'analyste : il
+met en forme ce qu'un humain a dit, il ne coache pas. »*
+
+L'intention est doctrinalement juste — aujourd'hui l'IA **pré-rédige** une
+observation, et seule la validation humaine la retient. Mais la bascule vers la
+transcription demande trois choses que le dépôt n'a pas :
+
+| | |
+|---|---|
+| un moteur de transcription | **zéro occurrence** dans tout le dépôt. `coachAudioService` enregistre et attache un fichier ; rien ne le lit |
+| une fonction serveur | l'audio ne peut pas être transcrit côté application |
+| une clé d'API payante | donc une **dépendance critique** — validation fondateur (CLAUDE.md) |
+
+Ce n'est pas un refus, c'est une frontière. Les 1 311 lignes de l'écran actuel
+ne sont pas le problème : le problème est qu'il n'y a rien à brancher derrière.
+
 ---
 
 ## Les quatre écrans — deux partent, deux restent
@@ -124,6 +142,30 @@ même objet : ce sont des outils qui écrivent.
 
 Une garde existante — `coachNav.test.ts` — a attrapé les deux entrées de
 navigation devenues orphelines. Elle a fait exactement son travail.
+
+### Et une garde neuve, pour que la prochaine suppression se voie
+
+Une suppression d'écran laisse derrière elle des modules que plus personne
+n'appelle — sans rien casser à la compilation. C'est le motif dominant du
+dépôt, dans sa version la plus coûteuse : celle qu'on vient de créer soi-même.
+
+`modulesOrphelins.guard.test.ts` construit le graphe d'imports RÉEL — les
+spécificateurs sont résolus en chemins de fichiers, barils compris — et fige la
+liste des modules de `src/` qu'aucun code de production n'importe. **Trente-deux
+au 14/08.** La garde n'exige pas qu'elle soit vide ; elle exige qu'elle ne bouge
+pas dans un sens ou dans l'autre sans qu'on le sache.
+
+Il a fallu trois écritures pour que la mesure soit juste, et les deux premières
+sont documentées dans le fichier : la recherche par nom ratait
+`@/services/v2/…` ; la résolution mélangeait les séparateurs sous Windows et
+rendait tous les barils faussement orphelins. La troisième a été **falsifiée sur
+trois cas** avant d'être livrée.
+
+Une précision que la mesure a imposée : les dossiers `__tests__` sont écartés du
+parcours, donc « sans consommateur » veut dire **hors tests**.
+`circuit/hauteSaintonge.ts` est importé — par deux tests, et par rien d'autre.
+Ce n'est pas « personne ne s'en sert », c'est « plus aucun code de production ne
+s'en sert », et un test vert ne s'en aperçoit pas.
 
 ---
 
