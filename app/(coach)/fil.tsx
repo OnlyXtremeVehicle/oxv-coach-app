@@ -58,6 +58,7 @@ import {
   ancrage,
   filEstVide,
 } from '@/features/coach/filSeanceLogic';
+import { CarteSeanceFreinage } from '@/features/coach/CarteSeanceFreinage';
 import { chargerFilSeance } from '@/features/coach/filSeanceService';
 import { COACH_CONSOLE_MIN_WIDTH } from '@/lib/coachNav';
 import { theme } from '@/theme/v2';
@@ -160,10 +161,13 @@ function Legende({ registres }: { registres: RegistreFil[] }) {
 
 function CorpsFil({
   fil,
+  sessionId,
   isConsole,
   panne,
 }: {
   fil: FilSeance;
+  /** Passé jusqu'ici pour la carte : le fil lui-même n'en a pas besoin. */
+  sessionId: string | null;
   isConsole: boolean;
   /** Vrai si une source au moins n'a pas répondu — le fil est incomplet. */
   panne: boolean;
@@ -192,6 +196,24 @@ function CorpsFil({
         </Text>
       )}
       <Legende registres={fil.registresPresents} />
+
+      {/*
+        LA CARTE, ARRIVÉE DE `triage` LE 14/08/2026.
+
+        Elle y était le seul montage de `PilotPreset`, donc le seul endroit où la
+        chaîne de freinage pouvait s'allumer. Le plan condamne `triage` ; le
+        fondateur a demandé le 13/08 de garder cette chaîne armée. Les deux
+        tiennent dès lors que la carte ne dépend plus de l'écran.
+
+        Elle ouvre le fil parce qu'elle porte sur la séance ENTIÈRE et n'a pas
+        d'instant — même bande que la lecture globale, au-dessus de la
+        chronologie. Le tri, lui, n'a pas suivi : un signalement automatique est
+        une interprétation.
+      */}
+      <View style={s.bande}>
+        <SectionLabel>OÙ LA VITESSE TOMBE</SectionLabel>
+        <CarteSeanceFreinage sessionId={sessionId} height={isConsole ? 400 : 300} />
+      </View>
 
       {fil.entete.length > 0 && (
         <View style={s.bande}>
@@ -287,7 +309,9 @@ export default function CoachFilScreen() {
           errorCause="Le fil n'a pas pu être chargé."
           onRetry={relancer}
         >
-          {fil !== null ? <CorpsFil fil={fil} isConsole={isConsole} panne={panne} /> : null}
+          {fil !== null ? (
+            <CorpsFil fil={fil} sessionId={sessionId ?? null} isConsole={isConsole} panne={panne} />
+          ) : null}
         </StateWrapper>
       </View>
     </Screen>
