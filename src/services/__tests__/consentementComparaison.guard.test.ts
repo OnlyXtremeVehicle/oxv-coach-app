@@ -80,9 +80,58 @@ describe('garde — la comparaison d’élèves est divulguée', () => {
     // PIÈGE ÉVITÉ : `toContain('COACH_COMPARAISON_PHRASE')` était satisfait par
     // la seule ligne d'import. La garde serait restée verte si le rendu avait
     // disparu — exactement le défaut qu'elle prétendait interdire.
-    // On exige donc une INTERPOLATION JSX : { … COACH_COMPARAISON_PHRASE … }.
-    const rendu = /\{\s*COACH_COMPARAISON_PHRASE\s*\}/.test(ecran);
-    expect(rendu).toBe(true);
+    // On exige donc une INTERPOLATION JSX. `\b` après PHRASE exclut bien
+    // PHRASE_AVANT : le caractère suivant y est un « _ », donc un mot.
+    expect(/\{[^{}]*COACH_COMPARAISON_PHRASE\b[^{}]*\}/.test(ecran)).toBe(true);
+  });
+
+  /**
+   * ---
+   *
+   * LA DIVULGATION EXISTE AVANT L'ACCORD — correction du 13/08/2026
+   *
+   * Elle n'était rendue que sous `consented ? … : null`. Le pilote apprenait
+   * que son coach peut le comparer à ses autres élèves UNE FOIS QU'IL AVAIT DIT
+   * OUI. C'est l'inverse d'un consentement éclairé.
+   *
+   * L'objection d'origine tenait au temps du verbe, et elle était juste : « il
+   * peut » sous « en attente de votre accord » décrit un pouvoir inexistant.
+   * Mais se taire n'était pas la seule issue — le conditionnel dit la même
+   * chose au temps de l'état.
+   */
+  it('la phrase d’avant l’accord existe et nomme la comparaison', () => {
+    const p = phraseDeclaree('COACH_COMPARAISON_PHRASE_AVANT');
+    expect(p.length).toBeGreaterThan(40);
+    expect(p).toMatch(/autres pilotes/i);
+    expect(p).toMatch(/classement/i);
+  });
+
+  it('elle est au CONDITIONNEL — elle n’affirme aucun pouvoir déjà accordé', () => {
+    const p = phraseDeclaree('COACH_COMPARAISON_PHRASE_AVANT');
+    expect(p).toMatch(/^Si vous accordez/);
+    expect(p).toMatch(/pourra/);
+    // Le présent de l'indicatif décrirait un accès qui n'existe pas encore.
+    expect(p).not.toMatch(/votre coach peut/i);
+  });
+
+  /**
+   * LA GARDE QUI ATTRAPE VRAIMENT LA RÉGRESSION.
+   *
+   * Première rédaction : « l'interpolation qui contient la phrase ne contient
+   * pas `: null` ». Elle aurait laissé passer l'ancien code — celui-ci rendait
+   * `{consented ? <Text …>{COACH_COMPARAISON_PHRASE}</Text> : null}`, et
+   * l'interpolation INTERNE, `{COACH_COMPARAISON_PHRASE}`, ne porte évidemment
+   * aucun `: null`. Une garde satisfaite par le défaut qu'elle prétend
+   * interdire, encore une.
+   *
+   * La règle tenable est ailleurs : les DEUX rédactions doivent vivre dans la
+   * MÊME interpolation. C'est vrai d'un ternaire qui choisit entre elles, et
+   * faux de toute forme où l'une des deux branches est muette.
+   */
+  it('les deux rédactions sortent de la même interpolation — aucun état muet', () => {
+    const blocs = ecran.match(/\{[^{}]*COACH_COMPARAISON_PHRASE\b[^{}]*\}/g) ?? [];
+    expect(blocs.length).toBeGreaterThan(0);
+    expect(blocs.some((b) => b.includes('COACH_COMPARAISON_PHRASE_AVANT'))).toBe(true);
   });
 
   /**

@@ -32,6 +32,7 @@ import {
 import {
   COACH_ACCESS_LEVELS,
   COACH_COMPARAISON_PHRASE,
+  COACH_COMPARAISON_PHRASE_AVANT,
   COACH_HORS_NIVEAU_PHRASE,
   type MyCoachAssignment,
 } from '@/services/pilotConsentService';
@@ -410,10 +411,17 @@ function AssignmentCard({
           <Text style={styles.switchLabel}>Accès à vos séances</Text>
           {levelHint ? <Text style={styles.switchHint}>{levelHint}</Text> : null}
           {/* Ce que l'accès permet AUSSI — dit, pas deviné (jalon 6, phase 5).
-              À l'indicatif présent, donc SEULEMENT quand l'accès est accordé :
-              annoncer « votre coach peut… » sous « Accès en attente de votre
-              accord » décrirait un pouvoir qu'il n'a pas encore. */}
-          {consented ? <Text style={styles.switchHint}>{COACH_COMPARAISON_PHRASE}</Text> : null}
+              AFFICHÉ DANS LES DEUX ÉTATS depuis le 13/08/2026. Il ne l'était
+              qu'après l'accord : le pilote apprenait la comparaison une fois
+              qu'il avait dit oui, alors que celui qui a besoin de l'information
+              est celui qui hésite encore.
+              L'objection d'origine tenait au temps du verbe — « votre coach
+              peut… » sous « en attente de votre accord » décrirait un pouvoir
+              inexistant. Elle était juste ; se taire n'était pas la seule
+              réponse. Le conditionnel dit la même chose au temps de l'état. */}
+          <Text style={styles.switchHint}>
+            {consented ? COACH_COMPARAISON_PHRASE : COACH_COMPARAISON_PHRASE_AVANT}
+          </Text>
           {/* CE QUE CET ACCÈS N'OUVRE PAS. Affiché AVANT comme APRÈS l'accord :
               c'est une limite de portée, pas un pouvoir accordé. La cacher au
               pilote qui hésite lui ferait manquer l'information qui compte le

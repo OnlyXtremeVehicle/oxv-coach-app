@@ -70,6 +70,39 @@ export const COACH_COMPARAISON_PHRASE =
   'Votre coach peut rapprocher vos données de celles de ses autres pilotes, pour sa lecture. Rien de cette comparaison ne vous est présenté comme un classement.';
 
 /**
+ * LA MÊME DIVULGATION, AVANT L'ACCORD — et c'est une correction du 13/08/2026.
+ *
+ * ---
+ *
+ * CE QUI N'ALLAIT PAS
+ *
+ * La phrase ci-dessus n'était rendue que sous `consented ? … : null`. Le pilote
+ * apprenait donc que son coach peut le comparer à ses autres élèves **une fois
+ * qu'il avait dit oui**. C'est l'inverse d'un consentement éclairé : celui qui
+ * a besoin de l'information est précisément celui qui hésite encore.
+ *
+ * ---
+ *
+ * L'OBJECTION ÉTAIT JUSTE, LA CONCLUSION NON
+ *
+ * Le motif écrit en face du ternaire tenait au TEMPS DU VERBE : annoncer
+ * « votre coach peut… » sous « Accès en attente de votre accord » décrirait un
+ * pouvoir qu'il n'a pas encore. C'est exact, et c'est le même défaut que le
+ * zéro fabriqué — une affirmation que l'état ne soutient pas.
+ *
+ * Mais on n'avait que deux options en tête : mentir au présent, ou se taire.
+ * La troisième est le CONDITIONNEL. On dit exactement la même chose, au temps
+ * qui correspond à l'état. Rien n'est caché, rien n'est affirmé à tort.
+ *
+ * Le raisonnement était d'ailleurs déjà écrit deux lignes plus bas, pour
+ * `COACH_HORS_NIVEAU_PHRASE` : *« la cacher au pilote qui hésite lui ferait
+ * manquer l'information qui compte le plus au moment où elle compte »*. Il
+ * valait pour les deux phrases ; il n'était appliqué qu'à une.
+ */
+export const COACH_COMPARAISON_PHRASE_AVANT =
+  'Si vous accordez cet accès, votre coach pourra rapprocher vos données de celles de ses autres pilotes, pour sa lecture. Rien de cette comparaison ne vous sera présenté comme un classement.';
+
+/**
  * CE QUE L'ACCÈS COACH N'OUVRE PAS — et qui ne se devine pas.
  *
  * ---
