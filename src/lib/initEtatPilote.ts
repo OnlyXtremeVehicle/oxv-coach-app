@@ -51,6 +51,7 @@ import { bluetoothService } from '@/ble/bluetoothService';
 import { ajouter, moyenne, type Releve } from '@/features/rec/vitesseRecente';
 import { useAppStateStore } from '@/store/useAppStateStore';
 import { useAuthStore } from '@/store/useAuthStore';
+import { getMyNextTrackDay } from '@/services/nextTrackDayService';
 import { useSessionStore } from '@/store/useSessionStore';
 
 let demarre = false;
@@ -91,6 +92,61 @@ export function initEtatPilote(): void {
   desabonnements.push(
     useAuthStore.subscribe((s, prec) => {
       if (s.profile?.id !== prec.profile?.id) poserCompte(s.profile);
+    })
+  );
+
+  // --- 1 bis. Les journées du pilote --------------------------------------
+  //
+  // `setSessions` N'AVAIT AUCUN APPELANT — posé le 13/08/2026.
+  //
+  // `upcomingSessions` et `pastSessions` restaient donc VIDES en permanence, et
+  // avec eux tous les états qui en dépendent : la veille de journée, le jour J,
+  // le retour de séance. La machine ne quittait jamais l'axe « compte + capture
+  // en cours », et trois états de la doctrine n'étaient jamais atteints.
+  //
+  // Un `setSessions` posé sans lecture, ou une lecture posée sans `setSessions`,
+  // c'est la même chose vue des deux côtés : un mécanisme complet dont un
+  // maillon manque, et qui ne produit rien sans jamais lever d'erreur.
+  //
+  // On lit la journée réservée du pilote — celle-là même qui commande désormais
+  // le circuit à l'armement — et on la pose. `endsAt` inclus : une journée de
+  // nuit franchit minuit, et une fin antérieure à son début la classerait dans
+  // le passé avant qu'elle n'ait commencé.
+  const poserJournees = (userId: string | null) => {
+    if (!userId) {
+      app.setSessions([], []);
+      return;
+    }
+    void getMyNextTrackDay(userId)
+      .then((j) => {
+        if (!j) {
+          app.setSessions([], []);
+          return;
+        }
+        const debut = new Date(`${j.date}T${(j.startTime ?? '00:00:00').slice(0, 8)}`);
+        let fin: Date | null = null;
+        if (j.endTime) {
+          const f = new Date(`${j.date}T${j.endTime.slice(0, 8)}`);
+          fin = f.getTime() < debut.getTime() ? new Date(f.getTime() + 86_400_000) : f;
+        }
+        if (!Number.isFinite(debut.getTime())) {
+          app.setSessions([], []);
+          return;
+        }
+        const ref = { id: j.sessionId, startsAt: debut, endsAt: fin, circuitId: j.circuitId ?? '' };
+        // `getMyNextTrackDay` ne rend QUE la journée en cours ou à venir : une
+        // journée déjà finie n'en sort pas. Elle appartient donc au futur.
+        app.setSessions([ref], []);
+      })
+      .catch(() => {
+        // Une lecture ratée n'est pas « aucune journée » : on ne touche à rien
+        // plutôt que d'affirmer un vide. Le prochain passage réessaiera.
+      });
+  };
+  poserJournees(useAuthStore.getState().profile?.id ?? null);
+  desabonnements.push(
+    useAuthStore.subscribe((s, prec) => {
+      if (s.profile?.id !== prec.profile?.id) poserJournees(s.profile?.id ?? null);
     })
   );
 

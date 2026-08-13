@@ -50,7 +50,8 @@ import Animated, {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { storage } from '@/lib/mmkv';
-import { getDefaultCircuit } from '@/services/circuitsService';
+import { circuitDeMaJournee } from '@/services/journeeDuJourService';
+import { fetchCircuits, getDefaultCircuit } from '@/services/circuitsService';
 import { listMesJournees, type MaJournee } from '@/services/journeesService';
 import { prochaineJourneeAvecQr } from '@/features/club/passJourneeLogic';
 import { getMyNextTrackDay, type NextTrackDay } from '@/services/nextTrackDayService';
@@ -157,11 +158,33 @@ export default function PreparationScreen() {
 
   // --- Chargements best-effort ---------------------------------------------
 
-  // Circuit + météo (indépendant de la journée).
+  /**
+   * MÉTÉO DU CIRCUIT OÙ L'ON VA ROULER — corrigé le 13/08/2026.
+   *
+   * Le commentaire disait « indépendant de la journée », et c'était exact : cet
+   * écran appelait `getDefaultCircuit()`, qui rend le circuit marqué par défaut
+   * — Haute Saintonge — pendant que le pilote préparait sa journée à Bouteville,
+   * à quarante kilomètres de là.
+   *
+   * Il affichait donc une température et un ciel qui ne concernaient pas
+   * l'endroit où il allait rouler. Ce n'est pas une donnée manquante, c'est une
+   * donnée d'ailleurs présentée comme la sienne — exactement ce que la règle
+   * « données réelles câblées » interdit.
+   *
+   * La journée réservée porte son circuit depuis que `nextTrackDayService` a
+   * cessé de le jeter. On le lit, et on ne retombe sur le défaut que s'il n'y a
+   * aucune journée à rouler.
+   */
   useEffect(() => {
     let cancelled = false;
     (async () => {
-      const c = await getDefaultCircuit();
+      const journee = await circuitDeMaJournee();
+      if (cancelled) return;
+      const tous = await fetchCircuits();
+      if (cancelled) return;
+      const c =
+        (journee ? tous.find((x) => x.id === journee.circuitId) : null) ??
+        (await getDefaultCircuit());
       if (cancelled) return;
       if (c && Number.isFinite(c.finishLineLat) && Number.isFinite(c.finishLineLon)) {
         const w = await fetchCurrentWeather(c.finishLineLat, c.finishLineLon);
