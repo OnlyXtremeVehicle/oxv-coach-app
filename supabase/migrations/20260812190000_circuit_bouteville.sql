@@ -83,13 +83,44 @@
 -- la ligne existe en production depuis le 12/08/2026
 -- (id 723c9dfc-d0d3-428c-a0d7-f04178e9cd7e).
 
-update public.circuits
-   set finish_line_radius_m = 25,
-       finish_line_heading  = 336.6,
-       length_km            = 5.913,
-       is_official          = true,
-       review_status        = 'approved'
- where name = 'Bouteville';
+-- -----------------------------------------------------------------------------
+-- CETTE MIGRATION NE CRÉE RIEN, ET ELLE LE VÉRIFIE
+-- -----------------------------------------------------------------------------
+--
+-- L'insertion a été faite hors migration, le 12/08/2026, pour livrer le circuit
+-- avant l'essai terrain. Ce fichier ne fait qu'ALIGNER les réglages et servir
+-- de trace écrite.
+--
+-- Deux défauts relevés par la vérification adversariale, et corrigés ici :
+--
+--   1. l'UPDATE portait sur le NOM. Un renommage — « Bouteville » →
+--      « Circuit de Bouteville » — le rendait silencieusement inopérant, et la
+--      migration serait passée verte sur zéro ligne.
+--
+--   2. rien ne vérifiait qu'une ligne avait été touchée. Rejouée sur une base
+--      neuve, cette migration ne créerait AUCUN circuit et n'en dirait rien :
+--      le déploiement réussirait, et Bouteville n'existerait pas.
+--
+-- On cible donc l'identifiant, et on lève si la ligne manque. Une migration qui
+-- ne trouve pas sa cible n'a pas réussi.
+do $$
+declare v_touchees int;
+begin
+  update public.circuits
+     set finish_line_radius_m = 25,
+         finish_line_heading  = 336.6,
+         length_km            = 5.913,
+         is_official          = true,
+         review_status        = 'approved'
+   where id = '723c9dfc-d0d3-428c-a0d7-f04178e9cd7e';
+
+  get diagnostics v_touchees = row_count;
+  if v_touchees <> 1 then
+    raise exception
+      'CIRCUIT_BOUTEVILLE_ABSENT : % ligne(s) touchée(s). Le circuit doit exister (id 723c9dfc-d0d3-428c-a0d7-f04178e9cd7e) — il est inséré hors migration, depuis src/circuit/data/bouteville.geojson.',
+      v_touchees;
+  end if;
+end $$;
 
 comment on column public.circuits.finish_line_heading is
   'Cap de la piste au franchissement (degrés, 0 = nord). Renseigné → détection par PORTE, avec SENS OBLIGATOIRE : un circuit parcouru à l''envers ne compte aucun tour. NULL → repli mode rayon, sans filtre de direction.';

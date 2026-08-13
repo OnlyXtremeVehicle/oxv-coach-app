@@ -477,6 +477,19 @@ export function processGpsPoint(
    */
   speedKmh?: number
 ): boolean {
+  /**
+   * `!lat || !lon` REJETTE AUSSI LE ZÉRO EXACT — et c'est délibéré.
+   *
+   * Une latitude ou une longitude exactement nulle désigne le point (0,0), au
+   * large du golfe de Guinée : c'est la valeur qu'un boîtier rend AVANT son
+   * premier fix, jamais une position réelle sur un circuit. La confondre avec
+   * une position ferait entrer un point à des milliers de kilomètres dans
+   * l'odomètre et dans l'évaluation du franchissement.
+   *
+   * Le coût théorique — un circuit posé sur l'équateur ou le méridien de
+   * Greenwich au mètre près — n'existe pas ; celui d'accepter le point nul se
+   * paierait à chaque démarrage.
+   */
   if (!lat || !lon) return false;
 
   accumulerOdometre(state, lat, lon, timestamp, speedKmh);

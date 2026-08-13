@@ -80,6 +80,7 @@ import {
 } from '@/ble/lapDetectionRunner';
 import { requestBlePermissions } from '@/ble/permissions';
 import { fetchCircuits, type Circuit } from '@/services/circuitsService';
+import { captureFinishLineFor } from '@/services/captureFinishLineLogic';
 import { useSessionStore } from '@/store/useSessionStore';
 import { Button, Chip, PressScale, SectionHeader, colors, radius, space, typo } from '@/ui/v2';
 import type { BleStatus, RaceBoxDevice } from '@/types/telemetry';
@@ -207,11 +208,26 @@ function DevCaptureInner() {
     // Sans circuit chargé, on ne démarre pas : une ligne d'arrivée inventée
     // produirait des tours qui ne veulent rien dire.
     if (!circuit) return;
+    /**
+     * MÊME RÉSOLUTION QUE LA CAPTURE RÉELLE — et pas une recopie des champs.
+     *
+     * Cet écran recomposait la ligne d'arrivée à la main, sans passer par
+     * `captureFinishLineFor`. Il n'héritait donc pas de la garde de distance
+     * minimale : un véhicule arrêté sur la ligne y fabriquait des tours
+     * fantômes, un toutes les dix secondes, exactement comme la capture avant
+     * le 12/08/2026.
+     *
+     * Un écran de diagnostic qui ment sur le comportement du moteur qu'il est
+     * censé diagnostiquer est pire qu'un écran absent.
+     */
+    const ligne = captureFinishLineFor(circuit);
+    if (!ligne) return;
     startLapDetection({
-      finishLineLat: circuit.finishLineLat,
-      finishLineLon: circuit.finishLineLon,
-      finishLineRadiusM: circuit.finishLineRadiusM,
-      finishLineHeadingDeg: circuit.finishLineHeading,
+      finishLineLat: ligne.lat,
+      finishLineLon: ligne.lon,
+      finishLineRadiusM: ligne.radiusM,
+      finishLineHeadingDeg: ligne.headingDeg,
+      minLapDistanceM: ligne.minLapDistanceM,
     });
     setLapStatus(getLapDetectorStatus());
   }, [circuit]);

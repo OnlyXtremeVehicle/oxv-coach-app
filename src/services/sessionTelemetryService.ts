@@ -154,6 +154,27 @@ export async function loadLapFrames(sessionId: string, lapNumber: number): Promi
   const lapStartMs = new Date(laps.started_at as string).getTime() - sessionStartMs;
   const lapEndMs = new Date(laps.ended_at as string).getTime() - sessionStartMs;
 
+  /**
+   * UN TOUR SANS FIN NE FABRIQUE PLUS UNE URL ABSURDE.
+   *
+   * Un tour resté ouvert porte `ended_at = null` — le même oubli que celui qui
+   * laissait les séances en `recording`. `new Date(null).getTime()` rend `NaN`,
+   * et `.lte('elapsed_ms', NaN)` part dans l'URL PostgREST en
+   * `elapsed_ms=lte.NaN` : la requête est refusée en 400, le code descend dans
+   * son `if (error) return []`, et l'écran conclut « aucune trame GPS » alors
+   * que les trames existent.
+   *
+   * Même famille que le défaut dominant du dépôt : la garde existe, elle avale
+   * la panne au lieu de la dire. On refuse ici la borne invalide plutôt que de
+   * la laisser voyager.
+   */
+  if (!Number.isFinite(lapStartMs) || !Number.isFinite(lapEndMs)) {
+    console.warn(
+      `[OXV][telemetry] loadLapFrames : tour ${lapNumber} sans borne exploitable (started_at/ended_at).`
+    );
+    return [];
+  }
+
   // 3. Filtre les frames sur la fenêtre du tour
   const { data, error } = await supabase
     .from('telemetry_frames')

@@ -2161,7 +2161,14 @@ function ConstatsSection({
 
   // Panne DB de la lecture insights : erreur honnête (distincte de « vide »).
   if (insightsFailed) {
-    return <StateView state="error" emptyMessage="Lectures indisponibles pour le moment." />;
+    /**
+     * `errorMessage`, PAS `emptyMessage` — corrigé le 13/08/2026.
+     *
+     * La branche `error` de `StateView` ne lit que `errorMessage` ; le texte
+     * écrit ici n'atteignait donc JAMAIS l'écran, et le pilote voyait le libellé
+     * par défaut « Le chargement a échoué. » Un message rédigé, invisible.
+     */
+    return <StateView state="error" errorMessage="Lectures indisponibles pour le moment." />;
   }
 
   /**

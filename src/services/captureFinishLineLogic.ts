@@ -44,7 +44,18 @@ export interface CaptureFinishLine {
   minLapDistanceM?: number;
 }
 
-const DEFAULT_RADIUS_M = 40;
+/**
+ * Rayon (ou demi-largeur de porte) employé quand le circuit n'en renseigne pas.
+ *
+ * EXPORTÉE parce qu'elle était recopiée : `lapDetectionRunner` posait 30 pendant
+ * qu'on posait 40 ici — deux valeurs pour une seule notion, aux deux bouts de la
+ * même chaîne. L'écart ne se voyait pas, l'appelant nominal fournissant toujours
+ * un rayon ; c'est exactement le genre d'incohérence qui dort jusqu'au jour où
+ * un troisième appelant emprunte le repli.
+ */
+export const DEFAULT_FINISH_RADIUS_M = 40;
+
+const DEFAULT_RADIUS_M = DEFAULT_FINISH_RADIUS_M;
 
 /**
  * Fraction de la longueur du circuit exigée entre deux tours comptés.

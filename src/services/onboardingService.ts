@@ -42,26 +42,51 @@ export async function setPilotLevel(level: PilotLevelChoice): Promise<boolean> {
 }
 
 /**
- * Enregistre l'acceptation CGU/confidentialité + le consentement (opt-in
- * EXPLICITE) au débrief enrichi par IA. `aiDebriefConsent=false` par défaut :
- * aucun transfert vers OpenAI (US) tant que le pilote ne l'a pas autorisé ici.
- * Désactivable/réactivable ensuite dans les réglages.
+ * Enregistre l'acceptation CGU/confidentialité, et — SEULEMENT si l'appelant se
+ * prononce — le consentement (opt-in EXPLICITE) au débrief enrichi par IA.
+ *
+ * Aucun transfert vers OpenAI (US) tant que le pilote ne l'a pas autorisé.
+ * L'absence d'argument ne vaut PAS un refus : elle laisse le consentement
+ * existant intact (cf. le paramètre). Désactivable dans les réglages.
  */
-export async function acceptCguAndPrivacy(aiDebriefConsent = false): Promise<boolean> {
+export async function acceptCguAndPrivacy(
+  /**
+   * Consentement au débrief enrichi par IA.
+   *
+   * ── `undefined` NE VEUT PAS DIRE `false` (corrigé le 13/08/2026) ───────────
+   *
+   * Ce paramètre valait `false` PAR DÉFAUT, et la colonne était écrite à chaque
+   * appel. Or `app/(coach-onboarding)/pacte.tsx` appelle cette fonction SANS
+   * argument : accepter les CGU y REMETTAIT le consentement IA à `false`, en
+   * silence, sans que rien ne le dise ni ne le demande.
+   *
+   * Le sens de l'erreur était heureux — on retirait un consentement, on n'en
+   * fabriquait pas — mais il reste inacceptable qu'un choix explicite du pilote
+   * soit défait par un écran qui ne parle pas d'IA. Il découvrait la
+   * fonctionnalité éteinte sans savoir pourquoi, et pouvait la croire en panne.
+   *
+   * `undefined` signifie désormais « je ne me prononce pas » : la colonne n'est
+   * pas touchée. Seul l'écran qui POSE la question l'écrit.
+   */
+  aiDebriefConsent?: boolean
+): Promise<boolean> {
   const userId = useAuthStore.getState().user?.id;
   if (!userId) return false;
 
   const now = new Date().toISOString();
-  const { error } = await supabase
-    .from('users')
-    .update({
-      cgu_accepted_at: now,
-      cgu_version: CGU_VERSION,
-      privacy_accepted_at: now,
-      privacy_version: PRIVACY_VERSION,
-      ai_debrief_enabled: aiDebriefConsent,
-    })
-    .eq('id', userId);
+  const base = {
+    cgu_accepted_at: now,
+    cgu_version: CGU_VERSION,
+    privacy_accepted_at: now,
+    privacy_version: PRIVACY_VERSION,
+  };
+  // La colonne n'est présente dans la charge QUE si l'appelant s'est prononcé.
+  const maj =
+    typeof aiDebriefConsent === 'boolean'
+      ? { ...base, ai_debrief_enabled: aiDebriefConsent }
+      : base;
+
+  const { error } = await supabase.from('users').update(maj).eq('id', userId);
 
   if (error) {
     enqueueAction({

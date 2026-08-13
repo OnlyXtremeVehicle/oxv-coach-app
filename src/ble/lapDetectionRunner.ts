@@ -20,6 +20,7 @@ import { bluetoothService } from './bluetoothService';
 import { useSessionStore } from '@/store/useSessionStore';
 import { GpsFix } from '@/types/telemetry';
 import { nextMonotonic } from '@/utils/monotonicClock';
+import { DEFAULT_FINISH_RADIUS_M } from '@/services/captureFinishLineLogic';
 import {
   type LapDetectorState,
   avancerOdometre,
@@ -82,7 +83,20 @@ export function startLapDetection(opts: LapDetectionStartOptions): void {
   state = createLapDetector(
     opts.finishLineLat,
     opts.finishLineLon,
-    opts.finishLineRadiusM ?? 30,
+    /**
+     * MÊME DÉFAUT QUE `captureFinishLineFor`, ET C'EST TOUT L'INTÉRÊT.
+     *
+     * Cette ligne valait 30 pendant que `captureFinishLineFor` posait 40 :
+     * deux valeurs pour une seule notion, aux deux bouts de la même chaîne.
+     * L'écart ne se voyait pas — l'appelant nominal fournit toujours un rayon,
+     * donc ce repli-ci ne se déclenchait jamais. C'est exactement le genre de
+     * chemin où une incohérence dort jusqu'au jour où un troisième appelant
+     * l'emprunte.
+     *
+     * Le nombre est importé plutôt que recopié : deux constantes égales
+     * finissent toujours par diverger.
+     */
+    opts.finishLineRadiusM ?? DEFAULT_FINISH_RADIUS_M,
     opts.finishLineHeadingDeg ?? null,
     opts.minLapDistanceM ?? null
   );

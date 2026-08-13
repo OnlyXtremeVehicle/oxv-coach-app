@@ -343,3 +343,69 @@ describe('le contrat de configuration', () => {
     expect(etat.distanceSinceLapM).toBeLessThan(LONGUEUR_M);
   });
 });
+
+describe('la zone de garde elle-même, approchée par les deux côtés', () => {
+  /**
+   * CE QUE LE CONTRE-TEST NE FAISAIT PAS.
+   *
+   * « Aucun tour réel perdu » était certifié par des trajectoires qui
+   * accumulaient 5 913 m — vingt fois le seuil. Elles ne s'approchaient JAMAIS
+   * de la frontière, et n'auraient donc rien vu si le seuil avait dérivé.
+   *
+   * On encadre ici la décision de part et d'autre, en pilotant directement
+   * l'odomètre : juste sous le seuil elle refuse, juste au-dessus elle accepte.
+   * C'est la seule façon de savoir où la frontière se trouve VRAIMENT.
+   */
+  const SEUIL = 1000;
+
+  /** Pousse l'odomètre à `metres` sans franchir la ligne, puis rend l'état. */
+  function odometreA(metres: number) {
+    const etat = detecteur(SEUIL);
+    // Premier franchissement (fin d'outlap) : jamais soumis à la garde.
+    let ts = 0;
+    for (const [lon, lat] of tour(100, 25, 0)) {
+      processGpsPoint(etat, lat, lon, ts, 100);
+      ts += 40;
+    }
+    expect(etat.lapEndTimestamps).toHaveLength(1);
+    // On remet l'odomètre exactement où on veut l'éprouver.
+    etat.distanceSinceLapM = metres;
+    return { etat, ts };
+  }
+
+  it('un mètre SOUS le seuil : le tour est refusé', () => {
+    graine = 20260812;
+    const { etat, ts } = odometreA(SEUIL - 1);
+    let t = ts;
+    // Deuxième passage de ligne, sans laisser l'odomètre grandir (vitesse nulle
+    // sous la bande morte : il n'avance pas).
+    for (const [lon, lat] of tour(100, 25, 0)) {
+      processGpsPoint(etat, lat, lon, t, 0);
+      t += 40;
+    }
+    expect(etat.lapEndTimestamps).toHaveLength(1);
+  });
+
+  it('un mètre AU-DESSUS du seuil : le tour est compté', () => {
+    graine = 20260812;
+    const { etat, ts } = odometreA(SEUIL + 1);
+    let t = ts;
+    for (const [lon, lat] of tour(100, 25, 0)) {
+      processGpsPoint(etat, lat, lon, t, 0);
+      t += 40;
+    }
+    expect(etat.lapEndTimestamps).toHaveLength(2);
+  });
+
+  /** Exactement au seuil : la comparaison est un `>=`, donc il passe. */
+  it('exactement au seuil, le tour passe', () => {
+    graine = 20260812;
+    const { etat, ts } = odometreA(SEUIL);
+    let t = ts;
+    for (const [lon, lat] of tour(100, 25, 0)) {
+      processGpsPoint(etat, lat, lon, t, 0);
+      t += 40;
+    }
+    expect(etat.lapEndTimestamps).toHaveLength(2);
+  });
+});
