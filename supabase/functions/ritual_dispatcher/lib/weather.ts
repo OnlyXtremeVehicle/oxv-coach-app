@@ -45,7 +45,20 @@ export async function fetchWeatherForDate(forecastDate: string): Promise<Weather
 
     // On prend la tranche 9h-13h (heures index 9, 10, 11, 12)
     const hourly = data.hourly;
-    if (!hourly?.temperature_2m || !hourly?.weather_code) {
+    /**
+     * LA GARDE NE COUVRAIT QUE DEUX DES QUATRE SÉRIES LUES.
+     *
+     * `wind_speed_10m` et `precipitation` sont découpés plus bas sans avoir été
+     * vérifiés : une réponse qui les omet levait un `TypeError`, avalé par le
+     * `catch`, et l'e-mail partait sur le repli — celui qui écrivait « 0°C ».
+     * C'était le chemin d'atteinte concret du zéro fabriqué.
+     */
+    if (
+      !hourly?.temperature_2m ||
+      !hourly?.weather_code ||
+      !hourly?.wind_speed_10m ||
+      !hourly?.precipitation
+    ) {
       console.error('Open-Meteo: structure de réponse inattendue');
       return null;
     }
@@ -101,7 +114,19 @@ function mapWeatherCode(code: number): { label: string; icon: string } {
   if (code >= 80 && code <= 82) return { label: 'Averses', icon: 'rain' };
   if (code >= 85 && code <= 86) return { label: 'Averses de neige', icon: 'rain' };
   if (code >= 95) return { label: 'Orages', icon: 'storm' };
-  return { label: 'Variable', icon: 'cloud' };
+  /**
+   * UN CODE WMO NON RÉPERTORIÉ N'EST PAS « VARIABLE ».
+   *
+   * « Variable » se lit comme une prévision — un ciel changeant, annoncé. C'est
+   * une condition affirmée par défaut sur une donnée qu'on n'a pas su lire.
+   * L'application a corrigé exactement ce motif dans `weatherService`
+   * (`weatherLabelOf` rend `null`, et `weatherAbsence.test.ts` interdit la
+   * chaîne « Conditions inconnues » pour la même raison) ; la fonction serveur
+   * l'avait gardé.
+   *
+   * On nomme donc ce que c'est : un code non reconnu, pas un ciel.
+   */
+  return { label: 'Conditions non reconnues', icon: 'cloud' };
 }
 
 function buildTireRecommendation(code: number, totalPrecip: number): string {

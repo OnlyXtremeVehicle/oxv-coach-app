@@ -221,6 +221,34 @@ export async function fetchCurrentWeather(
       source: 'open-meteo',
     };
 
+    /**
+     * UNE RÉPONSE SANS AUCUNE MESURE N'EST PAS UNE MÉTÉO.
+     *
+     * `json.current || {}` accepte silencieusement une réponse 200 sans bloc
+     * `current` — changement d'API, réponse tronquée, erreur applicative rendue
+     * en 200. Chaque champ tombait alors à `null` par `?? null`, et l'objet
+     * était rendu NON-NUL et mis en cache dix minutes.
+     *
+     * Pour l'appelant, c'est indiscernable d'une météo réussie : l'écran de
+     * préparation teste `weather && conditions`, la ligne MÉTÉO PISTE
+     * s'affiche, et se prononce sur une piste dont rien n'a été lu.
+     *
+     * Une absence totale de mesure rend donc `null` — le canal que tous les
+     * appelants savent déjà traiter, et le seul honnête.
+     */
+    const aUneMesure =
+      data.temperatureC != null ||
+      data.windSpeedKmh != null ||
+      data.humidityPct != null ||
+      data.precipitationMm != null ||
+      data.pressureHpa != null ||
+      data.weatherCode != null;
+
+    if (!aUneMesure) {
+      console.warn('[Weather] réponse 200 sans aucune mesure exploitable — traitée comme absente');
+      return null;
+    }
+
     // Cache
     cache.set(cacheKey, { data, timestamp: Date.now() });
 
@@ -362,24 +390,53 @@ export function windDirectionCardinal(deg: number): string {
   return 'NO';
 }
 
-/**
- * Conditions pour roulage (sec/humide/pluvieux)
- */
-export function trackConditions(weather: WeatherData): {
+export interface TrackConditions {
   label: string;
   isDry: boolean;
   isWet: boolean;
   warning: string | null;
-} {
+  /**
+   * Une mesure a-t-elle réellement été lue ? `false` → `label` DÉCRIT UNE
+   * ABSENCE et n'est pas un verdict ; `isDry` et `isWet` valent tous deux
+   * `false`, ce qui est la seule façon honnête de dire « on ne sait pas ».
+   */
+  mesure: boolean;
+}
+
+/**
+ * Conditions pour roulage (sec / humide / pluvieux) — ou l'aveu qu'on ne sait pas.
+ *
+ * ===========================================================================
+ * CETTE FONCTION AFFIRMAIT « CONDITIONS SÈCHES » SUR ZÉRO MESURE
+ * ===========================================================================
+ *
+ * Les quatre verdicts étaient bien gardés par `!= null`. Mais le REPLI en était
+ * un cinquième, non gardé : `{ label: 'Conditions sèches', isDry: true }`. Son
+ * commentaire l'appelait « l'état neutre par défaut ». Il n'a rien de neutre —
+ * il affirme l'adhérence de la piste.
+ *
+ * Conséquence à l'écran de préparation, ligne MÉTÉO PISTE : le pilote lit
+ * « Conditions sèches » à côté d'un « — » en température. L'application avoue
+ * ne pas connaître le degré et, dans la même ligne, se prononce sur l'état de
+ * la piste qu'elle n'a pas mesuré.
+ *
+ * C'est le « 0 fabriqué » que la consigne fondateur interdit — sous forme de
+ * phrase plutôt que de chiffre, donc plus difficile à repérer et plus facile à
+ * croire. Et cela touche le principe 1 : sécurité avant performance.
+ *
+ * `isDry: true` était le plus dangereux des quatre champs : un appelant qui
+ * conditionnerait quoi que ce soit dessus recevrait un feu vert inventé.
+ */
+export function trackConditions(weather: WeatherData): TrackConditions {
   // A-WEATHER-1 : une mesure ABSENTE (null) ne déclenche AUCUN verdict — on ne
-  // fabrique pas une « piste mouillée » à partir d'une donnée inconnue ; on
-  // retombe sur l'état neutre par défaut.
+  // fabrique pas une « piste mouillée » à partir d'une donnée inconnue.
   if (weather.precipitationMm != null && weather.precipitationMm > 1) {
     return {
       label: 'Piste mouillée',
       isDry: false,
       isWet: true,
       warning: 'Conditions humides — adhérence réduite',
+      mesure: true,
     };
   }
   if (weather.precipitationProbabilityPct != null && weather.precipitationProbabilityPct > 60) {
@@ -388,6 +445,7 @@ export function trackConditions(weather: WeatherData): {
       isDry: true,
       isWet: false,
       warning: 'Pluie probable dans les prochaines heures',
+      mesure: true,
     };
   }
   if (weather.humidityPct != null && weather.humidityPct > 90) {
@@ -396,6 +454,7 @@ export function trackConditions(weather: WeatherData): {
       isDry: false,
       isWet: false,
       warning: 'Forte humidité',
+      mesure: true,
     };
   }
   if (weather.windSpeedKmh != null && weather.windSpeedKmh > 30) {
@@ -404,12 +463,37 @@ export function trackConditions(weather: WeatherData): {
       isDry: true,
       isWet: false,
       warning: 'Vent fort — attention en virage',
+      mesure: true,
     };
   }
+  /**
+   * AUCUN SEUIL FRANCHI — reste à savoir si c'est parce que la piste est sèche,
+   * ou parce qu'on n'a rien mesuré. Les deux menaient au même verdict.
+   */
+  const mesuré =
+    weather.precipitationMm != null ||
+    weather.precipitationProbabilityPct != null ||
+    weather.humidityPct != null ||
+    weather.windSpeedKmh != null;
+
+  if (!mesuré) {
+    return {
+      label: 'Conditions non mesurées',
+      // NI sec NI mouillé. Ne pas savoir n'est pas « sec » : un appelant qui
+      // conditionnerait quoi que ce soit sur `isDry` recevrait un feu vert
+      // inventé, sur un écran qui prépare une sortie en piste.
+      isDry: false,
+      isWet: false,
+      warning: null,
+      mesure: false,
+    };
+  }
+
   return {
     label: 'Conditions sèches',
     isDry: true,
     isWet: false,
     warning: null,
+    mesure: true,
   };
 }

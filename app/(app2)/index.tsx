@@ -534,7 +534,18 @@ function HeroEntreJournees({
             // `current`), pas une prévision du jour J — juxtaposée à la date
             // sans le dire, elle se lirait comme telle.
             <Text style={styles.nextDayWeather} numberOfLines={2}>
-              {`Météo actuelle · ${Math.round(home.weather.temperatureC)}° · ${home.weather.label}`}
+              {[
+                'Météo actuelle',
+                `${Math.round(home.weather.temperatureC)}°`,
+                // Le ciel est nullable depuis qu'un code météo absent ne se
+                // convertit plus en « Ciel dégagé ». Concaténé sans garde, il
+                // produisait « Météo actuelle · 18° · » — un séparateur suivi
+                // de rien. Une donnée tronquée se lit comme une panne
+                // d'affichage, pas comme une absence.
+                home.weather.label,
+              ]
+                .filter((s) => s.length > 0)
+                .join(' · ')}
             </Text>
           ) : null}
           <PressScale

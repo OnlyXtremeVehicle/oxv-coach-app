@@ -51,24 +51,53 @@ function buildVariables(ctx: DispatchContext, weather: WeatherForecast | null): 
   const emergencyTel = Deno.env.get('EMERGENCY_PHONE_TEL') ?? '+33000000000';
   const emergencyDisplay = Deno.env.get('EMERGENCY_PHONE_DISPLAY') ?? '05 00 00 00 00';
 
-  // Si pas de météo : on remplit avec des valeurs neutres qui restent élégantes.
+  /**
+   * ===========================================================================
+   * LE « 0 DEGRÉ FABRIQUÉ » VIVAIT ICI, ET SON COMMENTAIRE INVENTAIT SA GARDE
+   * ===========================================================================
+   *
+   * Ce repli écrivait `temperature_celsius: 0` et `wind_kmh: 0` avec, en bout
+   * de ligne, « sera caché par CSS si valeur 0 ». Aucune règle CSS du template
+   * ne cible cette valeur — le bloc `<style>` ne contient que du `body`, du
+   * `table`, du `img`, du `a` et une requête média sur trois classes de
+   * largeur. Et le moteur de rendu (`renderTemplate`) ne saute que `undefined`
+   * et `null` : un 0 est rendu tel quel.
+   *
+   * Trois lignes plus bas, le fichier l'admettait lui-même : « si la météo est
+   * down, le template affichera 0°C · Conditions à confirmer ce qui n'est pas
+   * idéal. À considérer en v2. » Le défaut était donc CONNU, DOCUMENTÉ, et
+   * laissé en place derrière un commentaire qui affirmait le contraire.
+   *
+   * Ce que le pilote recevait la veille de sa journée de piste : « 0°C ·
+   * Conditions à confirmer » et « Vent 0 km/h » — deux mesures inventées,
+   * présentées dans le bloc « Météo prévue » exactement comme des mesures
+   * réelles. C'est la consigne fondateur A-WEATHER-1 violée au mot près.
+   *
+   * ---
+   *
+   * LA CORRECTION NE PASSE PAS PAR UN CHIFFRE PLUS PRUDENT
+   *
+   * Le template composait la ligne lui-même (`{{temperature_celsius}}°C ·
+   * {{weather_label}}`), et le moteur de substitution ne sait pas conditionner.
+   * Toute valeur passée là-dedans DEVIENT une mesure affichée.
+   *
+   * La ligne entière est donc construite ici, où l'on sait s'il y a une mesure.
+   * Sans météo, aucun nombre n'est écrit : la phrase dit l'absence.
+   */
   if (!weather) {
     return {
       pilot_first_name: ctx.pilot.first_name,
       weather_summary: 'À demain.',
       weather_icon_slug: 'cloud',
       weather_label: 'Conditions à confirmer',
-      temperature_celsius: 0,           // sera caché par CSS si valeur 0 — voir note ci-dessous
-      wind_kmh: 0,
+      weather_headline: 'Prévision indisponible',
+      weather_detail: 'Les conditions seront précisées sur place demain matin.',
       ground_condition: 'à confirmer sur place',
       tire_recommendation: 'Vérifiez les conditions à votre arrivée demain matin.',
       emergency_phone_tel: emergencyTel,
       emergency_phone_display: emergencyDisplay,
       registration_ref: ctx.registration.ref,
     };
-    // NOTE : si la météo est down, le template affichera "0°C · Conditions à confirmer"
-    // ce qui n'est pas idéal. Pour faire propre, on pourrait avoir un template_jminus1_no_weather
-    // séparé sans le bloc météo. À considérer en v2.
   }
 
   return {
@@ -76,8 +105,8 @@ function buildVariables(ctx: DispatchContext, weather: WeatherForecast | null): 
     weather_summary: weather.weather_summary,
     weather_icon_slug: weather.weather_icon_slug,
     weather_label: weather.weather_label,
-    temperature_celsius: weather.temperature_celsius,
-    wind_kmh: weather.wind_kmh,
+    weather_headline: `${weather.temperature_celsius}°C · ${weather.weather_label}`,
+    weather_detail: `Vent ${weather.wind_kmh} km/h · ${weather.ground_condition}`,
     ground_condition: weather.ground_condition,
     tire_recommendation: weather.tire_recommendation,
     emergency_phone_tel: emergencyTel,

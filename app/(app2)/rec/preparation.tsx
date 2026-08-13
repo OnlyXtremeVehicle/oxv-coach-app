@@ -323,17 +323,22 @@ export default function PreparationScreen() {
   const conditions = weather ? trackConditions(weather) : null;
   // Météo réelle (doctrine Miroir A-WEATHER-1) : une mesure absente = null,
   // jamais 0. On omet le segment concerné et on affiche « — » pour la valeur.
-  const weatherSublabel = weather
+  const segmentsMeteo = weather
     ? [
         weather.windSpeedKmh != null ? `Vent ${Math.round(weather.windSpeedKmh)} km/h` : null,
         weather.windDirectionDeg != null ? windDirectionCardinal(weather.windDirectionDeg) : null,
         weather.precipitationProbabilityPct != null
           ? `Pluie ${Math.round(weather.precipitationProbabilityPct)} %`
           : null,
-      ]
-        .filter((segment): segment is string => segment != null)
-        .join(' · ')
-    : '';
+      ].filter((segment): segment is string => segment != null)
+    : [];
+  /**
+   * `undefined` PLUTÔT QUE LA CHAÎNE VIDE. Une chaîne vide reste un
+   * sous-titre : la ligne se rend, occupe sa hauteur, et laisse un blanc sous
+   * le libellé dans une charte qui compte ses espacements. `undefined` fait
+   * disparaître le sous-titre — l'absence, pas un vide typographié.
+   */
+  const weatherSublabel = segmentsMeteo.length > 0 ? segmentsMeteo.join(' · ') : undefined;
   const weatherValue = weather?.temperatureC != null ? `${Math.round(weather.temperatureC)}°` : '—';
   const progress = checklistProgress(checked);
   const days = nextDay ? daysUntilTrackDay(nextDay.date, new Date()) : null;
