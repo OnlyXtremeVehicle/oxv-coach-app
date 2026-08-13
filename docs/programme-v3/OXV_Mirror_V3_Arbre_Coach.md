@@ -122,11 +122,11 @@ Motif technique : sans application montre, la fréquence cardiaque transite Watc
 
 **Chemin v1 retenu** : le pilote lance une session « Autre » dans l'application Exercice d'Apple avant son run. `healthKitService` relit après coup — ce que `rec/fin` fait déjà. **Zéro développement.**
 
-**Motif technique** : sans session d'entraînement active, la Watch n'échantillonne la fréquence cardiaque que toutes les quelques minutes. La branche **Intensité** ne peut exister sans elle.
+**Motif technique** : sans session d'entraînement active, la Watch n'échantillonne la fréquence cardiaque que toutes les quelques minutes. Le pilier physiologique **Aplomb** ne peut exister sans elle. (Il vit HORS du radar : « Intensité » a été retirée des branches le 13/08/2026 — un axe qui monte quand on roule plus près de la limite transforme une restitution en incitation.)
 
 **La consigne vit sur `rec/placement`**, avec l'avertissement de verrouillage. Deux gestes au même moment, juste avant d'armer.
 
-**Si le pilote oublie**, le bilan le dit : « Intensité absente : aucune session d'entraînement enregistrée ». C'est « pourquoi ce chiffre est absent », appliqué à une cause corrigible.
+**Si le pilote oublie**, le bilan le dit : « Aplomb absent : aucune session d'entraînement enregistrée ». C'est « pourquoi ce chiffre est absent », appliqué à une cause corrigible.
 
 ## III.5 Le live devient un objet à trois échelles
 

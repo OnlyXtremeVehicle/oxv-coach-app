@@ -65,11 +65,29 @@ C'est la distinction déjà posée pour les partenaires : OXV ne choisit pas à 
 
 **Ce qu'elle dit.** Des faits mesurés, avec leur unité et leur condition. « Au virage 4, le point de freinage varie de 18 m entre le tour 2 et le tour 7. » Deux valeurs côte à côte, jamais leur différence commentée.
 
-**Le vocabulaire des branches est technique** : Trajectoire, Fluidité, Freinage, Accélération, Régularité, Intensité. Un mot, une mesure, partout dans l'application.
+**Le vocabulaire des branches est technique** : Trajectoire, Fluidité, Freinage, Accélération, Régularité. **Cinq, pas six** — « Intensité » en est retirée le 13/08/2026, motif ci-dessous.
 
 **Le vocabulaire poétique** — Cap, Visée, Plongée, Anticipation — survit en **langage narratif** : phrases de ciel, fait du jour, sur-titres. Il ne désigne jamais une branche.
 
-**Intensité** porte toujours un marqueur de sa nature physiologique. Sans cela, un pilote lira « Intensité 68 » comme une note de son pilotage.
+**Intensité n'est PAS une sixième branche — retiré le 13/08/2026, et voici pourquoi.**
+
+Le radar se lit « plus haut, mieux ». Une branche Intensité y signifierait qu'un
+pilote améliore sa figure **en roulant plus près de la limite**. Ce serait
+transformer une restitution en incitation, sur un produit dont ces mêmes
+documents écrivent qu'il n'est pas agréé pour évaluer — et dont le premier
+principe est la sécurité avant la performance.
+
+Le motif est écrit ici parce que, sans motif, le mot revient dans six semaines.
+
+**Ce que le code fait déjà, et qui était juste.** Le pilier physiologique existe
+sous le nom **« Aplomb »** (`PHYSIO_PILLAR_LABEL`), il vit **hors du radar**, en
+barre séparée, et il est fermé sur trois conditions — drapeau `biometry`,
+consentement de capture, trois séances au moins. Il rend `null` aujourd'hui.
+C'est la bonne place : une mesure physiologique n'est pas un axe de pilotage.
+
+Le QDI garde donc **cinq** branches — Trajectoire, Fluidité, Freinage,
+Accélération, Régularité — et c'est ce que porte `QDI_BRANCHES`.
+
 
 **Les options d'un QCM ne jugent pas.** « Plus difficile » décrit un état ressenti ; un run peut être plus difficile et meilleur. Une note libre reste toujours accessible à côté d'un QCM, parce que des options écrites par OXV façonnent ce que le pilote croit avoir senti.
 
@@ -88,7 +106,7 @@ C'est la distinction déjà posée pour les partenaires : OXV ne choisit pas à 
 
 **Règle de compensation.** Trois jetons de la famille ambre coexistent — Heritage `#C4A459`, performance `#D9AE00`, Fluidité `#FFB703` — et deux d'entre eux peuvent apparaître sur un même écran de séance. **L'or de performance ne se distingue donc jamais par sa seule teinte** : la courbe de référence est en trait tireté, le repère de meilleur tour porte une forme propre. C'est la redondance déjà imposée pour la deutéranopie, appliquée une seconde fois.
 
-**Palette de données QDI** — Trajectoire `#60A5FA`, Fluidité `#FFB703`, Freinage `#E63946`, Accélération `#4ADE80`, Régularité `#C084FC`, Intensité `#F472B6`.
+**Palette de données QDI** — Trajectoire `#60A5FA`, Fluidité `#FFB703`, Freinage `#E63946`, Accélération `#4ADE80`, Régularité `#C084FC`. `#F472B6` était réservé à « Intensité » : la teinte reste posée pour le pilier physiologique **Aplomb**, qui vit hors du radar.
 
 **Deux règles absolues.** `#E63946` est **interdit sur tout texte** — remplissages et traits seulement, il mesure 4,04:1. Chaque branche porte **toujours** un libellé à côté de sa couleur, sans exception, pour la deutéranopie qui touche environ un homme sur seize.
 
@@ -364,7 +382,7 @@ coach_pilots (coach_id, pilot_id, status, level)
 
 | Drapeau | État | Ce qu'il commande |
 |---|---|---|
-| `biometry` | **ouvert** depuis le 25/07 | capture cardio, pilier Intensité, relais détaillé |
+| `biometry` | **ouvert** depuis le 25/07 | capture cardio, pilier **Aplomb** (hors radar), relais détaillé |
 | `app_payments` | fermé | tunnel de réservation, écran Pass |
 | `pilot_waivers` | fermé | décharge en signature électronique |
 | `founders` | fermé | espace fondateur |
@@ -1028,7 +1046,7 @@ En deçà, le virage affiche « — » et sa raison : « mémoire insuffisante, 
 Onze mois sur douze.
 
 *La prochaine journée* — tracé en filigrane, date en chiffre roi, décompte **en jours**.
-*Votre référence* — signature en barres, Intensité en moignon, meilleur tour et circuit.
+*Votre référence* — signature en barres, pilier **Aplomb** en moignon (hors des cinq branches), meilleur tour et circuit.
 
 ### Contrainte technique
 
@@ -1373,7 +1391,7 @@ Coût : 1 600 à 3 000 sommets, **une seule primitive de dessin par tour**.
 10 RGPD du partage · 11 transition gardée et pointage unifié · 12 chaînon `registration_id` · 13 les six lectures Insight
 
 ## PHASE 4 — Espace pilote
-14 QDI, vocabulaire, radar et barres, Intensité · 15 le ressenti après run · 16 intention et objectif · 17 la saison objet principal · 18 numéro de voiture et véhicule principal · 19 portage des sept orphelins V1 · 20 recâblage des douze liens · 21 suppression de l'arbre V1
+14 QDI, vocabulaire, radar et barres ~~Intensité~~ (retirée le 13/08, voir motif §) · 15 le ressenti après run · 16 intention et objectif · 17 la saison objet principal · 18 numéro de voiture et véhicule principal · 19 portage des sept orphelins V1 · 20 recâblage des douze liens · 21 suppression de l'arbre V1
 
 ## PHASE 4bis — Le flux REC
 **21a** contraste renforcé sur les huit écrans · **21b** avertissement de verrouillage avant le premier run · **21c** appairage — état réel de reconnexion, diagnostic vérifié/supposé, localisation signalée dès l'échec, second cycle, issue « rouler sans mesure » · **21d** éligibilité — ajout de la seule colonne manquante, `declared_at` (`validated_by` et `validated_at` existent) · **21e** roulage — seuil d'interruption sur tour de référence, marquage du trou, restitution au retour · **21f** entre-runs — QCM en tête, cadran de pause en chiffre roi · **21g** clôture — proposition sur `end_time` ou inactivité, journée résumée, variable de la prochaine fois avec préséance pilote

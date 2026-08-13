@@ -270,7 +270,7 @@ Les quatre portes de navigation en bas, atteignables au pouce sur 430–440 pt. 
 | Freinage | `#E63946` | **4,04** |
 | Accélération | `#4ADE80` | 9,66 |
 | Régularité | `#C084FC` | 6,37 |
-| Intensité | `#F472B6` | 6,95 |
+| Aplomb (pilier physiologique, hors radar) | `#F472B6` | 6,95 |
 
 **Deux règles absolues.** `#E63946` est **interdit sur tout texte** — remplissages et traits seulement. Chaque branche porte **toujours** un libellé, pour la deutéranopie qui touche environ un homme sur seize.
 

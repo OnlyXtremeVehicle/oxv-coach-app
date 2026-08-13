@@ -293,7 +293,7 @@ roulage seulement~~ → **barre masquée sur les CINQ segments** (amendé le 13/
 
 **`placement` — l'armement est refusé si le boîtier est déconnecté.** Retour à l'appairage. Cela ne bloque pas la journée : cela la **route par le diagnostic**, où « rouler sans mesure » reste ouvert.
 
-**Consigne montre sur `placement`**, au même endroit que l'avertissement de verrouillage : lancer une séance « Autre » dans l'application Exercice d'Apple. **Sans elle, la Watch n'échantillonne qu'à quelques minutes d'intervalle et la branche Intensité reste vide.** Si le pilote oublie, le bilan le dira.
+**Consigne montre sur `placement`**, au même endroit que l'avertissement de verrouillage : lancer une séance « Autre » dans l'application Exercice d'Apple. **Sans elle, la Watch n'échantillonne qu'à quelques minutes d'intervalle et le pilier physiologique Aplomb reste vide.** (Ce n'est PAS une branche du radar : « Intensité » en a été retirée le 13/08/2026, motif dans l'Arbre Pilote.) Si le pilote oublie, le bilan le dira.
 
 ### Acceptation — six vérifications, toutes sur appareil réel
 

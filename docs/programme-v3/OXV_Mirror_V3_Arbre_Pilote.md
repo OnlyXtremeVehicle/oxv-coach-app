@@ -50,15 +50,37 @@ Conséquence de frontière : *Data porte votre mesure, le Club porte la mesure p
 
 **Sans variable posée** : il propose d'en poser une — sauf au premier jour, où le pilote n'a pas de circuit à connaître.
 
-**Second plan, identique sur tous les visages** : signature en barres compactes (six branches, Intensité en moignon si non mesurée), faits de saison. **Deux sorties** : Data et la Saison.
+**Second plan, identique sur tous les visages** : signature en barres compactes (cinq branches ; le pilier physiologique « Aplomb » reste séparé, en moignon tant qu'il n'est pas mesuré), faits de saison. **Deux sorties** : Data et la Saison.
 
 ## `/(app2)/signature`
 
 **465 lignes.** Le portrait. Seul endroit où le radar est autorisé.
 
-**Vocabulaire technique** — Trajectoire, Fluidité, Freinage, Accélération, Régularité, Intensité. Le double vocabulaire disparaît ; le test qui verrouillait le mapping tombe. Cap, Visée, Plongée et Anticipation survivent en **langage narratif** — sur-titres, phrases de ciel.
+**Vocabulaire technique** — Trajectoire, Fluidité, Freinage, Accélération, Régularité. **Cinq branches, pas six** : voir plus bas pourquoi « Intensité » en est retirée.
+
+**Le double vocabulaire NE disparaît PAS — corrigé le 13/08/2026.** Le supprimer aurait détruit cinq mots de marque pour régler un problème qui n'avait qu'une occurrence. Le défaut réel était un homonyme : « Trajectoire » désignait la branche `regularite`, et le QDI de Bouteville affichait 34 sous un mot dont la clé homonyme valait 97. **Une seule correspondance a été échangée** — `trajectoire` reprend « Trajectoire », `regularite` prend « Cap ». Visée, Plongée, Anticipation ne bougent pas. Le verrou de test ne tombe pas : il est REFAIT, et énonce désormais la règle plutôt que cinq paires littérales.
 
 **Trois couches** : le radar plein écran · **le sélecteur de paire circuit-véhicule, en bas** · l'empreinte mensuelle, qui reste ici.
+
+**Intensité n'est PAS une sixième branche — retiré le 13/08/2026, et voici pourquoi.**
+
+Le radar se lit « plus haut, mieux ». Une branche Intensité y signifierait qu'un
+pilote améliore sa figure **en roulant plus près de la limite**. Ce serait
+transformer une restitution en incitation, sur un produit dont ces mêmes
+documents écrivent qu'il n'est pas agréé pour évaluer — et dont le premier
+principe est la sécurité avant la performance.
+
+Le motif est écrit ici parce que, sans motif, le mot revient dans six semaines.
+
+**Ce que le code fait déjà, et qui était juste.** Le pilier physiologique existe
+sous le nom **« Aplomb »** (`PHYSIO_PILLAR_LABEL`), il vit **hors du radar**, en
+barre séparée, et il est fermé sur trois conditions — drapeau `biometry`,
+consentement de capture, trois séances au moins. Il rend `null` aujourd'hui.
+C'est la bonne place : une mesure physiologique n'est pas un axe de pilotage.
+
+Le QDI garde donc **cinq** branches — Trajectoire, Fluidité, Freinage,
+Accélération, Régularité — et c'est ce que porte `QDI_BRANCHES`.
+
 
 **Le radar affiche la moyenne générale par défaut**, et le sélecteur l'affine. Une ligne sous le radar dit toujours ce qu'il montre : « Signature générale · 11 séances » ou « Haute Saintonge · 911 GT3 · 4 séances ».
 

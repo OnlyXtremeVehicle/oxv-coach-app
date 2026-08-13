@@ -243,7 +243,8 @@ nouvelle architecture »**.
 
 C'est le candidat blocage de l'étape 3. Trois issues existent, aucune n'est
 gratuite : `overrides` npm pour forcer la version du plugin, remplacement de la
-bibliothèque, ou abandon de HealthKit — ce qui viderait la branche Intensité.
+bibliothèque, ou abandon de HealthKit — ce qui viderait le pilier physiologique **Aplomb**
+(hors radar ; « Intensité » a été retirée des branches le 13/08/2026).
 
 **Traité par** : à l'étape 3 de T0, quand la bascule d'architecture le rendra
 concret. Voir `docs/T0_MIGRATION.md`.

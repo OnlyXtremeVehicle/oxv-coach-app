@@ -44,6 +44,26 @@
  * parti. Même coût qu'une suppression : un écran, un module, un test.
  *
  * ===========================================================================
+ * CORRIGER LES MOTS N'A PAS RENDU LA FIGURE LISIBLE
+ * ===========================================================================
+ *
+ * Le QDI qui a tranché la question ci-dessus est, au 13/08/2026, **le seul QDI
+ * de toute la base** — une ligne, mesurée sur la séance de Bouteville. Et il
+ * porte :
+ *
+ *     trajectoire: 97 · regularite: 34 · freinage: 7 · acceleration: 0 ·
+ *     fluidite: 0 · reference.sessions: 0
+ *
+ * Trois branches sur cinq à zéro ou presque, et **aucune référence**. Le radar
+ * que ces mots légendent est donc quasi plat, et il compare à rien.
+ *
+ * Le renommage reste juste : un mot faux le serait quelle que soit la donnée.
+ * Mais **cette figure n'est pas encore une mesure**, et personne ne devrait la
+ * lire comme telle — ni le pilote, ni nous. Il faut que la référence se
+ * remplisse : `PHYSIO_MIN_SESSIONS` fixe déjà trois séances pour ouvrir le
+ * pilier physiologique, et le radar demande le même genre d'assise.
+ *
+ * ===========================================================================
  * NE PAS CONFONDRE AVEC `pilotSignatureService`
  * ===========================================================================
  *

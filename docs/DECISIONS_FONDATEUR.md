@@ -45,8 +45,10 @@ et qu'aucun ne demande de réfléchir longtemps.*
 ouvert depuis mai, et aucun document ne le mentionnait. Il passe devant le
 reste.*
 
-*Le § 0.7 est arrivé en dernier, et c'est le seul du lot où deux de vos propres
-décisions se contredisent. Il tient la dernière ligne ouverte du jalon 5.*
+*Le § 0.7 a été TRANCHÉ le 13/08 — il est conservé, clos, parce que le
+raisonnement vaut d'être gardé. Il tenait la dernière ligne ouverte du jalon 5.*
+
+*Restent donc SEPT points ouverts : 0.1 à 0.6, et 0.8.*
 
 ## 0.1 — GESTE · Renseigner la longueur de vos trois tours
 
@@ -166,79 +168,64 @@ douze secondes — vous le saurez sur place, plus au retour.
 
 ---
 
-## 0.7 — DÉCISION · Deux de vos décisions se contredisent sur un mot
+## 0.7 — TRANCHÉ le 13/08/2026 · Le mot d'écran suivait la mauvaise branche
 
-**C'est la dernière ligne ouverte du jalon 5, et je ne peux pas la trancher :
-elle vous oppose à vous-même.**
+*Cette entrée demandait votre arbitrage entre deux de vos décisions. Vous l'avez
+rendu le jour même, et par un chiffre. Elle est conservée ici, close, parce que
+le raisonnement vaut d'être gardé.*
 
-Le 19 juillet, vous avez arbitré le vocabulaire de l'écran Signature. C'est
-inscrit dans le code, avec la mention que vous aviez demandée :
+### Ce qui tranchait
 
-> *« le mapping ci-dessous est SON arbitrage (message du 19/07), re-négociable
-> mot à mot seulement »* — `src/features/miroir/signatureLogic.ts`
+Le QDI de Bouteville — **le seul QDI de toute la base** — porte
+`trajectoire: 97` et `regularite: 34` dans le même objet. L'écran Signature
+affichait « Trajectoire » en lisant `regularite` : le pilote voyait **34 sous
+un mot dont la clé homonyme valait 97**. Ce n'était pas un double vocabulaire à
+arbitrer, c'était un homonyme piégé — quiconque compare l'écran au JSON conclut
+à un bug, et le cherche.
 
-Le mapping :
+### La décision, et ce qu'elle épargne
 
-| Branche technique | Libellé Signature |
-|---|---|
-| `trajectoire` | **Cap** |
-| `regularite` | **Trajectoire** |
-| `freinage` | **Visée** |
-| `acceleration` | **Plongée** |
-| `fluidite` | **Anticipation** |
+L'arbitrage du 19/07 tombe. **Le vocabulaire client, non.** L'Arbre V3
+demandait la disparition du double vocabulaire : ç'aurait détruit cinq mots de
+marque, que les instructions du projet figent, pour régler un problème qui
+n'avait qu'une occurrence.
 
-Et la conséquence y est écrite noir sur blanc, comme un choix conscient :
+Une seule correspondance a été échangée :
 
-> *« sur CET écran, "Trajectoire" désigne la branche `regularite` — un sens
-> Signature distinct de la légende technique de l'accueil/du Bilan »*
+| | avant | après |
+|---|---|---|
+| `trajectoire` | Cap | **Trajectoire** |
+| `regularite` | Trajectoire | **Cap** |
 
-L'Arbre Pilote V3, lui, demande l'inverse :
+Visée, Plongée, Anticipation ne bougent pas. Le 19/07 avait pris le mot le plus
+évident pour le brancher ailleurs, alors que le mot juste était disponible dans
+la même liste. Coût identique à une suppression — un écran, un module, un test —
+et la marque est intacte.
 
-> *« **Vocabulaire technique** — Trajectoire, Fluidité, Freinage, Accélération,
-> Régularité, Intensité. Le double vocabulaire disparaît ; le test qui
-> verrouillait le mapping tombe. Cap, Visée, Plongée et Anticipation survivent
-> en **langage narratif** — sur-titres, phrases de ciel. »*
-> — `OXV_Mirror_V3_Arbre_Pilote.md`
+### « Intensité » : retirée des branches, motif écrit
 
-### Ce que ça change, exactement
+Ce n'était ni une sixième branche ni un mot égaré. Sur un radar qui se lit
+« plus haut, mieux », une branche Intensité signifierait qu'un pilote **améliore
+sa figure en roulant plus près de la limite** — une restitution transformée en
+incitation, sur un produit dont vos propres documents écrivent qu'il n'est pas
+agréé pour évaluer.
 
-J'ai mesuré la portée avant de vous demander quoi que ce soit. **Elle est
-minuscule** — un écran, un module, un test :
+Le mot est retiré des six documents qui le portaient, **avec son motif à côté** :
+sans motif, il revient dans six semaines.
 
-| Fichier | Ce qui bouge |
-|---|---|
-| `app/(app2)/signature.tsx` | les cinq libellés de sommet du radar |
-| `src/features/miroir/signatureLogic.ts` | `SIGNATURE_LABEL_BY_BRANCH` disparaît, remplacé par `QDI_BRANCH_LABELS` |
-| `src/features/miroir/__tests__/signatureLogic.test.ts` | le verrou sémantique tombe (l'Arbre le dit explicitement) |
+**Le code ne l'avait jamais commis.** Le pilier physiologique existe sous le nom
+« Aplomb », vit **hors** du radar, en barre séparée, fermé sur trois conditions,
+et rend `null`. Ce sont les documents qui avaient promu le mot au rang de
+branche.
 
-Rien d'autre ne lit ce vocabulaire. Les couleurs et les valeurs sont déjà
-attachées aux branches techniques : seuls les mots changent.
+### Ce que la correction ne rend PAS
 
-### Le vrai coût de ne rien décider
+Une figure lisible. Ce seul QDI porte `fluidite: 0`, `acceleration: 0`,
+`freinage: 7` et `reference.sessions: 0` : le radar est quasi plat et ne compare
+à rien. **Ne lisez pas cette figure comme une mesure** tant que la référence ne
+s'est pas remplie. Corriger un mot faux reste juste quelle que soit la donnée ;
+cela ne fabrique pas la donnée.
 
-Un mot qui désigne deux branches selon l'écran. Aujourd'hui « Trajectoire »
-vaut `regularite` sur Signature et `trajectoire` sur le Bilan. Tant que les
-deux écrans ne se regardent pas, personne ne le voit. Le jour où un pilote
-compare, ou le jour où un coach lit les deux, la question tombe — et elle
-tombera sur vous.
-
-### Ce que je propose
-
-**Suivre l'Arbre V3** : vocabulaire technique partout, poétique en narration.
-C'est la décision la plus récente, elle règle la collision, et elle coûte trois
-fichiers. Mais votre arbitrage du 19/07 dit « re-négociable mot à mot
-seulement », et je le respecte : **un mot de vous suffit à le faire ou à le
-laisser.**
-
-### Un point annexe, que personne n'a relevé
-
-L'Arbre liste **six** branches techniques — Trajectoire, Fluidité, Freinage,
-Accélération, Régularité, **Intensité**. Le code en porte **cinq** :
-`QDI_BRANCHES` n'a pas d'`intensite`, et `colors.qdi` non plus. « Intensité »
-existe ailleurs dans le dépôt, mais jamais comme branche QDI.
-
-Soit l'Arbre demande une sixième branche — et c'est un vrai travail, pas un
-renommage —, soit le mot s'y est glissé. **À dire aussi.**
 
 ---
 
