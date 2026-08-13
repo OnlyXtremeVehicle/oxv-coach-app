@@ -1174,13 +1174,59 @@ describe('durabilité sur disque', () => {
     expect(fsMap().get(q[0])).toBe(truncated); // les octets survivent, intacts
   });
 
-  it('resumeUnsyncedCaptures évacue les .tmp orphelins en quarantaine', async () => {
+  it('resumeUnsyncedCaptures évacue les .tmp TRONQUÉS en quarantaine', async () => {
     fsMap().set('/oxv/capture-queue/000000000000001-000000-frames.json.tmp', '{"op":{"typ');
     await resumeUnsyncedCaptures();
 
     expect([...fsMap().keys()].filter((k) => k.startsWith('/oxv/capture-queue/'))).toEqual([
       '/oxv/capture-queue/quarantine/000000000000001-000000-frames.json.tmp',
     ]);
+  });
+
+  /**
+   * ===========================================================================
+   * UN `.tmp` COMPLET EST UNE OPÉRATION ENTIÈRE — ON LA TERMINE, ON NE L'ALARME PAS
+   * ===========================================================================
+   *
+   * TOUS les `.tmp` orphelins partaient en quarantaine, y compris ceux qui se
+   * relisaient parfaitement. Or c'est l'artefact exact du plantage-pendant-
+   * écriture que ce module existe pour encaisser, et l'écriture atomique
+   * garantit que le contenu est complet ou ne l'est pas : un `.tmp` qui parse a
+   * simplement raté son renommage.
+   *
+   * Le coût de l'erreur était disproportionné. UNE opération en quarantaine fait
+   * afficher « SYNCHRONISATION BLOQUÉE » à la fin de CHAQUE séance, sans bouton,
+   * définitivement — le message annonce lui-même « une intervention » qui
+   * n'existe nulle part dans l'application. Un crash bénin condamnait donc le
+   * pilote à une alerte permanente, sur une donnée qui était récupérable.
+   */
+  it('un .tmp COMPLET est repris, pas mis en quarantaine', async () => {
+    const env = JSON.stringify({
+      op: createOp('s-recup'),
+      attempts: 0,
+      enqueuedAt: '2026-08-13T00:20:00.000Z',
+    });
+    fsMap().set('/oxv/capture-queue/000000000000001-000000-create_session.json.tmp', env);
+
+    await resumeUnsyncedCaptures();
+
+    // Rien en quarantaine, et plus aucun `.tmp` résiduel.
+    expect(quarantined()).toEqual([]);
+    expect([...fsMap().keys()].filter((k) => k.endsWith('.tmp'))).toEqual([]);
+  });
+
+  it('et l’opération reprise part réellement', async () => {
+    const env = JSON.stringify({
+      op: createOp('s-recup-2'),
+      attempts: 0,
+      enqueuedAt: '2026-08-13T00:20:00.000Z',
+    });
+    fsMap().set('/oxv/capture-queue/000000000000002-000000-create_session.json.tmp', env);
+
+    await resumeUnsyncedCaptures();
+    // `resumeUnsyncedCaptures` draine : la séance a été créée, la file est vide.
+    expect(await hasPending()).toBe(false);
+    expect(quarantined()).toEqual([]);
   });
 
   it('relit une op « nue » écrite par une version antérieure de l’app', async () => {

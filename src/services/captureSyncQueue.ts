@@ -366,9 +366,27 @@ export async function enqueue(op: CaptureQueueOp): Promise<void> {
 }
 
 /**
- * Balaie les `.tmp` orphelins (écriture torpillée par un crash/OOM). Ils ne sont
- * pas drainables mais leurs octets peuvent être inspectés : quarantaine, jamais
- * suppression.
+ * Balaie les `.tmp` orphelins — écriture interrompue entre l'écriture et le
+ * renommage (crash, OOM, application tuée par le système).
+ *
+ * ===========================================================================
+ * ILS ÉTAIENT TOUS MIS EN QUARANTAINE, Y COMPRIS CEUX QUI ÉTAIENT INTACTS
+ * ===========================================================================
+ *
+ * C'est l'artefact EXACT du plantage-pendant-écriture que ce module existe pour
+ * encaisser, et il déclenchait le pire état qu'il sache produire : une opération
+ * en quarantaine fait afficher « SYNCHRONISATION BLOQUÉE » à la fin de CHAQUE
+ * séance, sans bouton, définitivement — le message dit lui-même qu'il attend
+ * « une intervention » qui n'existe nulle part dans l'application.
+ *
+ * Or l'écriture atomique garantit précisément ceci : le contenu est complet, ou
+ * il ne l'est pas. Un `.tmp` qui SE RELIT est une opération entière, à laquelle
+ * il ne manque que le renommage. La quarantaine alarmait donc sur une donnée
+ * parfaitement récupérable, et laissait l'alarme allumée pour toujours.
+ *
+ * On tente donc la reprise. Ce qui ne se relit pas — écriture tronquée pour de
+ * bon — part en quarantaine : ses octets restent inspectables, et c'est un vrai
+ * cas d'alerte.
  */
 async function sweepOrphanTmp(): Promise<void> {
   try {
@@ -377,7 +395,31 @@ async function sweepOrphanTmp(): Promise<void> {
     if (!info.exists) return;
     const names = await FileSystem.readDirectoryAsync(dir);
     for (const n of names) {
-      if (n.endsWith('.tmp') && !n.includes('/')) await quarantineOp(n);
+      if (!n.endsWith('.tmp') || n.includes('/')) continue;
+
+      const env = await readEnvelopeAt(dir + n);
+      if (env === null) {
+        // Illisible : tronqué pour de bon. Quarantaine — il y a de quoi alerter.
+        await quarantineOp(n);
+        continue;
+      }
+
+      /**
+       * Complet : on termine le renommage que le crash a interrompu.
+       *
+       * Le nom cible est REFABRIQUÉ plutôt que déduit en retirant `.tmp` :
+       * `nextFileName` porte un compteur qui garantit l'ordre FIFO, et
+       * réutiliser l'ancien nom risquerait une collision avec une opération
+       * enfilée depuis. L'ordre relatif de cette op est de toute façon perdu
+       * avec le crash ; ce qui compte est qu'elle parte.
+       */
+      try {
+        await FileSystem.moveAsync({ from: dir + n, to: dir + nextFileName(env.op.type) });
+        console.warn(`[OXV][capture-queue] .tmp orphelin RÉCUPÉRÉ (${n})`);
+      } catch (e) {
+        console.warn(`[OXV][capture-queue] reprise du .tmp KO (${n}) : ${errorMessage(e)}`);
+        await quarantineOp(n);
+      }
     }
   } catch {
     /* best-effort : ne jamais bloquer la reprise */
