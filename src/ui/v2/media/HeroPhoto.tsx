@@ -47,6 +47,19 @@ export interface HeroPhotoProps {
 // Bornes du dégradé dérivées du token scrim — aucune couleur en dur.
 const SCRIM_COLORS = scrimGradientColors(colors.bg.scrim);
 
+/**
+ * Hauteur réservée en bas du cadre au contenu de `slot`.
+ *
+ * Le repli décoratif s'arrête là. Sans cette réserve, il est centré sur le
+ * cadre ENTIER et vient se caler exactement derrière le titre et le cadran —
+ * les deux dessins occupent le même centre optique.
+ *
+ * Une valeur fixe, et non une mesure : mesurer le slot demanderait un
+ * `onLayout` et un rendu de plus, pour un fond décoratif. 96 points couvrent
+ * les deux lignes de texte et le cadran des en-têtes actuels.
+ */
+const SLOT_RESERVE = 96;
+
 export function HeroPhoto({
   uri,
   height,
@@ -73,15 +86,37 @@ export function HeroPhoto({
           >
             <Photo uri={uri} blurhash={blurhash} style={styles.photo} />
           </Animated.View>
-          <LinearGradient
-            colors={SCRIM_COLORS}
-            style={[styles.scrim, { height: scrimHeight(height) }]}
-            pointerEvents="none"
-          />
         </>
       ) : (
-        <View style={styles.fallback}>{fallback}</View>
+        /**
+         * Décoratif : `pointerEvents="none"` pour que rien de ce fond n'attrape
+         * un toucher destiné au contenu posé par-dessus.
+         */
+        <View style={styles.fallback} pointerEvents="none">
+          {fallback}
+        </View>
       )}
+
+      {/*
+        LE VOILE SE POSE DANS LES DEUX CAS — ET IL NE LE FAISAIT QUE SUR PHOTO.
+
+        Il vivait à l'intérieur de la branche `uri !== undefined`. Sans photo —
+        c'est-à-dire le cas NOMINAL aujourd'hui, l'écran de préparation ne
+        passant aucune image — le cadran de compte à rebours et le nom du
+        circuit se posaient directement sur le tracé du repli, sans rien entre
+        les deux. C'est un des « affichages qui se montent dessus » signalés au
+        retour du terrain : rien ne casse, l'en-tête devient illisible.
+
+        Il n'y a pas de `zIndex` à régler : en React Native, le dernier frère
+        peint par-dessus. L'ordre du fichier EST la profondeur, et c'est le voile
+        qui manquait au milieu.
+      */}
+      <LinearGradient
+        colors={SCRIM_COLORS}
+        style={[styles.scrim, { height: scrimHeight(height) }]}
+        pointerEvents="none"
+      />
+
       {children !== undefined ? <View style={styles.slot}>{children}</View> : null}
     </View>
   );
@@ -105,6 +140,19 @@ const styles = StyleSheet.create({
   },
   photo: { width: '100%', height: '100%' },
   scrim: { position: 'absolute', left: 0, right: 0, bottom: 0 },
-  fallback: { ...StyleSheet.absoluteFillObject, alignItems: 'center', justifyContent: 'center' },
+  /**
+   * Le repli est centré sur la partie HAUTE du cadre, pas sur le cadre entier :
+   * le bas est occupé par le contenu posé dans `slot`. Centré sur tout, le
+   * tracé venait se caler exactement derrière le titre et le cadran.
+   */
+  fallback: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    top: 0,
+    bottom: SLOT_RESERVE,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   slot: { position: 'absolute', left: 0, right: 0, bottom: 0, padding: space.lg },
 });

@@ -38,10 +38,11 @@
  * QUAND ELLE S'EXÉCUTE
  * ===========================================================================
  *
- * Au lancement de l'application, APRÈS l'authentification, et jamais pendant
- * une capture active — clore la séance qu'on est en train d'enregistrer serait
- * le comble. Best-effort et silencieuse : un échec laisse la séance en l'état,
- * qui est exactement là où elle était.
+ * Au lancement de l'application, APRÈS l'authentification. La séance en cours
+ * de capture est épargnée PAR IDENTIFIANT — l'appelant le fournit — et
+ * non par un seuil d'âge, qu'une longue journée de roulage dépasse. Best-effort
+ * et silencieuse : un échec laisse la séance en l'état, qui est exactement là
+ * où elle était.
  */
 
 import { supabase } from '@/lib/supabase';
@@ -149,8 +150,35 @@ async function agregatsDesTrames(sessionId: string): Promise<AgregatsTrames | nu
  */
 export async function reprendreSeancesOuvertes(
   userId: string,
-  maintenantMs: number = Date.now()
+  maintenantMs: number = Date.now(),
+  /**
+   * LA GARDE QUE L'EN-TÊTE PROMETTAIT, ET QUI N'EXISTAIT PAS.
+   *
+   * « jamais pendant une capture active — clore la séance qu'on est en train
+   * d'enregistrer serait le comble », dit le commentaire de ce fichier. Le code
+   * ne consultait jamais l'état de capture : sa seule protection était le seuil
+   * d'âge de trois heures. `isCaptureSessionActive()` existait, exporté, sans
+   * aucun appelant hors des tests.
+   *
+   * Or trois heures ne suffisent pas. Une journée de roulage les dépasse, pause
+   * déjeuner comprise — et depuis l'activation de l'arrière-plan BLE le
+   * 13/08/2026, l'application peut rester vivante et capturante pendant qu'un
+   * changement d'état d'authentification relance la reprise. Ma propre
+   * correction a AUGMENTÉ le risque que ce commentaire prétendait couvrir.
+   *
+   * ---
+   *
+   * OBLIGATOIRE, ET SANS VALEUR PAR DÉFAUT. Un défaut à `() => null` serait un
+   * défaut qui NE PROTÈGE PAS : le prochain appelant l'oublierait sans qu'aucun
+   * outil ne le signale — la forme exacte du défaut qu'on corrige ici. Le
+   * compilateur pose donc la question à chaque site d'appel.
+   *
+   * Passé en paramètre plutôt qu'importé : `captureSessionService` tire la
+   * chaîne BLE native complète, et ce service doit rester lisible sans elle.
+   */
+  sessionEnCapture: () => string | null
 ): Promise<BilanReprise> {
+  const idEnCapture = sessionEnCapture();
   const bilan: BilanReprise = { cloturees: [], abandonnees: [] };
   try {
     const { data, error } = await supabase
@@ -164,6 +192,13 @@ export async function reprendreSeancesOuvertes(
     if (error || !data) return bilan;
 
     for (const s of data) {
+      /**
+       * LA SÉANCE QU'ON EST EN TRAIN D'ENREGISTRER N'EST JAMAIS TOUCHÉE.
+       * Aucun âge ne rend cette clôture acceptable : elle couperait le pilote
+       * en pleine piste, et par le chemin le plus discret qui soit.
+       */
+      if (idEnCapture !== null && s.id === idEnCapture) continue;
+
       const debut = new Date(s.started_at as string).getTime();
       if (!Number.isFinite(debut)) continue;
       // Trop récente : c'est peut-être une capture en cours ailleurs.

@@ -332,6 +332,24 @@ export function isCaptureSessionActive(): boolean {
   return current !== null;
 }
 
+/**
+ * Identifiant de la séance EN COURS DE CAPTURE, ou `null` si aucune.
+ *
+ * Existe pour que `repriseSeanceService` puisse épargner précisément cette
+ * séance-là. Il refusait de clore les séances de moins de trois heures, ce qui
+ * n'est pas la même chose : une journée de roulage dépasse trois heures, et
+ * l'arrière-plan BLE — activé le 13/08/2026 — permet désormais à l'application
+ * de rester VIVANTE et capturante pendant qu'un changement d'état d'authenti-
+ * fication relance la reprise. Le risque est donc plus grand qu'avant, pas
+ * moins.
+ *
+ * Épargner par identifiant, plutôt que par âge, est exact : les autres séances
+ * réellement abandonnées restent réparables.
+ */
+export function getActiveCaptureSessionId(): string | null {
+  return current?.sessionId ?? null;
+}
+
 export interface StartCaptureInput {
   userId: string;
   circuitId?: string | null;

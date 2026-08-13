@@ -102,13 +102,13 @@ describe('une séance ouverte AVEC des trames est clôturée sur ses données', 
   });
 
   it('elle passe en completed', async () => {
-    const b = await reprendreSeancesOuvertes('u1', MAINTENANT);
+    const b = await reprendreSeancesOuvertes('u1', MAINTENANT, () => null);
     expect(b.cloturees).toEqual(['s1']);
     expect(etat.maj[0].patch.status).toBe('completed');
   });
 
   it('les agrégats viennent des trames, pas d’une estimation', async () => {
-    await reprendreSeancesOuvertes('u1', MAINTENANT);
+    await reprendreSeancesOuvertes('u1', MAINTENANT, () => null);
     const p = etat.maj[0].patch;
     expect(p.total_frames).toBe(4);
     expect(p.max_speed_kmh).toBe(108);
@@ -118,7 +118,7 @@ describe('une séance ouverte AVEC des trames est clôturée sur ses données', 
   });
 
   it('`ended_at` se déduit du dernier elapsed_ms', async () => {
-    await reprendreSeancesOuvertes('u1', MAINTENANT);
+    await reprendreSeancesOuvertes('u1', MAINTENANT, () => null);
     const fin = new Date(etat.maj[0].patch.ended_at as string).getTime();
     expect(fin - new Date(VIEUX).getTime()).toBe(3000);
   });
@@ -128,7 +128,7 @@ describe('une séance ouverte AVEC des trames est clôturée sur ses données', 
    * qui envoyait toutes les clôtures en quarantaine.
    */
   it('`duration_seconds` n’est JAMAIS écrite', async () => {
-    await reprendreSeancesOuvertes('u1', MAINTENANT);
+    await reprendreSeancesOuvertes('u1', MAINTENANT, () => null);
     expect('duration_seconds' in etat.maj[0].patch).toBe(false);
   });
 });
@@ -141,7 +141,7 @@ describe('ce que la reprise refuse de faire', () => {
   it('ne touche pas une séance récente — c’est peut-être une capture en cours', async () => {
     etat.seances = [{ id: 's1', started_at: new Date(MAINTENANT - 60_000).toISOString() }];
     etat.trames = [trame('s1', 0, 50, 0.2)];
-    const b = await reprendreSeancesOuvertes('u1', MAINTENANT);
+    const b = await reprendreSeancesOuvertes('u1', MAINTENANT, () => null);
     expect(b.cloturees).toEqual([]);
     expect(etat.maj).toEqual([]);
   });
@@ -152,21 +152,69 @@ describe('ce que la reprise refuse de faire', () => {
    */
   it('une séance SANS trame est abandonnée, pas terminée', async () => {
     etat.seances = [{ id: 's2', started_at: VIEUX }];
-    const b = await reprendreSeancesOuvertes('u1', MAINTENANT);
+    const b = await reprendreSeancesOuvertes('u1', MAINTENANT, () => null);
     expect(b.abandonnees).toEqual(['s2']);
     expect(b.cloturees).toEqual([]);
     expect(etat.maj[0].patch.status).toBe('aborted');
   });
 
+  /**
+   * ===========================================================================
+   * LA GARDE ANNONCÉE ET LA GARDE POSÉE N'ÉTAIENT PAS LA MÊME
+   * ===========================================================================
+   *
+   * L'en-tête du service dit « jamais pendant une capture active — clore la
+   * séance qu'on est en train d'enregistrer serait le comble ». Le code ne
+   * consultait jamais l'état de capture : sa seule protection était le seuil de
+   * trois heures. `isCaptureSessionActive()` existait, exporté, sans un seul
+   * appelant hors des tests.
+   *
+   * Trois heures ne suffisent pas : une journée de roulage les dépasse, pause
+   * déjeuner comprise. Et depuis l'activation de l'arrière-plan BLE, l'appli-
+   * cation peut rester VIVANTE et capturante pendant qu'un changement d'état
+   * d'authentification relance la reprise — le risque a grandi, pas diminué.
+   */
+  it('la séance EN COURS DE CAPTURE est épargnée, quel que soit son âge', async () => {
+    etat.seances = [{ id: 'en-cours', started_at: VIEUX }];
+    etat.trames = [trame('en-cours', 0, 80, 0.3), trame('en-cours', 1000, 90, 0.4)];
+    const b = await reprendreSeancesOuvertes('u1', MAINTENANT, () => 'en-cours');
+    expect(b).toEqual({ cloturees: [], abandonnees: [] });
+    expect(etat.maj).toEqual([]);
+  });
+
+  /**
+   * LE CONTRE-TEST. Une garde qui refuserait TOUT dès qu'une capture tourne
+   * passerait le cas ci-dessus sans rien protéger de plus — et laisserait les
+   * séances réellement abandonnées ouvertes pour toujours. L'exemption est
+   * nominative, pas globale.
+   */
+  it('les AUTRES séances restent réparables pendant une capture', async () => {
+    etat.seances = [
+      { id: 'en-cours', started_at: VIEUX },
+      { id: 'orpheline', started_at: VIEUX },
+    ];
+    etat.trames = [trame('orpheline', 0, 70, 0.2), trame('orpheline', 1000, 90, 0.5)];
+    const b = await reprendreSeancesOuvertes('u1', MAINTENANT, () => 'en-cours');
+    expect(b.cloturees).toEqual(['orpheline']);
+    expect(etat.maj.every((m) => m.id !== 'en-cours')).toBe(true);
+  });
+
+  it('sans capture active, le comportement est inchangé', async () => {
+    etat.seances = [{ id: 's1', started_at: VIEUX }];
+    etat.trames = [trame('s1', 0, 80, 0.3), trame('s1', 1000, 90, 0.4)];
+    const b = await reprendreSeancesOuvertes('u1', MAINTENANT, () => null);
+    expect(b.cloturees).toEqual(['s1']);
+  });
+
   it('une lecture en erreur ne lève pas et ne touche à rien', async () => {
     etat.erreurSeances = true;
-    const b = await reprendreSeancesOuvertes('u1', MAINTENANT);
+    const b = await reprendreSeancesOuvertes('u1', MAINTENANT, () => null);
     expect(b).toEqual({ cloturees: [], abandonnees: [] });
     expect(etat.maj).toEqual([]);
   });
 
   it('aucune séance ouverte : rien ne se passe', async () => {
-    const b = await reprendreSeancesOuvertes('u1', MAINTENANT);
+    const b = await reprendreSeancesOuvertes('u1', MAINTENANT, () => null);
     expect(b).toEqual({ cloturees: [], abandonnees: [] });
   });
 });
@@ -182,7 +230,7 @@ describe('la pagination des trames', () => {
     etat.trames = Array.from({ length: 2500 }, (_, i) =>
       trame('s3', i * 40, i === 2400 ? 200 : 80, 0.3)
     );
-    await reprendreSeancesOuvertes('u1', MAINTENANT);
+    await reprendreSeancesOuvertes('u1', MAINTENANT, () => null);
     const p = etat.maj[0].patch;
     expect(p.total_frames).toBe(2500);
     // Le maximum se trouve dans la TROISIÈME page : sans pagination, il serait

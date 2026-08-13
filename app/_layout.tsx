@@ -20,6 +20,7 @@ import { initNetInfo, teardownNetInfo } from '@/lib/netinfo';
 import { isExpoGo, runtimeLabel } from '@/lib/runtime';
 import { initSentry } from '@/lib/sentry';
 import { trackEvent } from '@/services/analyticsService';
+import { getActiveCaptureSessionId } from '@/services/captureSessionService';
 import { resumeUnsyncedCaptures } from '@/services/captureSyncQueue';
 import { reprendreSeancesOuvertes } from '@/services/repriseSeanceService';
 import { registerForPushNotifications } from '@/services/pushNotificationsService';
@@ -108,7 +109,15 @@ export default function RootLayout() {
   useEffect(() => {
     if (status !== 'authenticated' || !profileId) return;
     void resumeUnsyncedCaptures()
-      .then(() => reprendreSeancesOuvertes(profileId))
+      /**
+       * La séance EN COURS DE CAPTURE est épargnée par identifiant.
+       *
+       * Le seuil d'âge de trois heures ne suffit pas : une journée de roulage
+       * les dépasse, pause déjeuner comprise. Et depuis l'arrière-plan BLE,
+       * l'application peut être vivante et capturante quand cet effet se
+       * relance sur un changement d'état d'authentification.
+       */
+      .then(() => reprendreSeancesOuvertes(profileId, Date.now(), getActiveCaptureSessionId))
       .catch((e) => console.warn('[OXV] rattrapage des séances :', e));
   }, [status, profileId]);
 
