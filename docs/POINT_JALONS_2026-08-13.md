@@ -68,11 +68,43 @@ jamais arrivé.
 | 1 | Technique | Fait sauf T2 | inchangé — ThumbHash toujours proposé, non appliqué |
 | 2 | Socle produit | Fait | inchangé |
 | 3 | **Le jour J** | Logiciel fait, **terrain non vérifié, aucun build n'existe** | **Éprouvé au terrain, et il a beaucoup cassé.** Voir ci-dessous |
-| 4 | La restitution | Largement fait, **sur données synthétiques** | **Sur données réelles**, 4 niveaux sur 5 ouverts |
-| 5 | Les espaces | Non commencé | inchangé — sept arbitrages fondateur en tête de chaîne |
+| 4 | La restitution | Largement fait, **sur données synthétiques** | **Sur données réelles**, 4 niveaux sur 5 ouverts · les **quatre lots « rien ne bloque » sont faits** (rampe, petits multiples, carnet, strip map) |
+| 5 | Les espaces | Non commencé | **Largement fait, et je l'ai annoncé faux.** Voir ci-dessous |
 | 6 | Coach | Non commencé | inchangé — zéro compte coach en production |
 | 7 | Admin et partenaires | Non commencé | inchangé |
 | 8 | Innovations et serveur | Non commencé | inchangé |
+
+---
+
+## Le jalon 5 — je vous l'ai annoncé bloqué, il ne l'était pas
+
+Le 13 août, je vous ai écrit que le jalon 5 attendait « les sept arbitrages sur
+l'arbre V1 », et que « le lot 21, soit 71 écrans et 35 488 lignes, les attend ».
+
+**C'était faux.** L'arbre V1 n'existe plus : commit `2e52f26`, *« l'arbre V1
+quitte l'application »*. `app/(app)` a disparu du dépôt. La vérification tenait
+en une commande, `ls app/`, et je ne l'avais pas faite — j'avais relu
+`docs/J5_ARBRE_V1.md`, qui affirmait encore que le premier blocage tenait.
+
+C'est le motif de ce dépôt, appliqué à moi : un document relu au lieu d'être
+remesuré. Les deux fichiers sont corrigés.
+
+### L'état réel, ligne par ligne du plan
+
+| Ligne du jalon 5 | État |
+|---|---|
+| Portage des sept orphelins V1 | fait |
+| Recâblage des douze liens | fait |
+| **Suppression de l'arbre V1** | fait — `2e52f26` |
+| Écriture d'intention réhébergée | fait — `dbad829`, `CarteProchaineFois` montée dans `rec/fin` |
+| Saison objet principal | fait — les cinq lectures ouvrent le hub Data |
+| Véhicule principal (`is_primary`) | fait — colonne en base depuis le 12/08, index unique partiel |
+| Ressenti après run | fait — `qcmLogic` + `rec/entre-runs` |
+| Le carnet sort de VOUS pour Data | **fait le 13/08** — VOUS passe de sept portes à six |
+| Le Club, le Pass | écrans présents (`club/index`, `club/pass`, et six autres) |
+| QDI et vocabulaire technique | **reste** — la seule ligne du jalon qui n'a pas été traitée |
+
+Ce qui reste du jalon 5 est donc **une ligne**, pas un lot de 71 écrans.
 
 ---
 

@@ -42,7 +42,22 @@ elles sont détaillées plus bas, résumées ici :
 - **Le second blocage est levé** : `app/(pro)` est recâblé, ses neuf liens et
   cinq boutons ne visent plus l'arbre V1.
 
-Le premier blocage — l'écriture d'intention — **tient toujours**.
+**Le premier blocage est levé lui aussi** — commit `dbad829`,
+« l'application sait de nouveau écrire une intention ». `CarteProchaineFois`
+vit dans `src/features/rec/` et est montée par `app/(app2)/rec/fin.tsx`,
+c'est-à-dire à l'endroit exact que l'Arbre pilote désigne : troisième acte de
+`rec/fin`, étape 8.
+
+### Ce document a affirmé le contraire pendant deux semaines
+
+La ligne ci-dessus disait « tient toujours » alors que le code ne le portait
+plus. Relu le 13/08/2026, il a servi à annoncer au fondateur que le jalon 5
+attendait des arbitrages — **et l'arbre V1 était déjà supprimé** (commit
+`2e52f26`, « l'arbre V1 quitte l'application »). `app/(app)` n'existe plus.
+
+C'est le motif du dépôt dans sa version documentaire : un document qui décrit
+un état que le code a quitté, et qu'on relit au lieu de le remesurer. La
+vérification tient en une commande — `ls app/` — et elle n'avait pas été faite.
 
 ### Rien de `app/(app)` ne part sur le web
 
