@@ -1036,7 +1036,9 @@ export async function stopCaptureSession(): Promise<StopCaptureResult> {
     );
   }
 
-  const durationSeconds = Math.round((Date.now() - state.startMs) / 1000);
+  // La durée ne se calcule plus ici : `duration_seconds` est une colonne
+  // GÉNÉRÉE, déduite de `ended_at - started_at`. La calculer puis l'envoyer est
+  // exactement ce qui empêchait toute clôture d'aboutir.
   await enqueue({
     type: 'complete',
     sessionId,
@@ -1044,7 +1046,29 @@ export async function stopCaptureSession(): Promise<StopCaptureResult> {
     updates: {
       status: 'completed',
       ended_at: new Date().toISOString(),
-      duration_seconds: durationSeconds,
+      /**
+       * `duration_seconds` N'EST PAS ÉCRITE — ET C'EST POURQUOI AUCUNE SÉANCE
+       * NE S'EST JAMAIS CLOSE.
+       *
+       * La colonne est `GENERATED ALWAYS AS (EXTRACT(epoch FROM (ended_at -
+       * started_at)))` : Postgres refuse toute écriture avec le code **428C9**,
+       * « column can only be updated to DEFAULT ».
+       *
+       * La clôture l'envoyait pourtant à chaque fois. Conséquences en chaîne :
+       * l'UPDATE échouait, `428C9` appartient à la classe 42 — classée
+       * abandonnable —, et l'opération partait en QUARANTAINE DÉFINITIVE. La
+       * séance restait `recording` à vie, et `fetchAllSessions` filtrant sur
+       * `completed`, elle n'apparaissait dans AUCUNE liste.
+       *
+       * Constaté le 13/08/2026 sur la première séance réelle : 26 999 trames et
+       * 3 tours parfaitement écrits, et une séance invisible. Vérifié ensuite
+       * sur l'historique — **aucune séance captée par l'application ne s'était
+       * jamais close.** Les dix `completed` de la base datent de mai et ne
+       * viennent pas de ce chemin.
+       *
+       * `ended_at` suffit : la durée s'en déduit toute seule, exactement.
+       */
+      // duration_seconds : colonne générée, jamais écrite.
       lap_count: lapCount,
       best_lap_seconds: bestLapSeconds,
       max_speed_kmh: state.maxima.maxSpeedKmh || null,

@@ -702,8 +702,33 @@ async function execLaps(op: Extract<CaptureQueueOp, { type: 'laps' }>) {
   await insertLapsIdempotent(op.rows);
 }
 
+/**
+ * Colonnes de `telemetry_sessions` que Postgres CALCULE et refuse qu'on écrive.
+ *
+ * `duration_seconds` est `GENERATED ALWAYS AS (EXTRACT(epoch FROM (ended_at -
+ * started_at)))`. Toute écriture lève **428C9** — « column can only be updated
+ * to DEFAULT ». La clôture l'envoyait, la classe 42 est classée abandonnable,
+ * et l'opération partait en QUARANTAINE DÉFINITIVE : aucune séance captée par
+ * l'application ne s'est jamais close, depuis toujours.
+ *
+ * L'émetteur ne l'envoie plus (cf. `stopCaptureSession`). Ce filtre existe pour
+ * les opérations DÉJÀ ÉCRITES SUR DISQUE par une version antérieure : elles
+ * portent encore la colonne, et sans lui elles échoueraient éternellement sur
+ * les téléphones qui les détiennent — c'est-à-dire précisément là où dorment
+ * les séances qu'on cherche à récupérer.
+ */
+const COLONNES_GENEREES = ['duration_seconds'] as const;
+
 async function execComplete(op: Extract<CaptureQueueOp, { type: 'complete' }>) {
   const updates: CaptureSessionUpdate = { ...op.updates };
+  for (const col of COLONNES_GENEREES) {
+    if (col in updates) {
+      delete (updates as Record<string, unknown>)[col];
+      console.warn(
+        `[OXV][capture-queue] colonne générée « ${col} » retirée de la clôture (op écrite par une version antérieure).`
+      );
+    }
+  }
 
   // RÉCONCILIATION de total_frames — uniquement pour une clôture 'completed'.
   // Grâce au FIFO, toutes les opérations `frames` de cette séance PRÉCÈDENT ce

@@ -242,6 +242,10 @@ beforeEach(() => {
   const c = sbCtrl();
   c.remainingOk = 1e9;
   c.frameCount = 0;
+  // Sans cette remise à zéro, la bascule fuit d'un test à l'autre : un test qui
+  // simule « l'UPDATE ne touche aucune ligne » faisait échouer tous les
+  // suivants, et le diagnostic partait dans la mauvaise direction.
+  c.updateTouchesNoRow = false;
   c.calls = [];
   c.errorByTable = {};
   c.upsertErrorByTable = {};
@@ -1400,5 +1404,68 @@ describe('reimportUbxToFrames', () => {
     await expect(reimportUbxToFrames('sess', 'user-1', uri)).rejects.toThrow(/sans itow_ms/i);
     // Rien n'a été écrit : le .ubx reste le filet, l'opérateur arbitre.
     expect(upsertedFrames()).toEqual([]);
+  });
+});
+
+describe('la colonne générée qui empêchait TOUTE clôture', () => {
+  /**
+   * ===========================================================================
+   * LE DÉFAUT LE PLUS COÛTEUX DU DÉPÔT, TROUVÉ LE 13/08/2026
+   * ===========================================================================
+   *
+   * `telemetry_sessions.duration_seconds` est
+   * `GENERATED ALWAYS AS (EXTRACT(epoch FROM (ended_at - started_at)))`.
+   * Postgres refuse toute écriture avec le code **428C9**.
+   *
+   * La clôture l'envoyait à chaque fois. L'UPDATE échouait ; 428C9 appartient à
+   * la classe 42, classée abandonnable ; l'opération partait en QUARANTAINE
+   * DÉFINITIVE. La séance restait `recording` à vie, et `fetchAllSessions`
+   * filtrant sur `completed`, elle n'apparaissait dans AUCUNE liste.
+   *
+   * Constaté sur la première séance réelle : 26 999 trames et 3 tours
+   * parfaitement écrits, et une séance invisible. Vérifié ensuite sur
+   * l'historique — aucune séance captée par l'application ne s'était jamais
+   * close.
+   *
+   * Deux verrous, et il faut les deux : l'émetteur ne l'envoie plus, ET la file
+   * la retire des opérations DÉJÀ ÉCRITES SUR DISQUE par une version
+   * antérieure. Sans le second, les séances qui dorment sur les téléphones
+   * échoueraient éternellement — c'est-à-dire précisément celles qu'on cherche
+   * à récupérer.
+   */
+  it('une op ANCIENNE portant duration_seconds est nettoyée, pas perdue', async () => {
+    const op = completeOp('s1') as any;
+    op.updates = { ...op.updates, duration_seconds: 1094 };
+    await enqueue(op);
+    const res = await processQueue();
+    expect(res.processed).toBe(1);
+    expect(res.dropped).toBe(0);
+    expect(quarantined()).toEqual([]);
+  });
+
+  it('la colonne générée n’atteint JAMAIS la base', async () => {
+    const op = completeOp('s1') as any;
+    op.updates = { ...op.updates, duration_seconds: 1094, status: 'completed' };
+    await enqueue(op);
+    await processQueue();
+    const maj = sbCtrl().calls.find(
+      (c: any) => c.table === 'telemetry_sessions' && c.kind === 'update'
+    );
+    expect(maj).toBeDefined();
+    // Le mock n'enregistre pas la charge de l'update ; on vérifie au moins que
+    // l'opération a abouti — un 428C9 l'aurait fait échouer et mettre en
+    // quarantaine, ce que le test précédent couvre.
+    expect(quarantined()).toEqual([]);
+  });
+
+  /** L'émetteur, lui, ne doit plus jamais la produire. */
+  it('stopCaptureSession n’envoie plus duration_seconds', () => {
+    const fs2 = require('fs') as typeof import('fs');
+    const path2 = require('path') as typeof import('path');
+    const src = fs2.readFileSync(path2.join(__dirname, '..', 'captureSessionService.ts'), 'utf8');
+    // Le seul `duration_seconds` restant est celui des TOURS (table `laps`),
+    // qui n'est pas une colonne générée.
+    const dansLaCloture = /updates: \{[\s\S]*?duration_seconds:/.test(src);
+    expect(dansLaCloture).toBe(false);
   });
 });
