@@ -21,7 +21,7 @@ import { isExpoGo, runtimeLabel } from '@/lib/runtime';
 import { initSentry } from '@/lib/sentry';
 import { trackEvent } from '@/services/analyticsService';
 import { getActiveCaptureSessionId } from '@/services/captureSessionService';
-import { resumeUnsyncedCaptures } from '@/services/captureSyncQueue';
+import { recupererTramesManquantes, resumeUnsyncedCaptures } from '@/services/captureSyncQueue';
 import { reprendreSeancesOuvertes } from '@/services/repriseSeanceService';
 import { registerForPushNotifications } from '@/services/pushNotificationsService';
 import { useAuthStore } from '@/store/useAuthStore';
@@ -118,6 +118,19 @@ export default function RootLayout() {
        * relance sur un changement d'état d'authentification.
        */
       .then(() => reprendreSeancesOuvertes(profileId, Date.now(), getActiveCaptureSessionId))
+      /**
+       * ET LE FILET DE DERNIER RECOURS, ENFIN ATTEIGNABLE.
+       *
+       * Si une séance a perdu des trames côté serveur, ses octets sont encore
+       * sur le téléphone — la rétention les garde sept jours pour ça. Jusqu'ici,
+       * rien ne pouvait les recoller : le nom du fichier ne portait pas la
+       * séance, et `reimportUbxToFrames` n'avait donc aucun appelant possible.
+       *
+       * En DERNIER de la chaîne, et pour une seule séance par lancement : c'est
+       * la chose la plus lourde que ce module sache faire, et elle ne doit
+       * jamais retarder ce qui la précède.
+       */
+      .then(() => recupererTramesManquantes(profileId))
       .catch((e) => console.warn('[OXV] rattrapage des séances :', e));
   }, [status, profileId]);
 

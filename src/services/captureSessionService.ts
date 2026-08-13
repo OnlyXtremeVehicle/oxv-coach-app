@@ -516,7 +516,9 @@ export async function startCaptureSession(input: StartCaptureInput): Promise<Sta
 
   // Filet de sécurité : capture .ubx brute locale (jamais bloquant).
   try {
-    startCapture();
+    // Le nom du `.ubx` portera cette séance : c'est ce qui rend le filet de
+    // réimport atteignable (cf. `recupererTramesManquantes`).
+    startCapture(sessionId);
   } catch {
     /* capture locale indisponible — les frames partent quand même en DB */
   }

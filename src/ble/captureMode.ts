@@ -50,11 +50,32 @@ export function getLastSavedUri(): string | null {
   return lastSavedUri;
 }
 
-export function startCapture(): void {
+/**
+ * Séance à laquelle appartient la capture en cours, `null` pour une capture de
+ * diagnostic lancée depuis l'écran de debug.
+ *
+ * ===========================================================================
+ * LE MAILLON QUI MANQUAIT ENTRE LE FICHIER ET LA SÉANCE
+ * ===========================================================================
+ *
+ * Le `.ubx` s'appelait `racebox-capture-<horodatage>.ubx`. Rien, sur le disque,
+ * ne reliait ces octets à la séance qui les avait produits.
+ *
+ * Conséquence : `reimportUbxToFrames` — le filet de dernier recours, capable de
+ * recoller des trames perdues côté serveur — exige un `sessionId` et n'avait
+ * donc AUCUN appelant possible. Et `gcOldCaptures` conservait les fichiers sept
+ * jours en s'en réclamant explicitement : « le fichier reste disponible comme
+ * filet de reprise ». La rétention servait une promesse que rien ne pouvait
+ * tenir.
+ */
+let sessionCourante: string | null = null;
+
+export function startCapture(sessionId: string | null = null): void {
   if (active) return;
   chunks = [];
   totalBytes = 0;
   startedAt = Date.now();
+  sessionCourante = sessionId;
   active = true;
   unsubscribe = bluetoothService.onRawData((bytes) => {
     chunks.push(bytes);
@@ -91,7 +112,14 @@ export async function stopCapture(): Promise<string> {
   }
 
   const ts = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
-  const fileUri = `${fixturesDir}racebox-capture-${ts}.ubx`;
+  /**
+   * Le suffixe `--<uuid>` est OPTIONNEL dans le nom : les fichiers écrits avant
+   * le 13/08/2026, et ceux d'une capture de diagnostic, n'en portent pas. Le
+   * motif de lecture (`captureSyncQueue`) les accepte donc toujours — il les
+   * traite simplement comme non rattachables.
+   */
+  const suffixe = sessionCourante !== null ? `--${sessionCourante}` : '';
+  const fileUri = `${fixturesDir}racebox-capture-${ts}${suffixe}.ubx`;
 
   const base64 = Buffer.from(merged).toString('base64');
   await FileSystem.writeAsStringAsync(fileUri, base64, {

@@ -234,6 +234,7 @@ import {
   pendingSessionIds,
   processQueue,
   reimportUbxToFrames,
+  recupererTramesManquantes,
   resumeUnsyncedCaptures,
 } from '../captureSyncQueue';
 
@@ -1094,6 +1095,152 @@ describe('ubx_upload', () => {
     expect(await hasPending()).toBe(false);
     expect(quarantined().length).toBe(1);
     warn.mockRestore();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Récupération automatique au lancement — le filet, enfin atteignable
+// ---------------------------------------------------------------------------
+describe('recupererTramesManquantes', () => {
+  const NOW = Date.parse('2026-07-16T12:00:00Z');
+  const SID = '11111111-2222-3333-4444-555555555555';
+  /** Un `.ubx` d'hier, RATTACHÉ à une séance par son nom. */
+  const RATTACHE = `/oxv/fixtures/racebox-capture-2026-07-15T10-30-00--${SID}.ubx`;
+  /** Le même fichier sans suffixe — capture de diagnostic, ou fichier d'avant. */
+  const ORPHELIN = '/oxv/fixtures/racebox-capture-2026-07-15T10-30-00.ubx';
+
+  /** 1 000 trames de 88 octets : assez pour dépasser le plancher de 25. */
+  const OCTETS = 'x'.repeat(88_000);
+
+  /**
+   * ===========================================================================
+   * CE QUI RENDAIT CE FILET INATTEIGNABLE
+   * ===========================================================================
+   *
+   * `reimportUbxToFrames` est écrite, testée et idempotente depuis longtemps —
+   * et n'avait AUCUN appelant. Pas par oubli : elle exige un `sessionId`, et le
+   * nom du fichier ne portait qu'un horodatage. Rien, sur le disque, ne reliait
+   * un `.ubx` à la séance qu'il avait enregistrée.
+   *
+   * Pendant ce temps `gcOldCaptures` gardait les fichiers sept jours en s'en
+   * réclamant : « le fichier reste disponible comme filet de reprise ». La
+   * rétention servait une promesse que rien ne pouvait tenir.
+   */
+  it('ne touche PAS un fichier sans identifiant de séance', async () => {
+    fsMap().set(ORPHELIN, OCTETS);
+    sbCtrl().frameCount = 0;
+    const bilan = await recupererTramesManquantes('u1', NOW);
+    expect(bilan.recuperees).toEqual([]);
+  });
+
+  /**
+   * LA DÉTECTION EST BON MARCHÉ, ET C'EST CE QUI LA REND ACCEPTABLE AU DÉMARRAGE.
+   * La taille du fichier estime le nombre de trames ; un `count` la compare à ce
+   * que le serveur détient. Aucun octet n'est lu tant qu'un manque n'est pas
+   * établi.
+   */
+  it('ne lit RIEN quand le serveur a déjà tout', async () => {
+    fsMap().set(RATTACHE, OCTETS);
+    sbCtrl().frameCount = 1000; // exactement les trames attendues
+    const bilan = await recupererTramesManquantes('u1', NOW);
+    expect(bilan.recuperees).toEqual([]);
+    expect(bilan.trames).toBe(0);
+  });
+
+  /** Un écart d'arrondi ne déclenche pas une lecture de deux mégaoctets. */
+  it('tolère un écart d’arrondi sous le seuil', async () => {
+    fsMap().set(RATTACHE, OCTETS);
+    sbCtrl().frameCount = 980; // 98 % — au-dessus du seuil de 95 %
+    const bilan = await recupererTramesManquantes('u1', NOW);
+    expect(bilan.recuperees).toEqual([]);
+  });
+
+  /**
+   * NE RIEN SAVOIR N'EST PAS UN MANQUE. Un comptage impossible — réseau coupé —
+   * ne doit pas déclencher une récupération : ce serait fabriquer le
+   * diagnostic, et lire deux mégaoctets pour rien à chaque lancement hors ligne.
+   */
+  it('un comptage impossible ne conclut RIEN', async () => {
+    fsMap().set(RATTACHE, OCTETS);
+    sbCtrl().remainingOk = 0; // toute requête échoue
+    const bilan = await recupererTramesManquantes('u1', NOW);
+    expect(bilan.recuperees).toEqual([]);
+  });
+
+  /** Un fichier trop court pour porter une seconde de roulage ne dit rien. */
+  it('ignore un fichier minuscule', async () => {
+    fsMap().set(RATTACHE, 'x'.repeat(200)); // ~2 trames
+    sbCtrl().frameCount = 0;
+    const bilan = await recupererTramesManquantes('u1', NOW);
+    expect(bilan.recuperees).toEqual([]);
+  });
+
+  /** Au-delà de la rétention, le fichier est hors jeu — le GC va l'effacer. */
+  it('ignore un fichier plus vieux que la rétention', async () => {
+    fsMap().set(`/oxv/fixtures/racebox-capture-2026-07-01T10-30-00--${SID}.ubx`, OCTETS);
+    sbCtrl().frameCount = 0;
+    const bilan = await recupererTramesManquantes('u1', NOW);
+    expect(bilan.recuperees).toEqual([]);
+  });
+
+  /**
+   * ET ELLE NE COMBAT PAS LE DRAIN. Recoller des trames pendant qu'une file les
+   * envoie encore ferait travailler les deux sur la même séance.
+   */
+  it('se retire quand la file n’est pas vide', async () => {
+    fsMap().set(RATTACHE, OCTETS);
+    sbCtrl().frameCount = 0;
+    await enqueue(createOp('s1'));
+    const bilan = await recupererTramesManquantes('u1', NOW);
+    expect(bilan.recuperees).toEqual([]);
+  });
+
+  /**
+   * ===========================================================================
+   * LE CAS POSITIF, ET IL DÉCIDE DE TOUT LE RESTE
+   * ===========================================================================
+   *
+   * Les sept cas ci-dessus assertent tous une ABSENCE de récupération. Une
+   * fonction qui rendrait `{ recuperees: [], trames: 0 }` en toutes
+   * circonstances les passerait tous — et le filet resterait exactement aussi
+   * inatteignable qu'avant, sous une suite verte.
+   *
+   * C'est le piège que ce dépôt connaît par cœur : un test qui confirme une
+   * absence. Celui-ci prouve que la trappe s'ouvre.
+   */
+  it('un manque RÉEL déclenche la récupération, et les trames sont insérées', async () => {
+    // Soixante trames UBX valides, écrites comme le ferait la capture.
+    writeUbx(
+      RATTACHE,
+      Array.from({ length: 60 }, (_, i) => 1_000 + i * 40)
+    );
+    sbCtrl().frameCount = 0; // le serveur n'en a aucune
+
+    const bilan = await recupererTramesManquantes('u1', NOW);
+
+    expect(bilan.recuperees).toEqual([SID]);
+    expect(bilan.trames).toBeGreaterThan(0);
+    // Et elles sont réellement parties vers `telemetry_frames`.
+    expect(upsertedFrames().length).toBeGreaterThan(0);
+  });
+
+  /** Une seule séance par lancement : c'est l'opération la plus lourde du module. */
+  it('ne récupère qu’une séance par lancement', async () => {
+    const AUTRE = '99999999-8888-7777-6666-555555555555';
+    writeUbx(
+      RATTACHE,
+      Array.from({ length: 60 }, (_, i) => 1_000 + i * 40)
+    );
+    writeUbx(
+      `/oxv/fixtures/racebox-capture-2026-07-14T10-30-00--${AUTRE}.ubx`,
+      Array.from({ length: 60 }, (_, i) => 1_000 + i * 40)
+    );
+    sbCtrl().frameCount = 0;
+
+    const bilan = await recupererTramesManquantes('u1', NOW);
+    expect(bilan.recuperees).toHaveLength(1);
+    // La PLUS RÉCENTE d'abord : c'est la séance que le pilote veut relire ce soir.
+    expect(bilan.recuperees).toEqual([SID]);
   });
 });
 

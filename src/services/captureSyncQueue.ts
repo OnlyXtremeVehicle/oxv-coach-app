@@ -1144,12 +1144,44 @@ function capturesDir(): string {
 }
 
 /**
- * `racebox-capture-<YYYY-MM-DDTHH-MM-SS>.ubx` (cf. captureMode : `toISOString()`
- * avec `:` et `.` remplacés par `-`, tronqué à 19 caractères). L'horodatage du
- * NOM est notre seule source d'âge fiable et testable : `modificationTime` varie
- * selon l'OS et n'est pas garanti par le mock d'`expo-file-system`.
+ * `racebox-capture-<YYYY-MM-DDTHH-MM-SS>[--<uuid de séance>].ubx`
+ *
+ * L'horodatage du NOM est notre seule source d'âge fiable et testable :
+ * `modificationTime` varie selon l'OS et n'est pas garanti par le mock
+ * d'`expo-file-system`.
+ *
+ * ---
+ *
+ * LE SUFFIXE DE SÉANCE EST OPTIONNEL, ET IL DOIT LE RESTER.
+ *
+ * Il est posé depuis le 13/08/2026 (cf. `captureMode`), et c'est lui qui rend
+ * `reimportUbxToFrames` atteignable : sans lui, rien sur le disque ne reliait un
+ * fichier à la séance qu'il avait enregistrée, et le filet de dernier recours ne
+ * pouvait avoir aucun appelant.
+ *
+ * Deux familles de fichiers n'en portent pas, et ne doivent pas devenir
+ * illisibles pour autant : ceux écrits AVANT cette date, et ceux d'une capture
+ * de diagnostic. Ils restent datables — donc ramassables par le GC — et sont
+ * simplement non rattachables.
  */
-const UBX_NAME_RE = /^racebox-capture-(\d{4})-(\d{2})-(\d{2})T(\d{2})-(\d{2})-(\d{2})\.ubx$/;
+const UBX_NAME_RE =
+  /^racebox-capture-(\d{4})-(\d{2})-(\d{2})T(\d{2})-(\d{2})-(\d{2})(?:--([0-9a-fA-F-]{36}))?\.ubx$/;
+
+/** L'identifiant de séance porté par le nom, ou `null` s'il n'y en a pas. */
+function sessionIdDuNomCapture(fileName: string): string | null {
+  const m = UBX_NAME_RE.exec(fileName);
+  return m?.[7] ?? null;
+}
+
+/**
+ * Taille d'une trame RaceBox Data Message, en octets.
+ *
+ * En-tête 6 + charge utile 80 + somme de contrôle 2 (cf. `UbxFrameBuffer` :
+ * `totalSize = 6 + payloadLength + 2`). Sert à ESTIMER le nombre de trames d'un
+ * fichier depuis sa seule TAILLE, sans le lire — c'est ce qui rend la détection
+ * de manque assez bon marché pour tourner à chaque lancement.
+ */
+const OCTETS_PAR_TRAME = 88;
 
 /**
  * Âge au-delà duquel un .ubx déjà synchronisé est effaçable. 7 jours couvrent
@@ -1272,6 +1304,141 @@ export async function resumeUnsyncedCaptures(): Promise<void> {
     console.warn(`[OXV][capture-queue] reprise KO : ${errorMessage(e)}`);
     // SEC-1 : reprise en échec remontée à Sentry (aucun changement de flux).
     captureException(e, { point: 'capture-queue.reprise_ko' });
+  }
+}
+
+// ============================================================================
+// RÉCUPÉRATION AUTOMATIQUE AU LANCEMENT — le filet, enfin atteignable
+// ============================================================================
+
+/**
+ * Fraction des trames attendues en dessous de laquelle on considère qu'il en
+ * manque assez pour lire le fichier.
+ *
+ * L'estimation par la taille est APPROXIMATIVE — le flux BLE peut contenir des
+ * messages d'un autre type, et la fin d'écriture peut tronquer une trame. Un
+ * seuil à 99 % déclencherait une lecture de deux mégaoctets sur du bruit
+ * d'arrondi. À 95 %, on ne bouge que sur un manque réel : sur une séance de
+ * 27 000 trames, cela veut dire plus de mille trames absentes.
+ */
+const SEUIL_MANQUE = 0.95;
+
+/**
+ * Nombre de séances récupérées par lancement.
+ *
+ * UNE. La récupération lit le fichier entier, le parse, interroge toutes les
+ * clés déjà en base et insère par lots — c'est la chose la plus lourde que ce
+ * module sache faire. En enchaîner plusieurs au démarrage rendrait l'ouverture
+ * de l'application indéfendable, et rien ne presse : la suivante partira au
+ * lancement suivant, et la rétention couvre sept jours.
+ */
+const RECUPERATIONS_PAR_LANCEMENT = 1;
+
+export interface BilanRecuperation {
+  /** Séances dont les trames manquantes ont été recollées. */
+  recuperees: string[];
+  /** Trames réellement insérées, tous fichiers confondus. */
+  trames: number;
+}
+
+/**
+ * Recolle les trames qu'une séance a perdues côté serveur, depuis son `.ubx`.
+ *
+ * ===========================================================================
+ * POURQUOI CETTE FONCTION N'EXISTAIT PAS
+ * ===========================================================================
+ *
+ * `reimportUbxToFrames` est écrite, testée, idempotente — et n'avait AUCUN
+ * appelant. Pas par oubli : elle exige un `sessionId`, et le nom du fichier
+ * n'en portait pas. **Rien, sur le disque, ne reliait un `.ubx` à sa séance.**
+ *
+ * Pendant ce temps `gcOldCaptures` conservait les fichiers sept jours en s'en
+ * réclamant : « le fichier reste disponible comme filet de reprise ». Le filet
+ * était tendu sous une trappe qui ne s'ouvrait pas.
+ *
+ * Le nom porte désormais la séance (cf. `captureMode`), et cette fonction est
+ * la trappe.
+ *
+ * ===========================================================================
+ * CE QU'ELLE NE FAIT PAS
+ * ===========================================================================
+ *
+ * Elle ne lit AUCUN fichier tant qu'un manque n'est pas établi : la taille du
+ * fichier donne une estimation du nombre de trames, un `count` la compare à ce
+ * que le serveur détient. Deux requêtes légères par fichier, contre deux
+ * mégaoctets lus et parsés.
+ *
+ * Elle ne touche pas non plus aux fichiers sans identifiant de séance — captures
+ * de diagnostic, fichiers d'avant le 13/08/2026 — ni à ceux d'une autre séance
+ * que celles du pilote connecté : `reimportUbxToFrames` insère avec le `userId`,
+ * et la RLS tranche.
+ *
+ * Best-effort et silencieuse : un échec laisse le fichier en place, et la
+ * tentative repartira au lancement suivant.
+ */
+export async function recupererTramesManquantes(
+  userId: string,
+  now: number = Date.now()
+): Promise<BilanRecuperation> {
+  const bilan: BilanRecuperation = { recuperees: [], trames: 0 };
+  try {
+    // La file d'abord : recoller des trames pendant qu'un drain les envoie
+    // encore ferait travailler les deux sur la même séance.
+    if (await hasPending()) return bilan;
+
+    const dir = capturesDir();
+    const names = await listNamesIn(dir);
+    if (names.length === 0) return bilan;
+
+    // Du plus RÉCENT au plus ancien : la séance qui vient d'être roulée est
+    // celle que le pilote veut relire ce soir.
+    const candidats = names
+      .map((name) => ({
+        name,
+        sessionId: sessionIdDuNomCapture(name),
+        ecritLe: parseCaptureTimestamp(name),
+      }))
+      .filter(
+        (c): c is { name: string; sessionId: string; ecritLe: number } =>
+          c.sessionId !== null && c.ecritLe !== null && now - c.ecritLe < UBX_MAX_AGE_MS
+      )
+      .sort((a, b) => b.ecritLe - a.ecritLe);
+
+    for (const c of candidats) {
+      if (bilan.recuperees.length >= RECUPERATIONS_PAR_LANCEMENT) break;
+
+      const uri = dir + c.name;
+      const info = await FileSystem.getInfoAsync(uri);
+      if (!info.exists || info.isDirectory) continue;
+      const taille = 'size' in info && typeof info.size === 'number' ? info.size : 0;
+      const attendues = Math.floor(taille / OCTETS_PAR_TRAME);
+      // Un fichier trop court pour porter une seconde de roulage ne dit rien.
+      if (attendues < 25) continue;
+
+      const { count, error } = await supabase
+        .from('telemetry_frames')
+        .select('id', { count: 'exact', head: true })
+        .eq('session_id', c.sessionId);
+      // Comptage impossible (réseau) : on ne conclut RIEN. Annoncer un manque
+      // sur une absence de réponse serait fabriquer le diagnostic.
+      if (error || typeof count !== 'number') continue;
+      if (count >= attendues * SEUIL_MANQUE) continue;
+
+      console.warn(
+        `[OXV][capture-queue] séance ${c.sessionId} : ${count} trames en base pour ~${attendues} ` +
+          `dans le .ubx — récupération depuis le fichier local.`
+      );
+      const res = await reimportUbxToFrames(c.sessionId, userId, uri);
+      if (res.inserted > 0) {
+        bilan.recuperees.push(c.sessionId);
+        bilan.trames += res.inserted;
+      }
+    }
+    return bilan;
+  } catch (e) {
+    console.warn(`[OXV][capture-queue] récupération KO : ${errorMessage(e)}`);
+    captureException(e, { point: 'capture-queue.recuperation_ko' });
+    return bilan;
   }
 }
 
