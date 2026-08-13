@@ -90,6 +90,7 @@ import {
   useReduceMotion,
 } from '@/ui/v2';
 import { pairesRoulees, seancesDeLaPaire } from '@/features/data/pairesLogic';
+import { couleursDesSeaux } from '@/features/data/saison/rampeEcarts';
 import { vehicleName } from '@/features/vous/garageLogic';
 import { listMyVehicles, type Vehicle } from '@/services/garageService';
 import {
@@ -786,6 +787,13 @@ function RegularityHistogram({
   const gap = space.sm;
   const barW = Math.max(1, (width - gap * (buckets.length - 1)) / buckets.length);
 
+  // Les seaux sont ORDONNÉS par écart croissant au tour de référence. Les
+  // peindre d'une seule teinte jetait cet ordre : seule la hauteur le portait.
+  // La rampe le rend à la couleur — pleine sur la référence, retirée à mesure
+  // qu'on s'en éloigne. Voir `rampeEcarts.ts` pour le sens et le plancher de
+  // contraste.
+  const teintes = couleursDesSeaux(buckets.length);
+
   return (
     <View>
       <Canvas
@@ -805,7 +813,7 @@ function RegularityHistogram({
               width={barW}
               height={h}
               r={4}
-              color={colors.qdi.regularite}
+              color={teintes[i] ?? colors.qdi.regularite}
             />
           );
         })}
