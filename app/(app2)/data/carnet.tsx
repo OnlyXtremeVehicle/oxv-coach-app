@@ -1,5 +1,23 @@
 /**
- * CARNET — porte VOUS, écran 4/8 du lot V2-L4. Route `vous/carnet`.
+ * CARNET — porte DATA. Route `/(app2)/data/carnet`.
+ *
+ * ---
+ *
+ * IL A VÉCU DANS VOUS JUSQU'AU 13/08/2026, ET CE N'ÉTAIT PAS SA PLACE
+ *
+ * *« VOUS — ce qui est à vous et qui NE SE MESURE PAS. Le carnet en sort pour
+ * Data. »* — plan de montage, jalon 5, phase 4quater.
+ *
+ * La coupure est celle-là, et elle est nette : VOUS garde ce qui vous
+ * appartient sans être mesuré — profil, garage, matériel, licence, réglages.
+ * Le carnet, lui, suit une progression : intentions posées puis honorées,
+ * objectifs avec leur mesure, cycles du coach. Il se lit à côté des séances,
+ * pas à côté de la taille de votre casque.
+ *
+ * Ce déplacement était inscrit au bilan du jalon 4 avec la mention « rien ne
+ * bloque — la rupture de fond est posée, le déplacement reste ». Il ne restait
+ * qu'un lien entrant : la porte « Carnet » du hub VOUS, qui passe de sept à
+ * six portes. L'entrée vit désormais dans le hub Data, sous la saison.
  *
  * L'espace intime du pilote, à 4 onglets (Notes · Intentions · Objectifs ·
  * Programme) parcourus au SWIPE horizontal (pager gestuel Reanimated) sous un
@@ -79,13 +97,13 @@ import {
   intentionStateLabel,
   nextTabIndex,
   type CarnetTab,
-} from '@/features/vous/carnetLogic';
+} from '@/features/data/carnet/carnetLogic';
 import {
   useCarnet,
   type Carnet,
   type CarnetIntentionItem,
   type CarnetNoteItem,
-} from '@/features/vous/useCarnet';
+} from '@/features/data/carnet/useCarnet';
 import type { PilotGoal } from '@/services/pilotGoalsService';
 import type { SharedCycle } from '@/services/developmentCycleService';
 

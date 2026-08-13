@@ -362,6 +362,30 @@ export default function DataHubScreen() {
       */}
       <SaisonSections data={saison} />
 
+      {/*
+        LE CARNET, ARRIVÉ DE VOUS LE 13/08/2026.
+
+        « VOUS — ce qui est à vous et qui NE SE MESURE PAS. Le carnet en sort
+        pour Data. » Il suivait une progression — intentions posées puis
+        honorées, objectifs mesurés, cycles du coach — et se lit donc à côté
+        des séances. C'est sa seule entrée : VOUS est passé de sept portes à
+        six, et aucun lien mort n'est resté derrière.
+      */}
+      <PressScale
+        style={styles.porteCarnet}
+        onPress={() => router.push('/(app2)/data/carnet' as never)}
+        accessibilityRole="button"
+        accessibilityLabel="Ouvrir le carnet — vos notes, intentions, objectifs et programme"
+      >
+        <View style={styles.porteCarnetTexte}>
+          <Text style={styles.porteCarnetTitre}>Le carnet</Text>
+          <Text style={styles.porteCarnetSous}>
+            Vos notes, vos intentions, vos objectifs, votre programme.
+          </Text>
+        </View>
+        <Text style={styles.porteCarnetChevron}>›</Text>
+      </PressScale>
+
       <View style={styles.ruptureSeances} />
 
       <Animated.View style={header.headerStyle}>
@@ -593,6 +617,38 @@ const styles = StyleSheet.create({
    * convention s'oublie, une rupture de fond se voit avant qu'on lise. »*
    * — plan de montage. Une barre pleine largeur, précédée d'air.
    */
+  porteCarnet: {
+    marginTop: space.xl,
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.bg.card,
+    borderRadius: radius.card,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: colors.border.card,
+    paddingVertical: space.lg,
+    paddingHorizontal: space.lg,
+  },
+  porteCarnetTexte: {
+    flex: 1,
+  },
+  porteCarnetTitre: {
+    fontFamily: typo.bodySemi,
+    fontSize: 16,
+    color: colors.text.hi,
+  },
+  porteCarnetSous: {
+    fontFamily: typo.body,
+    fontSize: 13,
+    lineHeight: 19,
+    color: colors.text.low,
+    marginTop: 2,
+  },
+  porteCarnetChevron: {
+    fontFamily: typo.body,
+    fontSize: 22,
+    color: colors.text.low,
+    marginLeft: space.md,
+  },
   ruptureSeances: {
     marginTop: space.xxl,
     marginBottom: space.xl,

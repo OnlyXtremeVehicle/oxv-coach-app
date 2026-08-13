@@ -60,11 +60,18 @@ import { useVousHub, type VousFounder, type VousHub } from '@/features/vous/useV
 const APP_VERSION: string | null =
   Application.nativeApplicationVersion ?? Constants.expoConfig?.version ?? null;
 
-/** Les sept portes de l'espace personnel (icône · libellé · route). */
+/**
+ * Les six portes de l'espace personnel (icône · libellé · route).
+ *
+ * ELLES ÉTAIENT SEPT JUSQU'AU 13/08/2026. Le carnet est parti dans Data —
+ * *« VOUS, ce qui est à vous et qui NE SE MESURE PAS »* (plan de montage,
+ * jalon 5, phase 4quater). Ce qui reste ici ne se mesure effectivement pas :
+ * un profil, un garage, du matériel, des documents, des réglages, un support.
+ * Le carnet, lui, suivait une progression, et se lit à côté des séances.
+ */
 const SECTIONS: readonly { icon: OxvIconName; label: string; href: string }[] = [
   { icon: 'casque', label: 'Profil public', href: '/(app2)/vous/profil' },
   { icon: 'cle', label: 'Garage', href: '/(app2)/vous/garage' },
-  { icon: 'data', label: 'Carnet', href: '/(app2)/vous/carnet' },
   { icon: 'ceinture', label: 'Équipement', href: '/(app2)/vous/equipement' },
   { icon: 'drapeau-damier', label: 'Licence & documents', href: '/(app2)/vous/documents' },
   { icon: 'cle', label: 'Réglages', href: '/(app2)/vous/reglages' },
