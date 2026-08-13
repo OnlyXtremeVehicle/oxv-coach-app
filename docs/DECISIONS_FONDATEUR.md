@@ -1,8 +1,12 @@
 # Ce qui attend une décision de votre part
 
-> Ouvert le 04/08/2026. Un seul endroit pour tout ce qui est arrêté faute d'un
-> arbitrage, à travers les neuf jalons du programme V3 et la coordination avec
-> le site.
+> Ouvert le 04/08/2026, **mis à jour le 13/08 après l'essai terrain de
+> Bouteville**. Un seul endroit pour tout ce qui est arrêté faute d'un arbitrage,
+> à travers les neuf jalons du programme V3 et la coordination avec le site.
+>
+> **Si vous ne lisez qu'une section, lisez la § 0.** Cinq points courts, dont
+> trois gestes de quelques minutes — et l'un d'eux arrête l'envoi de deux mesures
+> inventées à vos clients.
 >
 > **Ce document ne remplace pas `docs/DETTE.md`.** La dette recense ce qui est
 > constaté ; celui-ci recense ce qui est *bloqué*, et par quoi.
@@ -28,6 +32,93 @@ Ce sont les plus faciles, et ce sont ceux qui traînent le plus longtemps.
 
 Chaque entrée porte ce qu'il en coûte de ne pas trancher. Certaines ne coûtent
 rien aujourd'hui, et c'est écrit aussi.
+
+---
+
+# 0 · APRÈS L'ESSAI TERRAIN DU 13/08 — le plus court chemin
+
+*Ajouté le 13/08. Ces cinq points sont en tête parce qu'ils sont courts, qu'ils
+touchent des données ou des clients réels, et qu'aucun ne demande de réfléchir
+longtemps.*
+
+## 0.1 — GESTE · Renseigner la longueur de vos trois tours
+
+**Une commande. Elle ouvre le cinquième niveau de restitution.**
+
+```bash
+psql "$SUPABASE_DB_URL" -f scripts/sql/backfill_laps_distance.sql
+```
+
+`laps.distance_meters` n'a jamais été écrite — documenté depuis le 26/07,
+corrigé le 13/08 pour toutes les séances À VENIR. Vos trois tours de Bouteville
+gardent donc une longueur vide, et `compteToursComparables` n'accepte que des
+longueurs strictement positives : le niveau « Le delta et la trace » reste fermé
+sur votre séance, avec le message *« Aucun tour comparable »* — alors que vos
+trois tours tiennent dans quatre mètres.
+
+**Ce que le script calcule.** L'intégration de la vitesse Doppler sur vos propres
+trames, exactement comme le fait désormais l'odomètre embarqué. Vérifié par
+recoupement avec `avg_speed_kmh × duration_seconds` : les deux méthodes
+concordent à **1,4 m près sur 5 875**. Idempotent, ne touche que les lignes
+nulles, réversible (requête d'annulation en fin de fichier).
+
+**Coût de ne rien faire.** Quatre niveaux sur cinq au lieu de cinq, pour toujours,
+sur la seule séance réelle que porte la base.
+
+## 0.2 — GESTE · Déployer `ritual_dispatcher`
+
+**La fonction envoie toujours « 0°C · Conditions à confirmer » et « Vent 0 km/h »
+à vos pilotes, la veille de leur journée.**
+
+Le correctif est dans le dépôt depuis le 13/08 — la ligne météo est composée en
+amont, et sans mesure elle dit « Prévision indisponible ». La fonction déployée,
+elle, est celle d'avant.
+
+**Je ne l'ai pas déployée : elle écrit à vos clients.** C'est un envoi sortant,
+et il ne m'appartient pas de le déclencher.
+
+**Coût de ne rien faire.** Deux mesures inventées, présentées comme des mesures,
+à chaque J-1 — c'est la consigne A-WEATHER-1 violée au mot près, dans le seul
+message que le pilote reçoit avant de rouler.
+
+## 0.3 — GESTE · Signer le Pacte de Pilotage
+
+Sur `gabinfillat@gmail.com`. Jamais fait. L'application le proposera au premier
+lancement, une fois.
+
+**Je ne l'ai pas signé à votre place, et je ne le ferai pas.** Un pacte accepté
+par un tiers ne vaut rien, et ce n'est pas à moi de cocher une case qui vous
+engage.
+
+## 0.4 — DÉCISION · Le quota de builds iOS est épuisé
+
+Le plan gratuit EAS ne rend ses builds iOS que le **1er septembre**.
+
+**Ce qui est déjà construit et testable :** le build 50 porte onze des douze lots
+du 13/08 — tout ce qui a cassé au terrain est dedans.
+
+**Ce qui n'est dans aucun build :** la récupération automatique des trames au
+lancement. Elle est committée et testée, mais ne tournera sur appareil qu'au
+prochain build. Sans conséquence pour l'essai suivant : ce filet ne sert que si
+une séance a perdu des trames côté serveur, ce qui n'est pas arrivé.
+
+**Deux issues, et c'est un choix d'argent :** passer le compte EAS en plan payant,
+ou faire un build local avec Xcode. Aucune n'est à moi de trancher.
+
+## 0.5 — GESTE · La vérification qu'aucun test ne remplacera
+
+**Verrouillez l'écran en pleine séance, roulez dix minutes, regardez si les
+trames sont là.**
+
+L'arrière-plan BLE est déclaré en entier — `modes: ['central']`,
+`isBackgroundEnabled`, et surtout `restoreStateIdentifier`, celui sans lequel iOS
+ne réveille jamais l'application. Une garde fige les trois morceaux ensemble.
+
+Mais **aucun test ne réveille un téléphone**, et aucun harnais de test n'a de fil
+UI. C'est la seule vérification qui compte, et elle est au circuit.
+
+Si les trames ne suivent pas, le message « AUCUNE DONNÉE » s'affichera au bout de
+douze secondes — vous le saurez sur place, plus au retour.
 
 ---
 
@@ -450,17 +541,33 @@ Bloque T3 du Jalon 1 — la mesure des temps d'image sur appareil réel. Le
 workflow existe, désactivé, en attente d'une étiquette d'exécuteur qui n'existe
 pas. Ce n'est pas réglable depuis un poste Windows.
 
-## 4.4 — Une séance réelle à Valence
+## 4.4 — Une séance réelle — ~~à Valence~~ **FAITE, à Bouteville le 13/08**
 
-Bloque, en cascade : la calibration de tous les seuils du socle de calcul, la
-fermeture du delta sur une trace enregistrée, le remplissage des six lectures
-d'Insight, et la vérification de la célébration de record — seule famille
-d'animation qu'aucune liste de bureau ne peut couvrir.
+*Mis à jour le 13/08. Cette entrée était le point de blocage le plus large du
+document ; elle est en grande partie levée.*
+
+La séance a produit **26 999 trames et trois tours**, toutes porteuses de vitesse
+de lacet et des deux accélérations. La base est passée de 53 trames à 27 052.
+
+**Ce que ça débloque, effectivement :** quatre des cinq niveaux de restitution
+s'ouvrent sur données réelles (le cinquième attend le geste 0.1), et les mesures
+des jalons 1 et 4 ne portent plus uniquement sur des séries fabriquées.
+
+**Ce qui reste ouvert, et qu'il ne faut pas déduire :**
+
+- la **calibration des seuils** du socle de calcul demande plusieurs séances, pas
+  une — et Bouteville est une boucle de routes ouvertes, pas un circuit fermé ;
+- le **seuil réel de bascule superposition → bande** reste une convention à 24 ;
+- la **célébration de record** n'a toujours pas été observée : elle se déclenchait
+  à chaque séance jusqu'au 13/08 (défaut corrigé), donc ce qui a été vu ne
+  prouvait rien ;
+- les **six lectures d'Insight** n'ont pas été vérifiées sur cette séance.
 
 ## 4.5 — La publication de `origin/main`
 
-`main` est **68 commits derrière** la branche de travail. Ce n'est pas un
-problème technique ; c'est une décision de publication qui n'a jamais été prise.
+`main` est loin derrière la branche de travail — **68 commits au 04/08, davantage
+depuis**. Ce n'est pas un problème technique ; c'est une décision de publication
+qui n'a jamais été prise.
 
 ---
 
@@ -508,6 +615,9 @@ raccourcissent.*
 
 | Date | Sujet | Décision |
 |---|---|---|
+| 13/08 | **Récupération des trames au lancement** | **Automatique.** Si une séance a perdu des trames côté serveur, ses octets sont sur le téléphone : l'application les recolle seule au démarrage, sans rien demander. Bornée à une séance par lancement, la plus récente d'abord, et aucun fichier n'est LU tant qu'un manque n'est pas établi par comptage. Un comptage impossible ne conclut rien. |
+| 13/08 | **Arrière-plan BLE** | **Activé.** Les trois morceaux ensemble — `modes: ['central']`, `isBackgroundEnabled`, `restoreStateIdentifier`. Le troisième est celui qui fait fonctionner le mécanisme : sans lui, le manifeste passe la revue App Store et rien ne se produit. **Reste à vérifier au circuit** (§0.5) : aucun test ne réveille un téléphone. |
+| 13/08 | **Hub PISTE** | **Adapté, pas supprimé.** Une vérification l'avait classé « code mort » ; le constat était juste dans ses effets et faux dans sa cause — il était INATTEIGNABLE, `setSessions` n'ayant aucun appelant. Le supprimer aurait effacé le seul écran qui sait reprendre un jour J à son étape. Une garde fige désormais ses entrées. |
 | 12/08 | Fenêtre du radar Signature | **Tranchée en autonomie** — les 30 jours tombent, le radar lit l'historique borné (24 séances). Pour six journées de piste par an, une fenêtre d'un mois laissait le radar vide onze mois sur douze ; le plan V3 fixe d'ailleurs les effectifs du sélecteur en séances d'historique (« Signature générale · 11 séances »). La Saison reste l'objet du temps. **Réversible :** `BASELINE_MAX_SESSIONS` dans `useSignature`. |
 | 12/08 | Destination du bouton central | **Tranchée en autonomie** — le Pass, sauf capture en cours. Le plan le dit deux fois (« le bouton central ouvre le Pass », « le bouton Réserver ouvre le Pass y compris quand `app_payments` est fermé »). Le câblage L0 menait à la porte Club. **Réversible :** `centralButtonRoute`. |
 | 12/08 | QR de pointage — statuts éligibles | **Tranchée en autonomie**, fail-closed : `confirmed` et `attended` seulement. Une journée réservée non réglée se voit dans le Pass mais ne produit pas de code — le portail, devant la file, est le pire endroit pour l'apprendre. **Réversible :** `qrAffichable`. |
