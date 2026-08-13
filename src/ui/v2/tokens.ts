@@ -52,11 +52,49 @@ export const colors = {
   },
 } as const;
 
+/**
+ * LES CINQ FAMILLES N'ÉTAIENT PAS UN HISTORIQUE — DEUX SYSTÈMES COEXISTAIENT.
+ *
+ * ===========================================================================
+ * CE QUE LA MESURE A MONTRÉ, LE 13/08/2026
+ * ===========================================================================
+ *
+ * Le dépôt porte DEUX tables de jetons typographiques :
+ *
+ *   `src/theme/v2.ts`      Hanken Grotesk + JetBrains Mono   — 170 fichiers
+ *   `src/ui/v2/tokens.ts`  Michroma + Inter + JetBrains Mono —  57 fichiers
+ *
+ * La première est le système V3 adopté ; la seconde est l'ancien kit, que le
+ * commentaire du baril annonce migrer « jusqu'à la bascule L6 » — bascule qui
+ * n'a jamais eu lieu. Cinq familles ne décrivent donc pas une accumulation de
+ * goûts : elles décrivent une migration à l'arrêt.
+ *
+ * ===========================================================================
+ * CE QUI EST FAIT ICI, ET CE QUI ATTEND UN ŒIL
+ * ===========================================================================
+ *
+ * **Inter sort.** L'arbitrage du 13/08 est explicite : « une redondance pure, à
+ * retirer sans regarder — il fait exactement le travail de Hanken Grotesk ». Les
+ * trois graisses de corps basculent, et 66 fichiers suivent sans être touchés.
+ *
+ * **Michroma reste, pour l'instant.** Le même arbitrage sépare les deux cas :
+ * « Michroma et Syncopate sont des langages de TITRE — les retirer change
+ * l'allure de PROFIL et des cartes. Faites-le, mais regardez ces deux écrans
+ * avant de le figer, pas après. »
+ *
+ * `typo.display` est employé par **39 écrans**, dont tout le flux REC et tout
+ * l'espace Club. Le remplacer sans l'avoir vu changerait l'identité visuelle de
+ * l'application pilote entière — et le quota de builds iOS est épuisé jusqu'au
+ * 1er septembre. On ne bascule pas une identité à l'aveugle.
+ *
+ * La ligne est prête : `display: 'HankenGrotesk_600SemiBold'`, la valeur que
+ * `src/theme/v2.ts` emploie déjà.
+ */
 export const type = {
   display: 'Michroma_400Regular',
-  body: 'Inter_400Regular',
-  bodyMedium: 'Inter_500Medium',
-  bodySemi: 'Inter_600SemiBold',
+  body: 'HankenGrotesk_400Regular',
+  bodyMedium: 'HankenGrotesk_500Medium',
+  bodySemi: 'HankenGrotesk_600SemiBold',
   mono: 'JetBrainsMono_500Medium',
   monoSemi: 'JetBrainsMono_600SemiBold',
 } as const;
