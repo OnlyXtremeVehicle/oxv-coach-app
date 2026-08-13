@@ -61,7 +61,22 @@ export interface BrakingOptions {
   minDuration?: number;
 }
 
-const SEUIL_DEFAUT_G = -0.3;
+/**
+ * Seuil d'entrée en freinage, en g. **Constante PARTAGÉE du dépôt.**
+ *
+ * −0,3 g est la convention qui sépare un freinage d'un simple lever de pied :
+ * le frein moteur d'une voiture de route décélère autour de −0,1 à −0,2 g, un
+ * appui franc dépasse largement −0,5 g.
+ *
+ * Elle est exportée depuis le 13/08/2026 parce que `brakingPointsService`
+ * portait son PROPRE critère — une chute de 15 km/h, sans notion de distance —
+ * et que deux seuils pour une même notion finissent toujours par diverger.
+ * `DETTE.md` relevait « trois seuils de freinage sans constante partagée » ;
+ * c'en est une.
+ */
+export const SEUIL_FREINAGE_G = -0.3;
+
+const SEUIL_DEFAUT_G = SEUIL_FREINAGE_G;
 const RELACHE_DEFAUT_G = -0.15;
 const DUREE_MIN_DEFAUT_S = 0.2;
 

@@ -31,6 +31,7 @@ import { router, useLocalSearchParams } from 'expo-router';
 import Svg, { Defs, LinearGradient, Rect, Stop } from 'react-native-svg';
 
 import { PilotPreset, type TrajectoryPoint } from '@/components/CircuitMap';
+import { detectBrakingPoints } from '@/services/brakingPointsService';
 import { FadeInSection, PressableScale, Stagger } from '@/components/motion';
 import { COACH_CONSOLE_MIN_WIDTH } from '@/lib/coachNav';
 import { type TriageCorner } from '@/services/coachTriageLogic';
@@ -63,6 +64,31 @@ export default function CoachTriageScreen() {
   const [corners, setCorners] = useState<TriageCorner[]>([]);
   const [trajectory, setTrajectory] = useState<TrajectoryPoint[] | null>(null);
   const [selected, setSelected] = useState<number | null>(null);
+
+  /**
+   * LES POINTS DE FREINAGE — la prop que personne ne passait.
+   *
+   * `BrakingPointsLayer` est monté dans `PilotPreset` derrière une garde
+   * `brakingPoints && length > 0`, et aucun appelant ne la fournissait : un
+   * layer entier qui ne pouvait pas s'allumer, et un service dont le seul
+   * importateur était son propre test.
+   *
+   * La trajectoire est DÉJÀ chargée pour la carte. `TrajectoryPoint` et
+   * `TrajPoint` sont structurellement identiques — lat, lon, vitesse — donc il
+   * n'y a rien à convertir. Il manquait le calcul et la ligne.
+   *
+   * `useMemo` : la détection parcourt la trajectoire entière, et cet écran se
+   * re-rend à chaque sélection de virage.
+   *
+   * Rendu `undefined` et non `[]` quand il n'y a rien : la garde du preset
+   * teste la longueur, mais un tableau vide dirait « calculé, aucun freinage »
+   * là où l'on veut dire « pas de trajectoire ».
+   */
+  const brakingPoints = useMemo(() => {
+    if (trajectory === null || trajectory.length < 3) return undefined;
+    const pts = detectBrakingPoints(trajectory);
+    return pts.length > 0 ? pts : undefined;
+  }, [trajectory]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const [reloadKey, setReloadKey] = useState(0);
@@ -164,6 +190,7 @@ export default function CoachTriageScreen() {
                 circuitName={circuitName}
                 animate
                 trajectory={trajectory ?? undefined}
+                brakingPoints={brakingPoints}
                 zoneByIndex={zoneByIndex}
                 selectedIndex={selected}
                 height={isConsole ? 400 : 300}
