@@ -34,6 +34,7 @@
  * Voir docs/architecture/02_PARTIE_2_algorithmes.md, sections 7-8.
  */
 
+import { computeRegularite } from '@/services/qdiLogic';
 import { marginZoneOf, type MarginPercent, type MarginZone } from '@/types/domain';
 import type { Lap, TelemetrySession } from '@/types/telemetry';
 
@@ -93,28 +94,19 @@ export const DEFAULT_VEHICLE: VehicleParameters = {
  * cherche un bug là où il y a un désaccord de calibration.
  *
  * ---------------------------------------------------------------------------
- * ET LA CALIBRATION DE LA MARGE EST DIMENSIONNELLEMENT FAUSSE
+ * LA CALIBRATION ÉTAIT FAUSSE AUSSI — CORRIGÉE LE 14/08
  * ---------------------------------------------------------------------------
  *
- * Le seuil de `computeConsistency` est ABSOLU : une seconde, quelle que soit la
- * longueur du tour. Il atteint zéro à cinq secondes d'écart-type.
+ * Le désaccord ne venait pas d'un choix de formule mais d'une erreur de
+ * dimension : la marge comparait des SECONDES à un seuil fixe. Voir
+ * `computeConsistency` plus bas, qui délègue désormais à `computeRegularite`.
  *
- * Sur un tour de kart de 60 s, cinq secondes d'écart-type, c'est 8 % — un
- * pilotage effectivement dispersé. Sur les tours de 5 min 42 de Bouteville,
- * c'est **1,5 %**, c'est-à-dire une régularité remarquable, et la formule la
- * note zéro. Elle compare un temps à un seuil sans le rapporter à la durée du
- * tour.
+ * Les deux valeurs de l'exemple ci-dessus ne peuvent donc plus diverger : il
+ * n'y a plus qu'un seul calcul, appelé de deux endroits.
  *
- * **Ce n'est pas corrigé ici, et c'est délibéré.** `consistency` pèse 0,6 de la
- * marge pilote, qui pèse 0,6 de `margin_global` — LE chiffre central du
- * produit. Le passer en relatif ferait passer Bouteville de 39 à 51, et ce
- * n'est pas à moi de déplacer le seul chiffre que l'écran affiche. Porté au
- * registre fondateur (§ 0.9) avec la reproduction.
- *
- * Le renommage porte sur les TROIS endroits, sans quoi il n'en corrige aucun :
- * le calcul ici, l'écrivain serveur (`cron-analyze-pending-sessions`, qui
- * réintroduirait la clé au prochain passage s'il n'était pas redéployé), et
- * les quatorze lignes déjà écrites.
+ * Ce qu'il reste à faire est un GESTE, pas une décision — un déploiement unique
+ * portant la clé ET la formule, et une reprise des lignes déjà écrites. Registre
+ * § 0.8.
  */
 export interface MarginBreakdown {
   vehicle: number | null;
@@ -248,9 +240,14 @@ interface PilotMarginResult {
 function computePilotMargin(laps: Lap[]): PilotMarginResult {
   const validLaps = laps.filter((l) => !l.is_outlap && !l.is_inlap && l.duration_seconds > 0);
 
-  // Régularité et fluidité sont des DISPERSIONS : sous deux tours valides il
+  // Constance et fluidité sont des DISPERSIONS : sous deux tours valides il
   // n'y a rien à disperser. Zéro tour n'est pas un pilote parfaitement régulier,
   // c'est une séance dont les tours ne sont pas (encore) là.
+  //
+  // La CONSTANCE, elle, en exige TROIS depuis le 14/08 — la garde de
+  // `computeRegularite`, à qui elle est déléguée. Deux tours ne donnent qu'un
+  // écart, et un écart n'est pas une dispersion. Elle rend alors `null`, ce que
+  // la suite traite comme une absence, jamais comme un zéro.
   if (validLaps.length < 2) {
     return {
       marginPilot: null,
@@ -264,11 +261,16 @@ function computePilotMargin(laps: Lap[]): PilotMarginResult {
   const smoothness = computeSmoothness(validLaps);
 
   // Même arbitrage que la marge globale : une composante absente ne se pondère
-  // pas. La régularité, elle, reste RÉELLE (les temps au tour sont mesurés) et
-  // continue d'être exposée dans le breakdown — mais elle ne peut pas tenir lieu
-  // de marge pilote à elle seule.
+  // pas. Les DEUX sont désormais traitées symétriquement — jusqu'au 14/08 seule
+  // la fluidité pouvait manquer, la constance étant toujours un nombre. Depuis
+  // qu'elle est déléguée au QDI, elle peut valoir `null` sous trois tours, et il
+  // n'y a aucune raison de la traiter autrement que sa jumelle.
+  //
+  // Chacune reste exposée dans le breakdown quand elle existe : une composante
+  // mesurée se montre même si l'autre manque. C'est la SOMME qui n'a pas de sens
+  // à un seul terme, pas les termes.
   const marginPilot =
-    smoothness !== null
+    consistency !== null && smoothness !== null
       ? clampMargin(CONSISTENCY_WEIGHT * consistency + SMOOTHNESS_WEIGHT * smoothness)
       : null;
 
@@ -276,33 +278,69 @@ function computePilotMargin(laps: Lap[]): PilotMarginResult {
 }
 
 /**
- * Constance : écart-type des temps au tour, mappé sur [0, 100].
- * écart-type ≤ 1 s → 100 · écart-type ≥ 5 s → 0.
+ * Constance : coefficient de variation des temps au tour — DÉLÉGUÉ au QDI.
+ *
+ * ===========================================================================
+ * ELLE PORTAIT UN SEUIL ABSOLU JUSQU'AU 14/08/2026, ET IL ÉTAIT FAUX
+ * ===========================================================================
+ *
+ * L'ancienne formule était `100 − max(0, σ − 1 s) × 25` : une seconde, cinq
+ * secondes, les mêmes bornes quelle que soit la longueur du tour. Or un
+ * écart-type ne se lit qu'en proportion de ce qu'il disperse.
+ *
+ *   tour de kart, 60 s        → σ = 5 s vaut 8 %    → dispersé, note zéro juste ;
+ *   tour de Bouteville, 342 s → σ = 5 s vaut 1,5 %  → remarquable, et notée ZÉRO.
+ *
+ * Sur la seule séance réelle de la base, elle rendait 0 là où le QDI — mêmes
+ * tours, coefficient de variation — rendait 34.
  *
  * ---------------------------------------------------------------------------
- * CE SEUIL EST ABSOLU, ET C'EST LE DÉFAUT — vu le 14/08/2026, NON corrigé ici
+ * CE QUI DÉSIGNE LE COUPABLE : LA JUMELLE, ELLE, FONCTIONNE
  * ---------------------------------------------------------------------------
  *
- * Une seconde, cinq secondes : les mêmes bornes quelle que soit la longueur du
- * tour. Or un écart-type ne se lit qu'en proportion de ce qu'il disperse.
+ * `computeSmoothness` applique exactement le même patron — un seuil, une pente
+ * — à des accélérations latérales, c'est-à-dire à une grandeur **déjà sans
+ * dimension**. Et elle est juste.
  *
- *   tour de kart, 60 s      → 5 s d'écart-type = 8 %   → « dispersé », vrai ;
- *   tour de Bouteville, 342 s → 5 s d'écart-type = 1,5 % → remarquable, et
- *                               cette formule le note ZÉRO.
+ * Des deux jumelles, celle qui porte sur un nombre sans unité marche, celle qui
+ * porte sur des secondes échoue. Ce n'est donc pas un oubli isolé : c'est ce qui
+ * arrive quand un seuil est écrit sans qu'on se demande **en quelle unité il
+ * est**. Le coefficient de variation n'est pas seulement une réponse possible,
+ * c'est LA réponse : il rend la grandeur sans dimension avant de la comparer.
  *
- * Sur la seule séance réelle de la base, elle rend 0 là où le QDI — qui part
- * des MÊMES temps, en coefficient de variation — rend 34. Les deux ont été
- * reproduits à l'unité (voir l'en-tête de `MarginBreakdown`).
+ * ---------------------------------------------------------------------------
+ * POURQUOI DÉLÉGUER PLUTÔT QUE RECOPIER
+ * ---------------------------------------------------------------------------
  *
- * Le correctif tient en une ligne : diviser par la moyenne avant de comparer.
- * Il n'est PAS appliqué parce que `consistency` pèse 0,6 de la marge pilote,
- * elle-même 0,6 de `margin_global` — le seul chiffre que l'écran affiche.
- * Bouteville passerait de 39 à 51. Déplacer le chiffre central du produit n'est
- * pas une correction de bord : c'est au fondateur (registre § 0.9).
+ * Une fois passé au coefficient de variation, ce calcul EST celui du QDI. En
+ * écrire une seconde copie, c'est reprogrammer la divergence qu'on vient de
+ * retirer — deux formules d'une même grandeur, qui finiront par ne plus
+ * s'accorder. `computeRegularite` est la source unique.
+ *
+ * Conséquence assumée : le minimum passe de deux tours à TROIS, la garde du
+ * QDI. Sous trois tours il n'y a qu'un ou deux écarts, ce qui ne fait pas une
+ * dispersion. `null` remonte alors jusqu'à la marge pilote — absence, jamais
+ * zéro. Aucune séance de production n'est concernée (une seule porte des tours
+ * valides, et elle en a trois).
+ *
+ * ---------------------------------------------------------------------------
+ * LE CORRECTIF REMONTE LA NOTE, ET CELA SE DIT
+ * ---------------------------------------------------------------------------
+ *
+ * `margin_global` est une RÉSERVE : `>= 30 → vert`, plus haut vaut mieux. Le
+ * défaut sous-notait ; le corriger relève. Bouteville passe de 39,20 à 51,44.
+ *
+ * C'est la direction qui ne déclenche aucune alarme chez qui la reçoit — un
+ * chiffre qui monte ne fait protester personne. Cela n'invalide rien : la
+ * formule d'avant était fausse pour une raison dimensionnelle, indépendante du
+ * sens du résultat. Mais c'est écrit ici plutôt que tu.
+ *
+ * Et la zone, elle, ne bouge pas : 39,20 comme 51,44 sont au-dessus de 30, donc
+ * verts tous les deux. J'avais annoncé un changement de zone au § 0.9 — il
+ * n'existe pas.
  */
-function computeConsistency(lapSecondsList: number[]): number {
-  const stddev = standardDeviation(lapSecondsList);
-  return clampMargin(100 - Math.max(0, stddev - 1) * 25);
+function computeConsistency(lapSecondsList: number[]): number | null {
+  return computeRegularite(lapSecondsList);
 }
 
 /**

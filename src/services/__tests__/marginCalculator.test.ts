@@ -39,10 +39,24 @@ function session(maxGLat: number | null): Pick<TelemetrySession, 'max_g_lateral'
   return { max_g_lateral: maxGLat };
 }
 
+/**
+ * TROIS tours, et non deux, DEPUIS LE 14/08/2026.
+ *
+ * `computeConsistency` est déléguée à `computeRegularite`, qui refuse en
+ * dessous de trois tours : deux tours ne donnent qu'UN écart, et un écart n'est
+ * pas une dispersion. Sous trois tours la constance vaut `null`, donc la marge
+ * pilote aussi, donc la marge globale — absence, jamais zéro.
+ *
+ * Les fixtures d'avant en avaient deux et passaient : la formule absolue, elle,
+ * acceptait n'importe quel nombre de tours. Le changement de minimum est une
+ * conséquence assumée du passage au coefficient de variation, pas un effet de
+ * bord — il est épinglé par son propre test plus bas.
+ */
 function regularLaps(): Lap[] {
   return [
     lap({ lap_number: 1, duration_seconds: 100, max_g_lateral: 0.5 }),
     lap({ lap_number: 2, duration_seconds: 100, max_g_lateral: 0.5 }),
+    lap({ lap_number: 3, duration_seconds: 100, max_g_lateral: 0.5 }),
   ];
 }
 
@@ -84,11 +98,12 @@ describe('computeMargin', () => {
       lap({ lap_number: 1, duration_seconds: 130, is_outlap: true, max_g_lateral: 0.3 }),
       lap({ lap_number: 2, duration_seconds: 100, max_g_lateral: 0.6 }),
       lap({ lap_number: 3, duration_seconds: 100.1, max_g_lateral: 0.61 }),
-      lap({ lap_number: 4, duration_seconds: 140, is_inlap: true, max_g_lateral: 0.2 }),
+      lap({ lap_number: 4, duration_seconds: 99.9, max_g_lateral: 0.59 }),
+      lap({ lap_number: 5, duration_seconds: 140, is_inlap: true, max_g_lateral: 0.2 }),
     ];
     const out = computeMargin({ session: session(0.65), laps });
-    // Seuls les tours 2 et 3 comptent : très réguliers.
-    expect(out.validLapCount).toBe(2);
+    // Seuls les tours 2, 3 et 4 comptent : très réguliers.
+    expect(out.validLapCount).toBe(3);
     expect(out.breakdown.consistency).toBeGreaterThan(95);
   });
 
@@ -105,6 +120,7 @@ describe('computeMargin', () => {
     const laps = [
       lap({ lap_number: 1, duration_seconds: 100, max_g_lateral: 0.5 }),
       lap({ lap_number: 2, duration_seconds: 100, max_g_lateral: 0.5 }),
+      lap({ lap_number: 3, duration_seconds: 100, max_g_lateral: 0.5 }),
     ];
     // Tours parfaitement réguliers → pilote 100. Véhicule à G ~ 50% → marge ~ 50.
     // Attendu global ≈ 0.4 * 50 + 0.6 * 100 = 80.
@@ -285,6 +301,54 @@ describe('computeMargin — fluidité : tours sans mesure', () => {
     const out = computeMargin({ session: session(0.6), laps });
     expect(out.breakdown.smoothness).toBeNull();
     expect(out.marginGlobal).toBeNull();
+  });
+});
+
+/**
+ * LE MINIMUM DE TROIS TOURS — conséquence assumée, épinglée ici.
+ *
+ * Jusqu'au 14/08/2026 la constance acceptait deux tours : la formule absolue se
+ * contentait d'un écart-type, quel qu'en soit le nombre de termes. Déléguée à
+ * `computeRegularite`, elle hérite de sa garde.
+ *
+ * Ce n'est pas une perte : deux tours donnent UN écart. Appeler cela une mesure
+ * de régularité, c'est la même thinness que le zéro fabriqué — on affiche un
+ * chiffre là où il n'y a pas de quoi en faire un.
+ *
+ * Et la marge globale disparaît AVEC elle, plutôt que de se rabattre sur la
+ * seule fluidité : une somme à un terme n'est pas une somme.
+ */
+describe('la constance exige trois tours, et le dit par une absence', () => {
+  const deuxTours = [
+    lap({ lap_number: 1, duration_seconds: 100, max_g_lateral: 0.5 }),
+    lap({ lap_number: 2, duration_seconds: 100, max_g_lateral: 0.5 }),
+  ];
+
+  it('deux tours : constance absente, jamais un zéro ni un cent', () => {
+    const out = computeMargin({ session: session(0.5), laps: deuxTours });
+    expect(out.breakdown.consistency).toBeNull();
+  });
+
+  it('la fluidité, elle, reste mesurée — une absence n’en entraîne pas deux', () => {
+    const out = computeMargin({ session: session(0.5), laps: deuxTours });
+    expect(out.breakdown.smoothness).not.toBeNull();
+  });
+
+  it('sans constance, pas de marge pilote ni de marge globale', () => {
+    const out = computeMargin({ session: session(0.5), laps: deuxTours });
+    expect(out.marginPilot).toBeNull();
+    expect(out.marginGlobal).toBeNull();
+    expect(isMarginResolved(out)).toBe(false);
+  });
+
+  it('le troisième tour suffit à tout rouvrir', () => {
+    const troisTours = [
+      ...deuxTours,
+      lap({ lap_number: 3, duration_seconds: 100, max_g_lateral: 0.5 }),
+    ];
+    const out = computeMargin({ session: session(0.5), laps: troisTours });
+    expect(out.breakdown.consistency).toBe(100);
+    expect(out.marginGlobal).not.toBeNull();
   });
 });
 

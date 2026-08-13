@@ -63,12 +63,44 @@ function stddev(values: number[]): number {
   return Math.sqrt(variance);
 }
 
-function computeConsistency(lapSeconds: number[]): number {
-  return clampMargin(100 - Math.max(0, stddev(lapSeconds) - 1) * 25);
+// COPIE DÉLIBÉRÉE de `computeRegularite` (src/services/qdiLogic.ts).
+//
+// Cette fonction tourne dans Deno et ne peut rien importer de `src/`. La copie
+// est donc structurelle, pas un oubli — et c'est exactement ainsi que deux
+// formules d'une même grandeur finissent par diverger. Un test compare les DEUX
+// implémentations sur une batterie d'entrées : il extrait celle-ci du fichier et
+// l'exécute contre celle de l'application (`cronMemeFormule.guard.test.ts`).
+//
+// Ce qu'elle a remplacé : `100 - max(0, σ - 1 s) * 25`, un seuil ABSOLU en
+// secondes. Il notait zéro une dispersion de 1,5 % sur des tours longs. La
+// jumelle `computeSmoothness`, elle, applique le même patron à des g — une
+// grandeur déjà sans dimension — et fonctionne. Le coefficient de variation
+// rend la durée sans dimension avant de la comparer.
+//
+// `null` sous trois tours : deux tours ne donnent qu'un écart, et un écart n'est
+// pas une dispersion.
+function computeConsistency(lapSeconds: number[]): number | null {
+  const laps = lapSeconds.filter((v) => Number.isFinite(v) && v > 0);
+  if (laps.length < 3) return null;
+  const mean = laps.reduce((a, b) => a + b, 0) / laps.length;
+  const variance = laps.reduce((a, b) => a + (b - mean) ** 2, 0) / laps.length;
+  const cv = Math.sqrt(variance) / mean;
+  return Math.round(100 * (1 - Math.max(0, Math.min(1, cv / 0.06))));
 }
 
-function computeSmoothness(gLats: number[]): number {
-  return clampMargin(100 - Math.max(0, stddev(gLats) - 0.05) * 200);
+// Le seuil est ici appliqué à des g — sans dimension. Cette formule-là est
+// juste, et elle est conservée telle quelle.
+//
+// Ce qui NE l'était pas : l'appelant passait `Number(l.max_g_lateral ?? 0)`, et
+// fabriquait donc un « 0 g » pour chaque tour non mesuré. Une dispersion de
+// zéros identiques vaut zéro, la fluidité sortait à 100, et environ 24 % de la
+// marge globale reposait sur rien. L'application avait corrigé ce défaut ; la
+// fonction serveur le portait encore. Les tours sans mesure sont désormais
+// ÉCARTÉS, et sous deux tours mesurés la fluidité vaut `null`.
+function computeSmoothness(gLats: (number | null)[]): number | null {
+  const mesures = gLats.filter((v): v is number => typeof v === 'number' && Number.isFinite(v));
+  if (mesures.length < 2) return null;
+  return clampMargin(100 - Math.max(0, stddev(mesures) - 0.05) * 200);
 }
 
 function marginZoneOf(p: number): 'green' | 'yellow' | 'red' {
@@ -134,16 +166,32 @@ Deno.serve(async (req: Request) => {
 
 // deno-lint-ignore no-explicit-any
 async function processSessions(supabase: any, sessions: any[]) {
-  const results: { sessionId: string; ok: boolean; marginGlobal?: number; error?: string }[] = [];
+  const results: {
+    sessionId: string;
+    ok: boolean;
+    marginGlobal?: number;
+    skipped?: string;
+    error?: string;
+  }[] = [];
 
   for (const session of sessions) {
     try {
-      // Compute véhicule margin (G_lat observé vs seuil)
-      const observedG = Number(session.max_g_lateral ?? 0);
+      // MARGE VÉHICULE — `NULL` veut dire « pas encore mesuré », pas « 0 g ».
+      //
+      // Cette fonction lisait `Number(session.max_g_lateral ?? 0)`, puis rendait
+      // 100 quand le résultat valait zéro. Une séance dont la colonne est nulle
+      // — parce qu'elle n'est écrite qu'à la CLÔTURE — recevait donc « 100 % de
+      // marge véhicule », c'est-à-dire le chiffre roi du bilan, faux et persisté
+      // à vie. L'application avait corrigé ce défaut ; le serveur le portait
+      // encore, et il a écrit cinq lignes à `margin_global = 100`.
+      //
+      // Absence → on n'écrit rien du tout.
+      const brut = session.max_g_lateral;
+      const observedG = brut === null || brut === undefined ? null : Number(brut);
       const vehicleMargin =
-        observedG > 0
+        observedG !== null && Number.isFinite(observedG) && observedG > 0
           ? clampMargin((1 - observedG / DEFAULT_VEHICLE_G_LAT) * 100)
-          : 100;
+          : null;
 
       // Récupérer les laps valides (hors outlap/inlap)
       const { data: laps } = await supabase
@@ -159,13 +207,28 @@ async function processSessions(supabase: any, sessions: any[]) {
         (l) => !l.is_outlap && !l.is_inlap && l.duration_seconds > 0
       );
 
-      let pilotMargin = 100;
-      let consistency = 100;
-      let smoothness = 100;
+      // Plus de valeur par défaut à 100 : une séance sans tours n'est pas un
+      // pilotage parfait, c'est une séance sans tours. `null` remonte jusqu'à la
+      // marge globale, qui n'est alors pas écrite.
+      let consistency: number | null = null;
+      let smoothness: number | null = null;
+      let pilotMargin: number | null = null;
       if (validLaps.length >= 2) {
         consistency = computeConsistency(validLaps.map((l) => l.duration_seconds));
-        smoothness = computeSmoothness(validLaps.map((l) => Number(l.max_g_lateral ?? 0)));
-        pilotMargin = clampMargin(CONSISTENCY_WEIGHT * consistency + SMOOTHNESS_WEIGHT * smoothness);
+        smoothness = computeSmoothness(
+          validLaps.map((l) => (l.max_g_lateral === null ? null : Number(l.max_g_lateral)))
+        );
+        pilotMargin =
+          consistency !== null && smoothness !== null
+            ? clampMargin(CONSISTENCY_WEIGHT * consistency + SMOOTHNESS_WEIGHT * smoothness)
+            : null;
+      }
+
+      // Une composante absente ne se pondère pas. Sans l'une des deux, il n'y a
+      // pas de marge globale — et surtout pas « une marge de 100 % ».
+      if (pilotMargin === null || vehicleMargin === null) {
+        results.push({ sessionId: session.id, ok: true, skipped: 'marge non calculable' });
+        continue;
       }
 
       const marginGlobal = clampMargin(

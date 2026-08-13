@@ -6,8 +6,8 @@
 >
 > **Si vous ne lisez qu'une section, lisez la § 0.** Le § 0.4 se répond par oui ou
 > par non et vous seul le pouvez ; le § 0.2 arrête l'envoi de deux mesures
-> inventées à vos clients ; le § 0.9 explique pourquoi votre marge de Bouteville
-> vaut 39 quand elle devrait en valoir 51.
+> inventées à vos clients ; le § 0.8 est devenu UNE commande, et elle
+> corrige quatre défauts d'un coup — dont cinq analyses à « 100 % de marge ».
 >
 > **Ce document ne remplace pas `docs/DETTE.md`.** La dette recense ce qui est
 > constaté ; celui-ci recense ce qui est *bloqué*, et par quoi.
@@ -49,8 +49,9 @@ reste.*
 *Le § 0.7 a été TRANCHÉ le 13/08 — il est conservé, clos, parce que le
 raisonnement vaut d'être gardé. Il tenait la dernière ligne ouverte du jalon 5.*
 
-*Restent donc HUIT points ouverts : 0.1 à 0.6, 0.8, et 0.9 — ce dernier ajouté
-le 14/08, après que j'ai dû corriger ce que j'avais écrit la veille.*
+*Restent SEPT points ouverts : 0.1 à 0.6, et 0.8. Les § 0.7 et 0.9 sont tranchés
+et conservés, clos — dans les deux cas parce que le raisonnement vaut d'être
+gardé, et dans les deux cas après une erreur de ma part.*
 
 ## 0.1 — GESTE · Renseigner la longueur de vos trois tours
 
@@ -137,6 +138,32 @@ fichiers de l'application mobile. C'est la cinquième fois que cette réserve se
 vérifie.
 
 Reste donc une seule question, et elle est de fait, pas de conception.
+
+### La colonne peut partir — et elle ne part pas seule
+
+*Ajouté le 14/08 : « ma vérification du site tient sur les dix branches : la
+colonne peut être supprimée. »*
+
+`supabase/migrations/PROPOSITION_J6_drop_users_is_admin.sql` — écrite, **non
+appliquée** (elle supprime une colonne).
+
+**Ce que le balayage a trouvé, et qui ne se voit pas.** Un `DROP COLUMN` seul
+aurait cassé **tout `UPDATE` sur `public.users`** — toute édition de profil,
+tout changement de rôle — au premier écrit, avec une erreur muette sur son
+origine. Deux triggers lisent encore `new.is_admin` :
+
+| trigger | ce qu'il fait |
+|---|---|
+| `trg_guard_users_privileged_columns` | garde `role` / `kyc_status` / `is_admin` |
+| `trg_audit_user_is_admin_change` | journalise les bascules de la colonne |
+
+`plpgsql` ne vérifie ses colonnes qu'à L'EXÉCUTION. Rien n'aurait prévenu — le
+même piège que `purge_user_data` cassée par un `DROP TABLE` le 01/08.
+
+La migration traite donc les trois dans l'ordre : l'audit disparaît (il n'a plus
+d'objet), la garde est réécrite sans sa clause morte, **et seulement ensuite** la
+colonne tombe. Elle porte sa vérification d'après : un `UPDATE` quelconque sur
+`users`, dans une transaction annulée.
 
 ## 0.5 — DÉCISION · Le quota de builds iOS est épuisé
 
@@ -231,138 +258,120 @@ cela ne fabrique pas la donnée.
 
 ---
 
-## 0.8 — GESTE · Deux commandes que le classifieur m'a refusées
+## 0.8 — GESTE · UN déploiement, portant la clé ET la formule
 
-**Le renommage `regularity` → `consistency` est fait dans le code. Il lui manque
-ses deux moitiés de production, et je n'ai pas pu les exécuter.**
+*Réécrit le 14/08. La version d'hier demandait un déploiement de renommage plus
+une migration de quatorze lignes. Vous avez montré que les deux étaient à jeter :
+le déploiement aurait été périmé avant d'être fait, et la migration renommait une
+clé sur un objet destiné à être réécrit. Vous aviez raison sur les deux.*
 
-Les deux actions ont été refusées par le classifieur de sécurité. Je ne les ai
-pas contournées.
-
-### Ce qui est déjà fait
-
-Le calcul embarqué, la lecture du coach, l'écran de pondération et la source de
-la fonction serveur portent tous `consistency`. Une garde lexicale
-(`margeConsistency.guard.test.ts`) interdit le retour du mot dans le code des
-quatre fichiers concernés — y compris la fonction Deno, que `tsc` ne compile pas
-et que rien d'autre ne surveillait.
-
-### 1. Redéployer la fonction serveur
+### Une seule commande
 
 ```bash
 supabase functions deploy cron-analyze-pending-sessions --project-ref fouvuqkdxarjpjbqnsjq
 ```
 
-C'est **le second écrivain de la même colonne**, et il tourne : `pg_cron` job 4,
-« analyze-pending-sessions », actif, toutes les heures.
+Elle porte maintenant **quatre corrections d'un coup**, pas seulement le
+renommage :
 
-Précision qui change la gravité : il ne balaye que les séances **dépourvues**
-d'analyse. Il ne réécrira donc pas les lignes converties — mais chaque séance
-neuve repartirait avec l'ancienne clé, et la colonne porterait deux formes.
+| | ce que la fonction déployée fait aujourd'hui |
+|---|---|
+| la clé | écrit `regularity` |
+| la constance | seuil ABSOLU en secondes — note 0 une dispersion de 3,98 % |
+| la marge pilote | vaut **100 par défaut** quand la séance n'a pas deux tours |
+| la marge véhicule | lit `max_g_lateral ?? 0`, donc **100 %** quand la colonne est nulle |
 
-### 2. Convertir les quatorze lignes existantes
+Les deux dernières ne venaient pas de vous ni de moi : elles étaient là depuis le
+premier jour, et l'application les avait corrigées de son côté sans que le
+serveur suive.
 
-Le fichier est prêt :
-`supabase/migrations/20260813233000_j6_margin_breakdown_consistency.sql`
+### La fenêtre de risque est vide, vous l'aviez dit
 
-Elle est idempotente, ne change **aucune valeur** — seulement le nom d'une clé —
-et se vérifie elle-même : si une ligne portait encore l'ancienne clé après
-l'`UPDATE`, elle échoue au lieu de se déclarer réussie.
+Vérifié : **11 séances `completed`, 0 sans analyse.** Le cron (job 4, horaire) ne
+traitera rien à l'heure ronde. Rien ne presse, et rien ne se dégrade en
+attendant.
 
-### Ce que vous ne risquez pas en attendant
+### Ce que ces quatre défauts ont écrit en base
 
-**Rien ne lit `margin_breakdown` aujourd'hui.** `DebriefMirror` — le composant
-des « quatre piliers » — n'a aucun appelant, et `computeCoachReading` non plus.
-La colonne est écrite par deux sources et lue par zéro écran.
+C'est le vrai sujet, et il n'était dans aucun document. Sur les quatorze
+analyses :
 
-C'est un constat en soi, et il vaut d'être noté : les quatre piliers du
-débriefing sont calculés, stockés, et affichés nulle part.
+- **cinq** portent `margin_global = 100.00` ;
+- **treize** portent `margin_pilot = 100.00` — la valeur par défaut, jamais une
+  mesure ;
+- **trois** ont `max_g_lateral IS NULL` en séance et pourtant
+  `margin_vehicle = 100.00` ;
+- plusieurs portent des G latéraux de 5 à 6,7 g, impossibles pour une voiture de
+  route.
 
-### Deux points annexes, laissés en place
+**Une seule séance porte des tours valides, et c'est Bouteville.** Treize de ces
+quatorze analyses ne mesurent rien.
 
-- **`coach_reading_weights.w_regularity`** garde son nom : c'est une colonne, et
-  le schéma vous revient. Le champ TypeScript est passé à `wConsistency`, la
-  correspondance est faite au seul endroit qui mappe la table. La migration est
-  écrite et prête —
-  `supabase/migrations/PROPOSITION_J6_w_regularity_vers_w_consistency.sql`.
-  **Le moment est bon et ne le restera pas** : la table est vide tant qu'aucun
-  compte coach n'existe, et il n'en existe aucun. Un mot suffit.
-- **Les teintes empruntées : RÉGLÉ le 14/08**, sans rien vous demander. « Constance »
-  portait `dataColors.regularity` et « Fluidité » `dataColors.flow` — deux
-  couleurs de BRANCHES QDI posées sur des sous-composantes de la marge qui ne
-  sont pas ces branches. La couleur ne distinguait d'ailleurs rien : véhicule et
-  pilote partageaient déjà la même. Les quatre poids sont désormais neutres —
-  ce sont des réglages, pas des données.
+### La migration qui remplace celle d'hier
+
+`supabase/migrations/PROPOSITION_J6_reprise_analyses_fabriquees.sql` — non
+appliquée, elle efface des valeurs.
+
+Elle vide la marge des lignes non calculables **sans supprimer les lignes** : le
+`qdi`, le débrief et le focus sont conservés. La fonction redéployée les reprend
+au passage suivant et n'écrit que ce qu'elle peut calculer.
+
+**Ordre impératif : déployer D'ABORD.** Appliquée avant, elle ferait recalculer
+par l'ancien code, qui refabriquerait les mêmes 100.
 
 ---
 
-## 0.9 — DÉCISION · La marge note zéro une régularité de 3,98 %
+## 0.9 — TRANCHÉ le 14/08/2026 · La marge notait zéro une régularité de 3,98 %
 
-**Et j'ai d'abord raconté cette affaire de travers. La correction d'abord.**
+*Je l'avais posée comme une décision, en la présentant comme lourde. Elle ne
+l'était pas — et l'argument qui la rendait lourde était faux.*
 
-### Ce que j'avais écrit, et qui était faux
+### Ce que j'avais annoncé, et qui n'existe pas
 
-Le 13/08 au soir, dans quatre fichiers et dans un commit, j'ai écrit que
-`qdi.regularite` et `margin_breakdown.regularity` étaient **deux mesures
-différentes** — « le QDI mesure la constance du geste, la marge la dispersion
-des temps au tour ».
+J'ai écrit que corriger la formule ferait **changer de zone** votre séance, et
+que c'est ce qui en faisait « autre chose qu'une correction de bord ».
 
-`qdiLogic.computeRegularite` reçoit `laps.map((l) => l.durationSeconds)`. **Les
-deux partent des mêmes temps au tour.** Ce n'était pas une homonymie entre deux
-grandeurs : c'est **une grandeur, deux formules qui ne s'accordent pas**.
+`marginZoneOf` : `>= 30 → vert`. **39,20 et 51,44 sont verts tous les deux.**
+Aucun changement de zone. Et la réserve qui accompagnait le constat — « si
+l'application porte d'autres seuils, c'est un quatrième défaut de duplication »
+— est levée : `DEFAULT_MARGIN_THRESHOLDS` vaut 30/15, identique au serveur. La
+*fonction* est dupliquée, ses *valeurs* ne divergent pas.
 
-Le renommage reste justifié — deux formules d'une même grandeur doivent porter
-deux noms —, mais le motif n'était pas celui que j'avais écrit. Les quatre
-fichiers portent la correction.
+### Ce qui désignait le coupable, et que j'avais sous les yeux
 
-### Le vrai défaut, reproduit sur vos trois tours
+`computeSmoothness` applique **exactement le même patron** — un seuil, une pente
+— à des accélérations latérales, c'est-à-dire à une grandeur **déjà sans
+dimension**. Et elle est juste.
 
-| | |
-|---|---:|
-| Vos tours de Bouteville | 360,485 · 327,542 · 339,483 s |
-| Moyenne | 342,503 s |
-| Écart-type | 13,617 s |
-| **Dispersion relative** | **3,98 %** |
-| QDI (coefficient de variation) | **34** |
-| Marge (écart-type absolu) | **0** |
+Des deux jumelles, celle qui porte sur un nombre sans unité marche ; celle qui
+porte sur des secondes échoue. Ce n'est donc pas un oubli isolé : c'est ce qui
+arrive quand un seuil est écrit sans qu'on se demande **en quelle unité il est**.
+Le coefficient de variation n'était pas une réponse parmi d'autres, c'était la
+réponse.
 
-Les deux valeurs de la base sont reproduites à l'unité par un test
-(`deuxFormulesUneGrandeur.test.ts`).
+### Ce qui est fait
 
-**Le seuil de la marge est ABSOLU** : une seconde, cinq secondes, quelle que
-soit la longueur du tour. Sur un tour de kart de 60 s, cinq secondes d'écart-type
-valent 8 % — dispersé, la note zéro est méritée. Sur vos tours de 5 min 42, elles
-valent **1,5 %**, et la formule rend zéro quand même. Elle compare un temps à un
-seuil sans le rapporter à la durée du tour.
+`computeConsistency` **délègue à `computeRegularite`**. Il n'y a plus deux
+formules d'une même grandeur : il y en a une, appelée de deux endroits. La
+fonction serveur en porte une copie — Deno ne peut rien importer de `src/` — et
+un test l'**extrait du fichier et l'exécute** contre celle de l'application sur
+une batterie d'entrées. Une garde qui comparerait des textes laisserait passer un
+`0,06` devenu `0,6`.
 
-Autrement dit : **plus le circuit est long, plus la formule vous punit** — et
-Bouteville est long.
+### Une conséquence assumée, et une direction à dire
 
-### Ce que je n'ai pas fait, et pourquoi
+**Le minimum passe de deux tours à trois** — la garde du QDI. Deux tours donnent
+un écart, et un écart n'est pas une dispersion. Sous trois tours, la constance
+vaut `null` et la marge globale disparaît plutôt que de se rabattre sur la seule
+fluidité. Aucune séance de production n'est concernée. Quatre tests épinglent ce
+comportement pour qu'il reste une décision.
 
-Le correctif tient en une division : rapporter l'écart-type à la moyenne, comme
-le fait déjà le QDI. **Je ne l'ai pas appliqué.**
-
-`consistency` pèse 0,6 de la marge pilote, elle-même 0,6 de `margin_global` —
-**le seul chiffre que l'écran affiche**, celui du Principe 5. Le passer en
-relatif ferait passer votre séance de **39 à 51**, et changerait de zone.
-
-Déplacer le chiffre central du produit sur sa seule séance réelle n'est pas une
-correction de bord. C'est un choix d'algorithme, et il est à vous.
-
-### Trois façons d'en sortir
-
-1. **Passer en relatif** — cohérent avec le QDI, et la contradiction disparaît.
-   Les quatorze analyses existantes sont à recalculer.
-2. **Garder l'absolu, mais le rapporter au tour** — un seuil exprimé en
-   pourcentage de la durée médiane. Même effet, formulation plus explicite.
-3. **Ne rien changer** — mais alors la marge et le QDI continueront de dire
-   deux choses opposées de la même séance, et le premier pilote qui compare
-   posera la question.
-
-**Coût de ne rien décider** : `margin_global` est le chiffre du Principe 5. Tant
-que ce seuil ne tient pas compte de la longueur du tour, il sous-note toutes les
-séances sur circuit long — c'est-à-dire les vôtres.
+**Et le correctif remonte la note** : 39,20 → 51,44. `margin_global` est une
+réserve, plus haut vaut mieux. C'est la direction qui ne déclenche aucune alarme
+chez qui la reçoit — un chiffre qui monte ne fait protester personne. Cela
+n'invalide rien : la formule d'avant était fausse pour une raison
+dimensionnelle, indépendante du sens du résultat. Mais c'est écrit, ici et dans
+le code, plutôt que tu.
 
 ---
 
@@ -561,6 +570,20 @@ par une revue App Store** — ce n'est pas un déploiement web.
 > elle ferme au passage un défaut de notre côté : la garde qui interdit de
 > pointer une inscription annulée tourne aujourd'hui dans l'application, donc
 > n'importe quel jeton authentifié peut l'ignorer.
+
+### CLOS le 14/08/2026 — la partie qui nous revenait est faite
+
+Le second paragraphe de la recommandation n'a plus lieu d'être : la garde est
+descendue en base. `trg_registrations_garde_pilote` (migration
+`20260813210000_a13_registrations_garde_pilote.sql`, appliquée) refuse à un
+pilote de pointer sa propre présence ou de valider son propre paiement,
+quel que soit le jeton. Vérifié par exécution sous un JWT pilote simulé, dans
+un bloc dont le `raise` final annule tout : pointage refusé, passage en
+`attended`/`no_show` refusé, `cancelled` autorisé, état intact après coup.
+
+La partie qui reste ouverte est **l'ORDRE avec le site** — RPC, puis bascule de
+l'application via une revue App Store, puis REVOKE. Elle ne dépend pas de nous
+seuls.
 
 ## 2.2 — DÉCISION · Les cinq contradictions relevées par le site
 
