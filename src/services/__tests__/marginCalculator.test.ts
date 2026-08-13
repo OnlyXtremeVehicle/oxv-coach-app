@@ -89,7 +89,7 @@ describe('computeMargin', () => {
     const out = computeMargin({ session: session(0.65), laps });
     // Seuls les tours 2 et 3 comptent : très réguliers.
     expect(out.validLapCount).toBe(2);
-    expect(out.breakdown.regularity).toBeGreaterThan(95);
+    expect(out.breakdown.consistency).toBeGreaterThan(95);
   });
 
   it('renvoie marge véhicule = 0 quand G observé dépasse la limite calibrée', () => {
@@ -157,7 +157,7 @@ describe('computeMargin — honnêteté de la donnée absente', () => {
     const out = computeMargin({ session: session(0.8), laps: [] });
 
     expect(out.marginPilot).toBeNull();
-    expect(out.breakdown.regularity).toBeNull();
+    expect(out.breakdown.consistency).toBeNull();
     expect(out.breakdown.smoothness).toBeNull();
     expect(out.validLapCount).toBe(0);
     // La marge véhicule est réelle (0,8 g sur 1,0 g calibré → 20 %), mais le
@@ -191,7 +191,7 @@ describe('computeMargin — honnêteté de la donnée absente', () => {
     expect(out.breakdown).toEqual({
       vehicle: null,
       pilot: null,
-      regularity: null,
+      consistency: null,
       smoothness: null,
     });
     expect(isMarginResolved(out)).toBe(false);
@@ -236,7 +236,7 @@ describe('computeMargin — fluidité : tours sans mesure', () => {
     expect(isMarginResolved(out)).toBe(false);
     // La régularité, elle, est RÉELLE (les temps au tour sont mesurés) et reste
     // exposée : on ne perd pas une donnée vraie au passage.
-    expect(out.breakdown.regularity).toBeGreaterThan(95);
+    expect(out.breakdown.consistency).toBeGreaterThan(95);
   });
 
   it('un SEUL tour mesuré ne suffit pas à une dispersion → null', () => {

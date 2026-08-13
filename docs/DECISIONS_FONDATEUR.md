@@ -37,7 +37,7 @@ rien aujourd'hui, et c'est écrit aussi.
 
 # 0 · APRÈS L'ESSAI TERRAIN DU 13/08 — le plus court chemin
 
-*Ajouté le 13/08, étendu le même jour après l'arbitrage. Ces huit points sont en
+*Ajouté le 13/08, étendu le même jour après l'arbitrage. Ces neuf points sont en
 tête parce qu'ils sont courts, qu'ils touchent des données ou des clients réels,
 et qu'aucun ne demande de réfléchir longtemps.*
 
@@ -239,6 +239,65 @@ existe ailleurs dans le dépôt, mais jamais comme branche QDI.
 
 Soit l'Arbre demande une sixième branche — et c'est un vrai travail, pas un
 renommage —, soit le mot s'y est glissé. **À dire aussi.**
+
+---
+
+## 0.8 — GESTE · Deux commandes que le classifieur m'a refusées
+
+**Le renommage `regularity` → `consistency` est fait dans le code. Il lui manque
+ses deux moitiés de production, et je n'ai pas pu les exécuter.**
+
+Les deux actions ont été refusées par le classifieur de sécurité. Je ne les ai
+pas contournées.
+
+### Ce qui est déjà fait
+
+Le calcul embarqué, la lecture du coach, l'écran de pondération et la source de
+la fonction serveur portent tous `consistency`. Une garde lexicale
+(`margeConsistency.guard.test.ts`) interdit le retour du mot dans le code des
+quatre fichiers concernés — y compris la fonction Deno, que `tsc` ne compile pas
+et que rien d'autre ne surveillait.
+
+### 1. Redéployer la fonction serveur
+
+```bash
+supabase functions deploy cron-analyze-pending-sessions --project-ref fouvuqkdxarjpjbqnsjq
+```
+
+C'est **le second écrivain de la même colonne**, et il tourne : `pg_cron` job 4,
+« analyze-pending-sessions », actif, toutes les heures.
+
+Précision qui change la gravité : il ne balaye que les séances **dépourvues**
+d'analyse. Il ne réécrira donc pas les lignes converties — mais chaque séance
+neuve repartirait avec l'ancienne clé, et la colonne porterait deux formes.
+
+### 2. Convertir les quatorze lignes existantes
+
+Le fichier est prêt :
+`supabase/migrations/20260813233000_j6_margin_breakdown_consistency.sql`
+
+Elle est idempotente, ne change **aucune valeur** — seulement le nom d'une clé —
+et se vérifie elle-même : si une ligne portait encore l'ancienne clé après
+l'`UPDATE`, elle échoue au lieu de se déclarer réussie.
+
+### Ce que vous ne risquez pas en attendant
+
+**Rien ne lit `margin_breakdown` aujourd'hui.** `DebriefMirror` — le composant
+des « quatre piliers » — n'a aucun appelant, et `computeCoachReading` non plus.
+La colonne est écrite par deux sources et lue par zéro écran.
+
+C'est un constat en soi, et il vaut d'être noté : les quatre piliers du
+débriefing sont calculés, stockés, et affichés nulle part.
+
+### Deux points annexes, laissés en place
+
+- **`coach_reading_weights.w_regularity`** garde son nom : c'est une colonne, et
+  le schéma vous revient. Le champ TypeScript est passé à `wConsistency`, la
+  correspondance est faite au seul endroit qui mappe la table.
+- **`dataColors.regularity`** sert encore de teinte à la pondération « Constance »
+  de l'écran coach. C'est la couleur de la BRANCHE QDI : l'employer là rejoue en
+  couleur l'homonymie qu'on vient de retirer des mots. Une teinte propre à la
+  marge est à trancher.
 
 ---
 

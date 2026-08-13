@@ -27,7 +27,7 @@ function mapRow(row: WeightsRow): CoachReadingWeights {
     coachId: row.coach_id,
     wVehicle: Number(row.w_vehicle),
     wPilot: Number(row.w_pilot),
-    wRegularity: Number(row.w_regularity),
+    wConsistency: Number(row.w_regularity),
     wSmoothness: Number(row.w_smoothness),
     note: row.note,
     updatedAt: row.updated_at,
@@ -76,7 +76,7 @@ export async function upsertReadingWeights(
     coach_id: coachId,
     w_vehicle: input.wVehicle,
     w_pilot: input.wPilot,
-    w_regularity: input.wRegularity,
+    w_regularity: input.wConsistency,
     w_smoothness: input.wSmoothness,
     note: input.note?.trim() || null,
   };

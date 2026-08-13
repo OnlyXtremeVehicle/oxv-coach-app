@@ -14,7 +14,7 @@ export interface CoachReadingWeights {
   coachId: string;
   wVehicle: number;
   wPilot: number;
-  wRegularity: number;
+  wConsistency: number;
   wSmoothness: number;
   note: string | null;
   updatedAt: string;
@@ -23,7 +23,7 @@ export interface CoachReadingWeights {
 export interface ReadingWeightsInput {
   wVehicle: number;
   wPilot: number;
-  wRegularity: number;
+  wConsistency: number;
   wSmoothness: number;
   note?: string | null;
 }
@@ -32,7 +32,7 @@ export interface ReadingWeightsInput {
 export interface MarginBreakdown {
   vehicle: number;
   pilot: number;
-  regularity: number;
+  consistency: number;
   smoothness: number;
 }
 
@@ -46,8 +46,8 @@ export function computeCoachReading(
   breakdown: MarginBreakdown,
   weights: ReadingWeightsInput
 ): number | null {
-  const w = [weights.wVehicle, weights.wPilot, weights.wRegularity, weights.wSmoothness];
-  const v = [breakdown.vehicle, breakdown.pilot, breakdown.regularity, breakdown.smoothness];
+  const w = [weights.wVehicle, weights.wPilot, weights.wConsistency, weights.wSmoothness];
+  const v = [breakdown.vehicle, breakdown.pilot, breakdown.consistency, breakdown.smoothness];
   const total = w.reduce((s, x) => s + Math.max(0, x), 0);
   if (total <= 0) return null;
   const weighted = w.reduce((s, x, i) => s + Math.max(0, x) * v[i], 0);
@@ -56,7 +56,7 @@ export function computeCoachReading(
 
 /** Valide les pondérations. Retourne un message FR sobre ou `null`. */
 export function validateReadingWeights(input: ReadingWeightsInput): string | null {
-  const w = [input.wVehicle, input.wPilot, input.wRegularity, input.wSmoothness];
+  const w = [input.wVehicle, input.wPilot, input.wConsistency, input.wSmoothness];
   if (w.some((x) => Number.isNaN(x) || x < 0)) {
     return 'Les pondérations doivent être positives ou nulles.';
   }
@@ -73,6 +73,6 @@ export function validateReadingWeights(input: ReadingWeightsInput): string | nul
 export const DEFAULT_READING_WEIGHTS: ReadingWeightsInput = {
   wVehicle: 25,
   wPilot: 25,
-  wRegularity: 25,
+  wConsistency: 25,
   wSmoothness: 25,
 };

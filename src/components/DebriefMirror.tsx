@@ -159,7 +159,7 @@ export type Analysis = {
   margin_zone?: string;
   margin_vehicle?: number | string;
   margin_pilot?: number | string;
-  margin_breakdown?: { pilot: number; vehicle: number; regularity: number; smoothness: number };
+  margin_breakdown?: { pilot: number; vehicle: number; consistency: number; smoothness: number };
   next_focus_corner_index?: number | null;
   next_focus_phrase?: string | null;
   debrief_text?: string | null;
@@ -627,7 +627,7 @@ const DebriefMirror: React.FC<DebriefMirrorProps> = ({
                 [
                   ['Pilote', mb.pilot],
                   ['Véhicule', mb.vehicle],
-                  ['Régularité', mb.regularity],
+                  ['Constance', mb.consistency],
                   ['Fluidité', mb.smoothness],
                 ] as [string, number][]
               ).map(([lab, val], i) => (

@@ -25,8 +25,24 @@
 import 'jsr:@supabase/functions-js/edge-runtime.d.ts';
 import { createClient } from 'jsr:@supabase/supabase-js@2';
 
+// `consistency` s'appelait `regularity` jusqu'au 13/08/2026.
+//
+// `app_session_analyses` porte deux colonnes voisines, `qdi` et
+// `margin_breakdown` : sur la même ligne, `qdi.regularite` valait 34 et
+// `margin_breakdown.regularity` valait 0. Deux mesures différentes, deux mots à
+// une lettre près, et rien pour les distinguer. Le QDI mesure la constance du
+// geste ; ici on mesure la dispersion des TEMPS au tour.
+//
+// CETTE FONCTION EST L'UN DES DEUX ÉCRIVAINS, et elle tourne : pg_cron job 4,
+// « analyze-pending-sessions », actif, toutes les heures.
+//
+// Précision utile, parce qu'elle change la gravité : le balayage ne prend que
+// les séances DÉPOURVUES d'analyse (`margin_global IS NULL`). Tant qu'elle
+// n'est pas redéployée, elle ne réécrit donc PAS les lignes déjà converties —
+// mais chaque séance neuve repart avec l'ancienne clé, et la colonne se met à
+// porter deux formes. C'est cela qu'il faut éviter, pas une régression massive.
 const MAX_SESSIONS_PER_RUN = 50;
-const REGULARITY_WEIGHT = 0.6;
+const CONSISTENCY_WEIGHT = 0.6;
 const SMOOTHNESS_WEIGHT = 0.4;
 const VEHICLE_WEIGHT = 0.4;
 const PILOT_WEIGHT = 0.6;
@@ -44,7 +60,7 @@ function stddev(values: number[]): number {
   return Math.sqrt(variance);
 }
 
-function computeRegularity(lapSeconds: number[]): number {
+function computeConsistency(lapSeconds: number[]): number {
   return clampMargin(100 - Math.max(0, stddev(lapSeconds) - 1) * 25);
 }
 
@@ -141,12 +157,12 @@ async function processSessions(supabase: any, sessions: any[]) {
       );
 
       let pilotMargin = 100;
-      let regularity = 100;
+      let consistency = 100;
       let smoothness = 100;
       if (validLaps.length >= 2) {
-        regularity = computeRegularity(validLaps.map((l) => l.duration_seconds));
+        consistency = computeConsistency(validLaps.map((l) => l.duration_seconds));
         smoothness = computeSmoothness(validLaps.map((l) => Number(l.max_g_lateral ?? 0)));
-        pilotMargin = clampMargin(REGULARITY_WEIGHT * regularity + SMOOTHNESS_WEIGHT * smoothness);
+        pilotMargin = clampMargin(CONSISTENCY_WEIGHT * consistency + SMOOTHNESS_WEIGHT * smoothness);
       }
 
       const marginGlobal = clampMargin(
@@ -166,7 +182,7 @@ async function processSessions(supabase: any, sessions: any[]) {
           margin_breakdown: {
             vehicle: vehicleMargin,
             pilot: pilotMargin,
-            regularity,
+            consistency,
             smoothness,
           },
           algo_version: 'cron-v1.0',

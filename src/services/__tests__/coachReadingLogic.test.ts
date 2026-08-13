@@ -7,7 +7,7 @@ import {
 const BREAKDOWN: MarginBreakdown = {
   vehicle: 80,
   pilot: 60,
-  regularity: 100,
+  consistency: 100,
   smoothness: 40,
 };
 
@@ -18,7 +18,7 @@ describe('computeCoachReading', () => {
       computeCoachReading(BREAKDOWN, {
         wVehicle: 25,
         wPilot: 25,
-        wRegularity: 25,
+        wConsistency: 25,
         wSmoothness: 25,
       })
     ).toBe(70);
@@ -27,7 +27,7 @@ describe('computeCoachReading', () => {
   it('normalise les poids (pas besoin de sommer à 100)', () => {
     // poids 1/1/1/1 → même résultat que 25/25/25/25
     expect(
-      computeCoachReading(BREAKDOWN, { wVehicle: 1, wPilot: 1, wRegularity: 1, wSmoothness: 1 })
+      computeCoachReading(BREAKDOWN, { wVehicle: 1, wPilot: 1, wConsistency: 1, wSmoothness: 1 })
     ).toBe(70);
   });
 
@@ -36,7 +36,7 @@ describe('computeCoachReading', () => {
       computeCoachReading(BREAKDOWN, {
         wVehicle: 0,
         wPilot: 0,
-        wRegularity: 1,
+        wConsistency: 1,
         wSmoothness: 0,
       })
     ).toBe(100);
@@ -48,7 +48,7 @@ describe('computeCoachReading', () => {
       computeCoachReading(BREAKDOWN, {
         wVehicle: 0,
         wPilot: 1,
-        wRegularity: 0,
+        wConsistency: 0,
         wSmoothness: 1,
       })
     ).toBe(50);
@@ -59,7 +59,7 @@ describe('computeCoachReading', () => {
       computeCoachReading(BREAKDOWN, {
         wVehicle: 0,
         wPilot: 0,
-        wRegularity: 0,
+        wConsistency: 0,
         wSmoothness: 0,
       })
     ).toBeNull();
@@ -69,19 +69,19 @@ describe('computeCoachReading', () => {
 describe('validateReadingWeights', () => {
   it('accepte des poids valides', () => {
     expect(
-      validateReadingWeights({ wVehicle: 30, wPilot: 30, wRegularity: 20, wSmoothness: 20 })
+      validateReadingWeights({ wVehicle: 30, wPilot: 30, wConsistency: 20, wSmoothness: 20 })
     ).toBeNull();
   });
 
   it('refuse un poids négatif', () => {
     expect(
-      validateReadingWeights({ wVehicle: -1, wPilot: 30, wRegularity: 20, wSmoothness: 20 })
+      validateReadingWeights({ wVehicle: -1, wPilot: 30, wConsistency: 20, wSmoothness: 20 })
     ).toMatch(/positives/i);
   });
 
   it('refuse des poids tous nuls', () => {
     expect(
-      validateReadingWeights({ wVehicle: 0, wPilot: 0, wRegularity: 0, wSmoothness: 0 })
+      validateReadingWeights({ wVehicle: 0, wPilot: 0, wConsistency: 0, wSmoothness: 0 })
     ).toMatch(/sup/i);
   });
 
@@ -90,7 +90,7 @@ describe('validateReadingWeights', () => {
       validateReadingWeights({
         wVehicle: 25,
         wPilot: 25,
-        wRegularity: 25,
+        wConsistency: 25,
         wSmoothness: 25,
         note: 'a'.repeat(281),
       })

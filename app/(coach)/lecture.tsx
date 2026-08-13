@@ -74,7 +74,7 @@ export default function CoachLectureScreen() {
 
   const [vehicle, setVehicle] = useState(String(DEFAULT_READING_WEIGHTS.wVehicle));
   const [pilot, setPilot] = useState(String(DEFAULT_READING_WEIGHTS.wPilot));
-  const [regularity, setRegularity] = useState(String(DEFAULT_READING_WEIGHTS.wRegularity));
+  const [constance, setConstance] = useState(String(DEFAULT_READING_WEIGHTS.wConsistency));
   const [smoothness, setSmoothness] = useState(String(DEFAULT_READING_WEIGHTS.wSmoothness));
   const [note, setNote] = useState('');
   const [loading, setLoading] = useState(true);
@@ -94,7 +94,7 @@ export default function CoachLectureScreen() {
         if (w) {
           setVehicle(String(w.wVehicle));
           setPilot(String(w.wPilot));
-          setRegularity(String(w.wRegularity));
+          setConstance(String(w.wConsistency));
           setSmoothness(String(w.wSmoothness));
           setNote(w.note ?? '');
         }
@@ -121,7 +121,7 @@ export default function CoachLectureScreen() {
     const input = {
       wVehicle: parseW(vehicle),
       wPilot: parseW(pilot),
-      wRegularity: parseW(regularity),
+      wConsistency: parseW(constance),
       wSmoothness: parseW(smoothness),
       note: note.trim() || null,
     };
@@ -141,7 +141,7 @@ export default function CoachLectureScreen() {
 
   // Quatre composantes RÉELLES de la lecture (coachReadingLogic). Couleur = QDI
   // fixe si la composante est une branche QDI, neutre sinon (cf. en-tête).
-  const shares = normalizedShares([vehicle, pilot, regularity, smoothness]);
+  const shares = normalizedShares([vehicle, pilot, constance, smoothness]);
   const components = [
     {
       key: 'vehicle',
@@ -152,10 +152,17 @@ export default function CoachLectureScreen() {
     },
     { key: 'pilot', label: 'Pilote', value: pilot, onChange: setPilot, color: palette.secondary },
     {
-      key: 'regularity',
-      label: 'Régularité',
-      value: regularity,
-      onChange: setRegularity,
+      // « Constance » et non « Régularité » : cette pondération porte sur
+      // `margin_breakdown.consistency`, la dispersion des TEMPS au tour — pas
+      // sur la branche QDI `regularite`, qui mesure autre chose et vaut un
+      // autre chiffre sur la même séance. Le mot suit la mesure.
+      key: 'consistency',
+      label: 'Constance',
+      value: constance,
+      onChange: setConstance,
+      // TODO couleur : `dataColors.regularity` est la teinte de la BRANCHE QDI.
+      // L'employer ici rejoue en couleur l'homonymie qu'on vient de retirer des
+      // mots. Une teinte propre à la marge est à trancher (registre fondateur).
       color: dataColors.regularity,
     },
     {

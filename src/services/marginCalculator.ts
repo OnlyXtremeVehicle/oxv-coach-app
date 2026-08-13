@@ -47,11 +47,42 @@ export const DEFAULT_VEHICLE: VehicleParameters = {
   maxGLateral: 1.0,
 };
 
-/** Sous-composantes 0..100. `null` = entrée absente, donc rien à dire. */
+/**
+ * Sous-composantes 0..100. `null` = entrée absente, donc rien à dire.
+ *
+ * ===========================================================================
+ * `consistency` S'APPELAIT `regularity` JUSQU'AU 13/08/2026 — UN HOMONYME PIÉGÉ
+ * ===========================================================================
+ *
+ * `app_session_analyses` porte deux colonnes voisines, `qdi` et
+ * `margin_breakdown`. Sur la séance de Bouteville du 13/08, LA MÊME LIGNE
+ * disait :
+ *
+ *     qdi.regularite              = 34
+ *     margin_breakdown.regularity = 0
+ *
+ * Deux mots à une lettre près, deux mesures qui n'ont rien à voir, deux
+ * chiffres qui se contredisent — dans le même objet. Le QDI mesure la
+ * constance du geste sur le tour ; la marge mesure la dispersion des TEMPS au
+ * tour. Rien dans les noms ne le disait.
+ *
+ * Cette homonymie-là était plus vicieuse que celle des libellés d'écran :
+ * **elle ne se voit pas.** Personne ne la remarque tant qu'il n'ouvre pas les
+ * deux colonnes côte à côte — et le jour où quelqu'un le fait, il cherche un
+ * bug qui n'existe pas.
+ *
+ * `consistency` nomme ce que la grandeur mesure réellement, et n'a plus
+ * d'homonyme nulle part.
+ *
+ * Le renommage porte sur les TROIS endroits, sans quoi il n'en corrige aucun :
+ * le calcul ici, l'écrivain serveur (`cron-analyze-pending-sessions`, qui
+ * réintroduirait la clé au prochain passage s'il n'était pas redéployé), et
+ * les quatorze lignes déjà écrites.
+ */
 export interface MarginBreakdown {
   vehicle: number | null;
   pilot: number | null;
-  regularity: number | null;
+  consistency: number | null;
   smoothness: number | null;
 }
 
@@ -75,7 +106,7 @@ export interface ComputeMarginOutput {
 export interface ResolvedMarginBreakdown {
   vehicle: number;
   pilot: number;
-  regularity: number;
+  consistency: number;
   smoothness: number;
 }
 
@@ -106,7 +137,7 @@ export function isMarginResolved(out: ComputeMarginOutput): out is ResolvedMargi
     out.marginPilot !== null &&
     out.breakdown.vehicle !== null &&
     out.breakdown.pilot !== null &&
-    out.breakdown.regularity !== null &&
+    out.breakdown.consistency !== null &&
     out.breakdown.smoothness !== null
   );
 }
@@ -114,7 +145,7 @@ export function isMarginResolved(out: ComputeMarginOutput): out is ResolvedMargi
 const VEHICLE_WEIGHT = 0.4;
 const PILOT_WEIGHT = 0.6;
 
-const REGULARITY_WEIGHT = 0.6;
+const CONSISTENCY_WEIGHT = 0.6;
 const SMOOTHNESS_WEIGHT = 0.4;
 
 export function computeMargin(input: ComputeMarginInput): ComputeMarginOutput {
@@ -139,7 +170,7 @@ export function computeMargin(input: ComputeMarginInput): ComputeMarginOutput {
     breakdown: {
       vehicle: marginVehicle,
       pilot: pilot.marginPilot,
-      regularity: pilot.regularity,
+      consistency: pilot.consistency,
       smoothness: pilot.smoothness,
     },
     validLapCount: pilot.validLapCount,
@@ -172,7 +203,7 @@ function computeVehicleMargin(
 
 interface PilotMarginResult {
   marginPilot: number | null;
-  regularity: number | null;
+  consistency: number | null;
   smoothness: number | null;
   validLapCount: number;
 }
@@ -186,13 +217,13 @@ function computePilotMargin(laps: Lap[]): PilotMarginResult {
   if (validLaps.length < 2) {
     return {
       marginPilot: null,
-      regularity: null,
+      consistency: null,
       smoothness: null,
       validLapCount: validLaps.length,
     };
   }
 
-  const regularity = computeRegularity(validLaps.map((l) => l.duration_seconds));
+  const consistency = computeConsistency(validLaps.map((l) => l.duration_seconds));
   const smoothness = computeSmoothness(validLaps);
 
   // Même arbitrage que la marge globale : une composante absente ne se pondère
@@ -201,10 +232,10 @@ function computePilotMargin(laps: Lap[]): PilotMarginResult {
   // de marge pilote à elle seule.
   const marginPilot =
     smoothness !== null
-      ? clampMargin(REGULARITY_WEIGHT * regularity + SMOOTHNESS_WEIGHT * smoothness)
+      ? clampMargin(CONSISTENCY_WEIGHT * consistency + SMOOTHNESS_WEIGHT * smoothness)
       : null;
 
-  return { marginPilot, regularity, smoothness, validLapCount: validLaps.length };
+  return { marginPilot, consistency, smoothness, validLapCount: validLaps.length };
 }
 
 /**
@@ -212,7 +243,7 @@ function computePilotMargin(laps: Lap[]): PilotMarginResult {
  * stddev ≤ 1s → 100 (parfaitement régulier)
  * stddev = 5s → 0 (très irrégulier)
  */
-function computeRegularity(lapSecondsList: number[]): number {
+function computeConsistency(lapSecondsList: number[]): number {
   const stddev = standardDeviation(lapSecondsList);
   return clampMargin(100 - Math.max(0, stddev - 1) * 25);
 }
