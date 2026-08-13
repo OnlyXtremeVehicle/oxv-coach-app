@@ -4,9 +4,9 @@
 > Bouteville**. Un seul endroit pour tout ce qui est arrêté faute d'un arbitrage,
 > à travers les neuf jalons du programme V3 et la coordination avec le site.
 >
-> **Si vous ne lisez qu'une section, lisez la § 0.** Cinq points courts, dont
-> trois gestes de quelques minutes — et l'un d'eux arrête l'envoi de deux mesures
-> inventées à vos clients.
+> **Si vous ne lisez qu'une section, lisez la § 0.** Sept points courts. Deux
+> d'entre eux sont des failles ouvertes EN PRODUCTION, vérifiées sur la base le
+> 13/08 ; un troisième arrête l'envoi de deux mesures inventées à vos clients.
 >
 > **Ce document ne remplace pas `docs/DETTE.md`.** La dette recense ce qui est
 > constaté ; celui-ci recense ce qui est *bloqué*, et par quoi.
@@ -37,9 +37,13 @@ rien aujourd'hui, et c'est écrit aussi.
 
 # 0 · APRÈS L'ESSAI TERRAIN DU 13/08 — le plus court chemin
 
-*Ajouté le 13/08. Ces cinq points sont en tête parce qu'ils sont courts, qu'ils
-touchent des données ou des clients réels, et qu'aucun ne demande de réfléchir
-longtemps.*
+*Ajouté le 13/08, étendu le même jour après l'arbitrage. Ces sept points sont en
+tête parce qu'ils sont courts, qu'ils touchent des données ou des clients réels,
+et qu'aucun ne demande de réfléchir longtemps.*
+
+*Les § 0.4 et § 0.5 ne viennent pas du terrain mais d'une lecture directe de la
+base : elles étaient ouvertes depuis mai et août, et aucun document ne les
+mentionnait. Elles passent devant le reste.*
 
 ## 0.1 — GESTE · Renseigner la longueur de vos trois tours
 
@@ -90,7 +94,43 @@ lancement, une fois.
 par un tiers ne vaut rien, et ce n'est pas à moi de cocher une case qui vous
 engage.
 
-## 0.4 — DÉCISION · Le quota de builds iOS est épuisé
+## 0.4 — DÉCISION · Deux comptes ont un accès administrateur invisible
+
+*Ajouté le 13/08 après vérification directe sur la base.*
+
+`julie.huet.perso@gmail.com` (créé le 09/05) et `bitaube.p@gmail.com` (13/05)
+portent `role = 'admin'`. `is_admin()` lit `role` — donc **ils ont un accès
+complet aux données de tous les pilotes, depuis mai.**
+
+Et leur colonne `is_admin` affiche `false`. Tout écran d'administration qui liste
+les administrateurs en lisant la colonne **ne les montre pas.** Deux systèmes
+d'autorisation divergent en production : la fonction, qui dit vrai, et la
+colonne, qui ment.
+
+**Répondez par oui ou par non.** Si non, c'est un retrait de privilège à faire
+tout de suite. Si oui, posez `is_admin = true` pour que l'interface cesse de
+mentir — un administrateur qu'aucun écran ne liste n'est pas administré.
+
+## 0.5 — DÉCISION · Un pilote peut valider son propre paiement
+
+*Ajouté le 13/08 après vérification directe sur la base.*
+
+Trois faits qui se combinent : `authenticated` détient `UPDATE` sur `status`,
+`attended_at`, `attended_by` ; la policy autorise `user_id = auth.uid()` ; et
+**aucun trigger `BEFORE UPDATE` ne garde la table** — les trois existants sont en
+`AFTER`, qui ne peut rien refuser.
+
+Depuis n'importe quel client porteur d'un jeton pilote, une inscription passe de
+`pending_payment` à `confirmed` et se pointe présente elle-même.
+
+`supabase/migrations/PROPOSITION_A13_registrations_before_update.sql` ferme les
+deux abus **sans casser l'annulation**, que le pilote provoque légitimement et
+qui écrit `status` — c'est pourquoi un trigger et pas un `REVOKE`. Ni RPC, ni
+bascule applicative, ni revue App Store.
+
+**Non appliquée : c'est le contrôle d'accès de la journée, en production.**
+
+## 0.6 — DÉCISION · Le quota de builds iOS est épuisé
 
 Le plan gratuit EAS ne rend ses builds iOS que le **1er septembre**.
 
@@ -105,7 +145,7 @@ une séance a perdu des trames côté serveur, ce qui n'est pas arrivé.
 **Deux issues, et c'est un choix d'argent :** passer le compte EAS en plan payant,
 ou faire un build local avec Xcode. Aucune n'est à moi de trancher.
 
-## 0.5 — GESTE · La vérification qu'aucun test ne remplacera
+## 0.7 — GESTE · La vérification qu'aucun test ne remplacera
 
 **Verrouillez l'écran en pleine séance, roulez dix minutes, regardez si les
 trames sont là.**
@@ -615,6 +655,12 @@ raccourcissent.*
 
 | Date | Sujet | Décision |
 |---|---|---|
+| 13/08 | **Chaîne de freinage** | **GARDÉE et rendue fiable** — contre l'arbitrage, qui proposait de la retirer. Armée sur l'écran de triage du coach (il manquait une prop), et la détection cesse de confondre un lever de pied avec un freinage : la décélération se dérive de la distance et se compare au seuil PARTAGÉ −0,3 g. Le test qui la « prouvait » employait une trajectoire qui est physiquement un lever de pied. |
+| 13/08 | **Typographie — trio du plan** | **Refus RATIFIÉ et daté du 13/08** (il s'auto-attribuait une décision du 28/07 sans trace). Söhne sous licence Klim, SF Pro réservée à Apple : motif juridique, pas esthétique. Tombera avec l'achat d'une licence. |
+| 13/08 | **Typographie — consolidation** | **Inter sort** (redondance pure avec Hanken Grotesk, 66 fichiers basculent). **Michroma RESTE en attente d'un œil** : `typo.display` porte 39 écrans, dont tout REC et tout Club, et le quota de builds iOS est épuisé jusqu'au 1er septembre. Mesure faite : les 5 familles = 2 tables de jetons en parallèle, migration L6 à l'arrêt. |
+| 13/08 | **`bg.card2` / contraste** | **Le fond bouge, pas le gris** — `#232630` → `#202329` (6,74 → 7,03). Relever `mid` aurait écrasé la hiérarchie des gris, employée partout ; `card2` sert à trois endroits. |
+| 13/08 | **« Maintenez pour armer »** | **Sortie du rouge.** Un LIBELLÉ peut assumer 5,88, doublé par la forme et le geste ; une INSTRUCTION n'est doublée par rien. Sur fond sombre elle dépasse 12:1, et le bouton garde sa masse rouge. |
+| 13/08 | **Plan V3, 5 points du flux REC** | **Le code gagne, le plan est amendé DANS le plan** — pas dans un fichier annexe. Consentement au bon moment, aucun chrono en roulage, barre masquée sur les cinq segments, « passer » hors du tiers supérieur, cardio réservé aux coachés (article 9 RGPD). |
 | 13/08 | **Récupération des trames au lancement** | **Automatique.** Si une séance a perdu des trames côté serveur, ses octets sont sur le téléphone : l'application les recolle seule au démarrage, sans rien demander. Bornée à une séance par lancement, la plus récente d'abord, et aucun fichier n'est LU tant qu'un manque n'est pas établi par comptage. Un comptage impossible ne conclut rien. |
 | 13/08 | **Arrière-plan BLE** | **Activé.** Les trois morceaux ensemble — `modes: ['central']`, `isBackgroundEnabled`, `restoreStateIdentifier`. Le troisième est celui qui fait fonctionner le mécanisme : sans lui, le manifeste passe la revue App Store et rien ne se produit. **Reste à vérifier au circuit** (§0.5) : aucun test ne réveille un téléphone. |
 | 13/08 | **Hub PISTE** | **Adapté, pas supprimé.** Une vérification l'avait classé « code mort » ; le constat était juste dans ses effets et faux dans sa cause — il était INATTEIGNABLE, `setSessions` n'ayant aucun appelant. Le supprimer aurait effacé le seul écran qui sait reprendre un jour J à son étape. Une garde fige désormais ses entrées. |
