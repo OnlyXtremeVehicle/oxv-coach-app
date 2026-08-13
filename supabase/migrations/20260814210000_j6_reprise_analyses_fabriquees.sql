@@ -1,8 +1,8 @@
 -- =============================================================================
--- PROPOSITION — reprendre les analyses de marge, plutôt que renommer leur clé
+-- APPLIQUÉE le 14/08/2026 — reprendre les analyses de marge, plutôt que renommer leur clé
 -- =============================================================================
 --
--- NON APPLIQUÉE. Elle EFFACE des lignes ; c'est au fondateur.
+-- APPLIQUÉE le 14/08/2026, sur accord du fondateur. (Était : NON APPLIQUÉE.) Elle EFFACE des lignes ; c'est au fondateur.
 --
 -- Elle REMPLACE `20260813233000_j6_margin_breakdown_consistency.sql`, qui
 -- renommait la clé `regularity` en `consistency` sur quatorze lignes. Ce fichier

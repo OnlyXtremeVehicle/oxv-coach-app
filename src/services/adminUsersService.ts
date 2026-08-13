@@ -32,7 +32,6 @@ export interface AdminUser {
   firstName: string | null;
   lastName: string | null;
   role: UserRole | null;
-  isAdmin: boolean;
   suspendedAt: string | null;
   lastLoginAt: string | null;
   createdAt: string | null;
@@ -47,8 +46,7 @@ export interface AdminUserDetail extends AdminUser {
   deletionScheduledAt: string | null;
 }
 
-const LIST_COLS =
-  'id, email, first_name, last_name, role, is_admin, suspended_at, last_login_at, created_at';
+const LIST_COLS = 'id, email, first_name, last_name, role, suspended_at, last_login_at, created_at';
 const DETAIL_COLS =
   LIST_COLS +
   ', suspension_reason, admin_notes, pact_accepted_at, cgu_accepted_at, privacy_accepted_at, deletion_scheduled_at';
@@ -60,7 +58,6 @@ function mapUser(r: Record<string, unknown>): AdminUser {
     firstName: (r.first_name as string | null) ?? null,
     lastName: (r.last_name as string | null) ?? null,
     role: (r.role as UserRole | null) ?? null,
-    isAdmin: Boolean(r.is_admin),
     suspendedAt: (r.suspended_at as string | null) ?? null,
     lastLoginAt: (r.last_login_at as string | null) ?? null,
     createdAt: (r.created_at as string | null) ?? null,

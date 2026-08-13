@@ -40,8 +40,12 @@ export interface OxvUser {
   two_factor_enabled: boolean;
   notification_preferences: Record<string, boolean>;
 
-  // Admin
-  is_admin: boolean;
+  // `is_admin` A ÉTÉ SUPPRIMÉE DE LA BASE le 14/08/2026.
+  //
+  // `role` fait seule autorité depuis le 28/07 — `public.is_admin()` ne lisait
+  // plus qu'elle, et `accesLogic.estAdmin` en est le miroir exact. La colonne
+  // survivait sans décider de rien, annotée INERTE ; la garder dans ce type
+  // aurait laissé croire qu'un accès pouvait encore en dépendre.
 
   created_at: string;
   updated_at: string;

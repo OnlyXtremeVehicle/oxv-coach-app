@@ -1,8 +1,8 @@
 -- =============================================================================
--- PROPOSITION — supprimer `public.users.is_admin`
+-- APPLIQUÉE le 14/08/2026 — supprimer `public.users.is_admin`
 -- =============================================================================
 --
--- NON APPLIQUÉE. Elle SUPPRIME une colonne ; c'est irréversible sans
+-- APPLIQUÉE le 14/08/2026, sur accord du fondateur. (Était : NON APPLIQUÉE.) Elle SUPPRIME une colonne ; c'est irréversible sans
 -- restauration, et c'est au fondateur.
 --
 -- Autorisation reçue le 14/08/2026 : *« sur is_admin, ma vérification du site

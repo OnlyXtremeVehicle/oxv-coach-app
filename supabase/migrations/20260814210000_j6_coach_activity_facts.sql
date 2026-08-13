@@ -1,8 +1,8 @@
 -- =============================================================================
--- PROPOSITION — `coach_activity_facts()`, pour remplacer `coach_testimonials`
+-- APPLIQUÉE le 14/08/2026 — `coach_activity_facts()`, pour remplacer `coach_testimonials`
 -- =============================================================================
 --
--- NON APPLIQUÉE. C'est une fonction SECURITY DEFINER : elle contourne la RLS
+-- APPLIQUÉE le 14/08/2026, sur accord du fondateur. (Était : NON APPLIQUÉE.) C'est une fonction SECURITY DEFINER : elle contourne la RLS
 -- par construction, et cela vous revient.
 --
 -- -----------------------------------------------------------------------------

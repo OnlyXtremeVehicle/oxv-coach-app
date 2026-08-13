@@ -243,24 +243,77 @@ comptes dédiés, ou une branche Supabase si le budget le permet.
 **Et l'affiliation du 22/06 est à accepter** : `pending`, elle bloquera le
 critère 3 même une fois les comptes créés.
 
+
+---
+
+## APPLIQUÉ le 14/08/2026 — les cinq commandes sont passées
+
+*Sur votre accord. Chacune vérifiée en base après coup.*
+
+| | ce qui a changé |
+|---|---|
+| déploiement du cron | version 20 · clé, formule, et les deux fabrications retirées |
+| reprise des analyses | 13 lignes vidées de leurs marges fabriquées |
+| `coach_activity_facts()` | créée, `SECURITY DEFINER`, `EXECUTE` au seul rôle `authenticated` |
+| `w_regularity` → `w_consistency` | colonne renommée, code aligné |
+| `users.is_admin` | supprimée, ses deux triggers traités d'abord |
+| note de séance | le CHECK accepte désormais la troisième forme |
+
+### L'état mesuré après
+
+| | avant | après |
+|---|---:|---:|
+| analyses portant une marge | 14 | **1** |
+| lignes à `margin_global = 100` | **5** | **0** |
+| séances dans la file du cron | 0 | **0** |
+| `users.is_admin` | présente | supprimée |
+
+La seule analyse qui garde une marge est Bouteville — la seule qui en mérite
+une. Elle porte encore l'ancienne clé et l'ancienne formule : la reprise ne
+touche pas les lignes mesurables, délibérément. Effacer une analyse réelle
+emporterait aussi son QDI, le seul de la base.
+
+### ET J'AI CASSÉ LE CRON EN LE DÉPLOYANT
+
+Le paramètre `verify_jwt` est **requis** par l'outil de déploiement, avec `true`
+pour valeur par défaut. Je l'ai omis : la fonction est passée de `false` à
+`true`.
+
+Or le cron poste avec `Content-Type` et `X-Cron-Token` — **aucun
+`Authorization`**. La plateforme l'aurait rejeté en 401 avant d'entrer dans la
+fonction, et le balayage se serait arrêté sans que rien ne le dise.
+
+Repéré dans la réponse du déploiement, corrigé en version 20. Vérifié :
+`cron.job_run_details` ne montre **aucun passage** dans la fenêtre d'une minute
+et demie — le dernier a réussi à 20 h.
+
+Le fichier porte maintenant l'avertissement : *toujours redéployer avec
+`verify_jwt: false`*, avec la raison.
+
+### Ce que la régénération des types a attrapé
+
+Trois fichiers demandaient encore `is_admin` à `users` : `useAuthStore` (le
+`SELECT` du profil), `adminUsersService` (le `SELECT` de la console), et
+`UserProfile` dans `src/types`. Aucun n'aurait été vu sans régénérer.
+
 ---
 
 ## Ce qui vous revient pour clore le jalon
 
-**Quatre commandes**, toutes écrites, aucune appliquée :
+**Les commandes sont passées.** Ce qui reste ne s'achète pas en SQL :
 
-| | fichier | ce qu'elle fait |
-|---|---|---|
-| 1 | *(déploiement)* `cron-analyze-pending-sessions` | clé + formule + les deux fabrications |
-| 2 | `PROPOSITION_J6_reprise_analyses_fabriquees.sql` | vide les marges non calculables — **après** le 1 |
-| 3 | `PROPOSITION_J6_coach_activity_facts.sql` | ouvre le remplacement de `coach_testimonials` |
-| 4 | `PROPOSITION_J6_drop_users_is_admin.sql` | la colonne, avec ses deux triggers d'abord |
+**Deux comptes coach**, distincts de l'admin et du pilote de test — `role` est
+unique, et `administration@oxvehicle.fr` est le seul admin assumé. Sans eux,
+deux critères d'acceptation sur quatre restent invérifiables.
 
-**Un mot** : les quatre écrans partent, ou restent. Depuis aujourd'hui, plus
-rien ne s'y perd.
+**L'affiliation du 22/06** — `administration@` → `fillatgabin@`, restée
+`pending`. Elle bloquera le critère 3 même une fois les comptes créés.
 
-**Un compte coach** : sans lui, deux critères d'acceptation sur quatre restent
-invérifiables, et `rapport` comme `assistant` n'ont pas d'utilisateur à servir.
+**Le terrain** : un run, un boîtier, les lunettes.
+
+**Une clé d'API de transcription**, si `assistant` doit devenir transcripteur.
+
+**Les écuries**, laissées pour la fin sur votre consigne.
 
 ---
 

@@ -16,7 +16,7 @@ interface WeightsRow {
   coach_id: string;
   w_vehicle: number;
   w_pilot: number;
-  w_regularity: number;
+  w_consistency: number;
   w_smoothness: number;
   note: string | null;
   updated_at: string;
@@ -27,7 +27,7 @@ function mapRow(row: WeightsRow): CoachReadingWeights {
     coachId: row.coach_id,
     wVehicle: Number(row.w_vehicle),
     wPilot: Number(row.w_pilot),
-    wConsistency: Number(row.w_regularity),
+    wConsistency: Number(row.w_consistency),
     wSmoothness: Number(row.w_smoothness),
     note: row.note,
     updatedAt: row.updated_at,
@@ -76,7 +76,7 @@ export async function upsertReadingWeights(
     coach_id: coachId,
     w_vehicle: input.wVehicle,
     w_pilot: input.wPilot,
-    w_regularity: input.wConsistency,
+    w_consistency: input.wConsistency,
     w_smoothness: input.wSmoothness,
     note: input.note?.trim() || null,
   };

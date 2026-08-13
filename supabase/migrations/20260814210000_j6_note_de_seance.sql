@@ -1,8 +1,8 @@
 -- =============================================================================
--- PROPOSITION — autoriser une note de SÉANCE dans `coach_annotations`
+-- APPLIQUÉE le 14/08/2026 — autoriser une note de SÉANCE dans `coach_annotations`
 -- =============================================================================
 --
--- NON APPLIQUÉE. Elle élargit une contrainte de vérification ; c'est du schéma.
+-- APPLIQUÉE le 14/08/2026, sur accord du fondateur. (Était : NON APPLIQUÉE.) Elle élargit une contrainte de vérification ; c'est du schéma.
 --
 -- -----------------------------------------------------------------------------
 -- CE QUE LE PLAN DEMANDE

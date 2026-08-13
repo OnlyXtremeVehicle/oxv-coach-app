@@ -85,7 +85,7 @@ async function fetchProfile(
   const { data, error } = await supabase
     .from('users')
     .select(
-      'id, email, first_name, last_name, pilot_level, is_admin, role, profile_completed_at, pact_accepted_at, pact_version, coach_pact_accepted_at, coach_pact_version, cgu_accepted_at, privacy_accepted_at'
+      'id, email, first_name, last_name, pilot_level, role, profile_completed_at, pact_accepted_at, pact_version, coach_pact_accepted_at, coach_pact_version, cgu_accepted_at, privacy_accepted_at'
     )
     .eq('id', userId)
     .maybeSingle();

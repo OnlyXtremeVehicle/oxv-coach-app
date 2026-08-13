@@ -2459,8 +2459,8 @@ export type Database = {
           coach_id: string
           note: string | null
           updated_at: string
+          w_consistency: number
           w_pilot: number
-          w_regularity: number
           w_smoothness: number
           w_vehicle: number
         }
@@ -2468,8 +2468,8 @@ export type Database = {
           coach_id: string
           note?: string | null
           updated_at?: string
+          w_consistency?: number
           w_pilot?: number
-          w_regularity?: number
           w_smoothness?: number
           w_vehicle?: number
         }
@@ -2477,8 +2477,8 @@ export type Database = {
           coach_id?: string
           note?: string | null
           updated_at?: string
+          w_consistency?: number
           w_pilot?: number
-          w_regularity?: number
           w_smoothness?: number
           w_vehicle?: number
         }
@@ -4297,11 +4297,11 @@ export type Database = {
         Row: {
           consent_rgpd: boolean
           created_at: string
-          email: string
+          email: string | null
           fonction_pro: string | null
           id: string
-          nom: string
-          prenom: string
+          nom: string | null
+          prenom: string | null
           session_pref: string | null
           statut: string
           user_id: string | null
@@ -4311,11 +4311,11 @@ export type Database = {
         Insert: {
           consent_rgpd?: boolean
           created_at?: string
-          email: string
+          email?: string | null
           fonction_pro?: string | null
           id?: string
-          nom: string
-          prenom: string
+          nom?: string | null
+          prenom?: string | null
           session_pref?: string | null
           statut?: string
           user_id?: string | null
@@ -4325,11 +4325,11 @@ export type Database = {
         Update: {
           consent_rgpd?: boolean
           created_at?: string
-          email?: string
+          email?: string | null
           fonction_pro?: string | null
           id?: string
-          nom?: string
-          prenom?: string
+          nom?: string | null
+          prenom?: string | null
           session_pref?: string | null
           statut?: string
           user_id?: string | null
@@ -5161,6 +5161,78 @@ export type Database = {
           },
         ]
       }
+      partner_engagements: {
+        Row: {
+          agreed_price_cents: number | null
+          created_at: string
+          ends_on: string | null
+          exclusivity_category: string | null
+          exclusivity_uplift_pct: number | null
+          id: string
+          notes: string | null
+          partner_account_id: string
+          plan_key: string
+          quantity: number
+          report_due_on: string | null
+          report_sent_at: string | null
+          rgpd_optin_at: string | null
+          starts_on: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          agreed_price_cents?: number | null
+          created_at?: string
+          ends_on?: string | null
+          exclusivity_category?: string | null
+          exclusivity_uplift_pct?: number | null
+          id?: string
+          notes?: string | null
+          partner_account_id: string
+          plan_key: string
+          quantity?: number
+          report_due_on?: string | null
+          report_sent_at?: string | null
+          rgpd_optin_at?: string | null
+          starts_on?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          agreed_price_cents?: number | null
+          created_at?: string
+          ends_on?: string | null
+          exclusivity_category?: string | null
+          exclusivity_uplift_pct?: number | null
+          id?: string
+          notes?: string | null
+          partner_account_id?: string
+          plan_key?: string
+          quantity?: number
+          report_due_on?: string | null
+          report_sent_at?: string | null
+          rgpd_optin_at?: string | null
+          starts_on?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "partner_engagements_partner_account_id_fkey"
+            columns: ["partner_account_id"]
+            isOneToOne: false
+            referencedRelation: "partner_accounts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "partner_engagements_plan_key_fkey"
+            columns: ["plan_key"]
+            isOneToOne: false
+            referencedRelation: "partner_plans"
+            referencedColumns: ["key"]
+          },
+        ]
+      }
       partner_leads: {
         Row: {
           channel: string
@@ -5300,6 +5372,51 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      partner_plans: {
+        Row: {
+          is_active: boolean
+          is_exclusive: boolean
+          key: string
+          label: string
+          price_max_cents: number
+          price_min_cents: number
+          public_pricing: boolean
+          sort_order: number
+          tagline: string | null
+          unit: string
+          updated_at: string
+          vat_mode: string
+        }
+        Insert: {
+          is_active?: boolean
+          is_exclusive?: boolean
+          key: string
+          label: string
+          price_max_cents: number
+          price_min_cents: number
+          public_pricing?: boolean
+          sort_order?: number
+          tagline?: string | null
+          unit: string
+          updated_at?: string
+          vat_mode: string
+        }
+        Update: {
+          is_active?: boolean
+          is_exclusive?: boolean
+          key?: string
+          label?: string
+          price_max_cents?: number
+          price_min_cents?: number
+          public_pricing?: boolean
+          sort_order?: number
+          tagline?: string | null
+          unit?: string
+          updated_at?: string
+          vat_mode?: string
+        }
+        Relationships: []
       }
       partners: {
         Row: {
@@ -7750,7 +7867,6 @@ export type Database = {
           founder_number: number | null
           founder_since: string | null
           id: string
-          is_admin: boolean | null
           kyc_status: Database["public"]["Enums"]["kyc_status_enum"] | null
           kyc_validated_at: string | null
           kyc_validated_by: string | null
@@ -7828,7 +7944,6 @@ export type Database = {
           founder_number?: number | null
           founder_since?: string | null
           id?: string
-          is_admin?: boolean | null
           kyc_status?: Database["public"]["Enums"]["kyc_status_enum"] | null
           kyc_validated_at?: string | null
           kyc_validated_by?: string | null
@@ -7906,7 +8021,6 @@ export type Database = {
           founder_number?: number | null
           founder_since?: string | null
           id?: string
-          is_admin?: boolean | null
           kyc_status?: Database["public"]["Enums"]["kyc_status_enum"] | null
           kyc_validated_at?: string | null
           kyc_validated_by?: string | null
@@ -8653,6 +8767,14 @@ export type Database = {
       }
       cleanup_old_notif_logs: { Args: never; Returns: number }
       cleanup_old_telemetry_frames: { Args: never; Returns: number }
+      coach_activity_facts: {
+        Args: { p_coach_id: string }
+        Returns: {
+          depuis: string
+          pilotes_distincts: number
+          seances_accompagnees: number
+        }[]
+      }
       coach_ai_consent: { Args: { pilot_uuid: string }; Returns: boolean }
       coach_has_permission: {
         Args: { coach_uuid: string; permission_name: string }
@@ -8909,6 +9031,7 @@ export type Database = {
         }[]
       }
       purge_old_biometry: { Args: never; Returns: undefined }
+      purge_old_resend_events: { Args: never; Returns: undefined }
       purge_user_data: { Args: { p_user: string }; Returns: undefined }
       qdi_public_rows: {
         Args: never

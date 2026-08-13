@@ -1,8 +1,8 @@
 -- =============================================================================
--- PROPOSITION — `coach_reading_weights.w_regularity` → `w_consistency`
+-- APPLIQUÉE le 14/08/2026 — `coach_reading_weights.w_regularity` → `w_consistency`
 -- =============================================================================
 --
--- NON APPLIQUÉE. C'est un renommage de COLONNE, donc du schéma, donc une
+-- APPLIQUÉE le 14/08/2026, sur accord du fondateur. (Était : NON APPLIQUÉE.) C'est un renommage de COLONNE, donc du schéma, donc une
 -- décision du fondateur (CLAUDE.md). Le fichier est prêt ; il attend un mot.
 --
 -- -----------------------------------------------------------------------------
