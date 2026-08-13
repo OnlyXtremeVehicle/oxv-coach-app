@@ -226,7 +226,45 @@ Le motif documenté est légitime — validation OXV préalable. **Mais le silen
 
 ## Phase 4bis · Le flux REC — huit étapes
 
-Contraste renforcé sur les huit · cibles **56 à 64 pt** · barre masquée en roulage seulement.
+Contraste renforcé sur les huit · cibles **56 à 64 pt** · ~~barre masquée en
+roulage seulement~~ → **barre masquée sur les CINQ segments** (amendé le 13/08).
+
+> ### Amendements du 13/08/2026 — là où le code avait raison contre ce plan
+>
+> *Rendus par arbitrage fondateur. Ils sont écrits ICI, dans le plan, et pas
+> seulement en dette : un plan qu'on corrige par un fichier annexe n'est plus un
+> plan.*
+>
+> **1. Les deux écrans `consentement` et `appairage` séparés ne sont plus
+> exigés.** Le consentement cardio a un sens au moment où le pilote vient de
+> connecter son boîtier, pas dans un écran abstrait deux étapes plus tôt. La
+> décision du 01/08 est postérieure à ce plan et mieux motivée.
+>
+> **2. Aucun chrono en roulage — même figé.** Le plan écrit « chrono figé au tour
+> bouclé, jamais animé » ; le code n'en affiche aucun. C'est le seul endroit du
+> dossier où l'implémentation est plus disciplinée que sa spécification : un
+> chiffre en piste appelle le regard, et le regard appelle l'accident. Le chrono
+> figé existe un écran plus loin, et c'est le bon endroit.
+>
+> **3. La barre d'onglets est masquée sur les CINQ segments, pas seulement en
+> roulage.** Le flux REC est un tunnel. Une barre au milieu d'un tunnel propose
+> une sortie qui laisse un état à moitié construit — une capture armée sans
+> véhicule, un consentement à moitié donné. « Masquée en roulage seulement »
+> décrit une consultation ; REC est une saisie.
+>
+> **4. Le « passer » du QCM sort du tiers supérieur.** Le pilote le remplit entre
+> deux runs, en combinaison, souvent avec des gants, sur un téléphone tenu d'une
+> main : le tiers supérieur d'un écran moderne n'est pas atteignable au pouce.
+> En bas, en texte seul — un bouton plein en ferait l'action principale, ce
+> qu'il n'est pas. La règle des cibles de ce plan n'est pas esthétique.
+>
+> **5. La ceinture cardio reste réservée aux pilotes coachés, et le motif est
+> écrit.** Le rythme cardiaque est une donnée de santé, catégorie particulière
+> au sens de l'article 9 du RGPD. Restreindre la collecte à ceux pour qui elle a
+> une finalité démontrable est de la minimisation (article 5.1.c) : c'est
+> défendable devant un contrôle, « on l'a fait comme ça » ne l'est pas. Le jour
+> où quelqu'un voudra l'ouvrir à tous « puisque le capteur est là », cette ligne
+> sera la seule chose qui l'arrêtera.
 
 | Lot | Écran | Points durs |
 |---|---|---|
@@ -235,7 +273,7 @@ Contraste renforcé sur les huit · cibles **56 à 64 pt** · barre masquée en 
 | 21c | **`appairage`** *(nouveau)* | **diagnostic dès le premier échec**, reconnexion en fond. Sépare le vérifié du supposé. **La localisation refusée est signalée dès l'échec** — cause la plus fréquente et la moins comprise |
 | — | `consentement` *(nouveau)* | **première fois seulement** — le flux reste à huit étapes |
 | 21d | `preparation` | éligibilité en tête. **Ajouter la seule colonne manquante : `declared_at`** |
-| 21e | `roulage` | seuil d'interruption sur **le tour de référence du pilote**, repli en secondes. **Chrono figé au tour bouclé, jamais animé** |
+| 21e | `roulage` | seuil d'interruption sur **le tour de référence du pilote**, repli en secondes. ~~Chrono figé au tour bouclé~~ → **aucun chrono en roulage** (amendement 2) |
 | 21f | `entre-runs` | QCM en tête, chiffres masqués. **Étendre `pilot_notes`** — un texte libre ne se croise pas |
 | 21g | `fin` | incident à état suivi · journée résumée · variable avec **préséance pilote** |
 
