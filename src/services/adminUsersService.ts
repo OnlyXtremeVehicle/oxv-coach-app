@@ -3,11 +3,38 @@
  *
  * Le changement de `users.role` est tracé automatiquement dans `admin_audit`
  * par le trigger `trg_audit_user_role_change` (migration 0015) : on n'a rien à
- * faire de plus côté app pour l'audit. On synchronise `is_admin` avec
- * `role='admin'` pour ne jamais diverger. Suspension et notes admin sont des
+ * faire de plus côté app pour l'audit. Suspension et notes admin sont des
  * actions admin classiques (colonnes existantes).
  *
- * RLS : `is_admin()` lit/écrit la table `users` au-delà de own-row.
+ * RLS : `is_admin()` lit/écrit la table `users` au-delà de own-row. La FONCTION
+ * demeure ; c'est la COLONNE `users.is_admin` qui a disparu.
+ *
+ * ===========================================================================
+ * LE 14/08, CE SERVICE A CASSÉ SANS QUE RIEN NE LE DISE
+ * ===========================================================================
+ *
+ * `setUserRole` écrivait `{ role, is_admin: role === 'admin' }`. La colonne
+ * `users.is_admin` a été supprimée le 14/08 (migration
+ * `20260814210000_j6_drop_users_is_admin`). PostgREST refuse une colonne
+ * inconnue en PGRST204, **avant** d'atteindre Postgres : tout changement de
+ * rôle depuis la console d'administration échouait, et l'erreur brute du
+ * pilote de connexion s'affichait dans une alerte.
+ *
+ * Trois choses ont rendu la panne invisible :
+ *
+ *   • le `as never` sur l'écriture — le compilateur ne pouvait plus refuser la
+ *     colonne. C'est le signal que ce dépôt documente déjà : *un cast sur une
+ *     écriture éteint exactement la vérification qui aurait aidé* ;
+ *   • le garde des non-changements (ci-dessous) court-circuite les écritures
+ *     inutiles, donc l'échec ne survenait QUE lors d'un vrai changement de
+ *     rôle — le seul cas qui compte ;
+ *   • la migration a balayé `pg_policies`, `pg_views`, `pg_indexes` et
+ *     `pg_constraint` avant de supprimer la colonne. Elle n'a jamais balayé le
+ *     code applicatif, et sa vérification passait précisément parce qu'elle ne
+ *     nommait plus la colonne.
+ *
+ * La règle qui en sort : **un `DROP COLUMN` se balaie aussi côté application**,
+ * et un `as never` sur un `update` est l'endroit exact où le balayage manque.
  */
 
 import { supabase } from '@/lib/supabase';
@@ -109,30 +136,28 @@ export interface MutationResult {
 }
 
 /**
- * Change le rôle (tracé dans admin_audit par le trigger 0015). `is_admin` est
- * synchronisé pour rester cohérent avec `role='admin'`.
+ * Change le rôle, et rien d'autre (tracé dans `admin_audit` par le trigger
+ * 0015).
  *
  * ---
  *
  * UN CHANGEMENT VERS LA VALEUR ACTUELLE NE CHANGE RIEN
  *
- * Le garde ci-dessous ferme un piège vivant. `administration@oxvehicle.fr` porte
- * `role = 'pilot'` **et** `is_admin = true` : il roule (7 séances) et administre.
- * La synchronisation `is_admin: role === 'admin'` s'appliquait à **toute**
- * écriture, y compris une écriture qui ne modifiait pas le rôle.
+ * Le garde ci-dessous fermait un piège qui n'existe plus, et il reste utile
+ * pour une autre raison.
  *
- * Autrement dit : ouvrir la fiche de ce compte et revalider « Pilote » — sa
- * valeur actuelle, donc un geste sans intention — effaçait `is_admin` et le
- * verrouillait hors de son propre espace d'administration. La reprise
- * demandait un accès SQL direct.
+ * Il a été posé parce que `administration@oxvehicle.fr` portait
+ * `role = 'pilot'` **et** `is_admin = true` : revalider « Pilote » — sa valeur
+ * actuelle, donc un geste sans intention — effaçait `is_admin` et le
+ * verrouillait hors de son propre espace d'administration.
  *
- * Le garde ne touche PAS la sémantique de la rétrogradation : rétrograder un
- * administrateur vers pilote lui retire toujours `is_admin`, et c'est voulu.
- * Il interdit seulement l'effet de bord d'un non-changement.
+ * La colonne a disparu le 14/08 : **le rôle fait désormais seul autorité**, et
+ * cette question de schéma est close. `PROPOSITION_L8_role_autorite.sql` la
+ * posait ; elle est tranchée.
  *
- * Le fond — `role` fait-il autorité, `is_admin` doit-il survivre — est une
- * décision de schéma. Elle est posée, non appliquée, dans
- * `supabase/migrations/PROPOSITION_L8_role_autorite.sql`.
+ * Le garde demeure parce qu'une écriture sans changement reste une écriture :
+ * elle ferait tourner le trigger d'audit et inscrirait dans `admin_audit` un
+ * changement de rôle qui n'a pas eu lieu.
  */
 export async function setUserRole(userId: string, role: UserRole): Promise<MutationResult> {
   const { data: actuel, error: lecture } = await supabase
@@ -146,10 +171,10 @@ export async function setUserRole(userId: string, role: UserRole): Promise<Mutat
   if (lecture) return { ok: false, error: lecture.message };
   if (actuel?.role === role) return { ok: true };
 
-  const { error } = await supabase
-    .from('users')
-    .update({ role, is_admin: role === 'admin' } as never)
-    .eq('id', userId);
+  // `role` SEUL. `users.is_admin` a été supprimée le 14/08 — cf. l'en-tête.
+  // Aucun cast : le typage doit pouvoir refuser une colonne inexistante, et
+  // c'est justement le `as never` qui l'en avait empêché.
+  const { error } = await supabase.from('users').update({ role }).eq('id', userId);
   return error ? { ok: false, error: error.message } : { ok: true };
 }
 

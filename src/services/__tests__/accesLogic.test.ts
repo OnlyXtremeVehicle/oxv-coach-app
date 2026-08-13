@@ -27,12 +27,22 @@
 import { estAdmin, estCoach, peutChangerEspace } from '../accesLogic';
 import type { ProfilAcces } from '../accesLogic';
 
-/** Les trois formes réellement présentes en base le 28/07/2026. */
-const ADMIN_PAR_ROLE: ProfilAcces = { role: 'admin', is_admin: false };
-const ADMIN_PAR_COLONNE: ProfilAcces = { role: 'pilot', is_admin: true };
-const PILOTE: ProfilAcces = { role: 'pilot', is_admin: false };
-const PARTENAIRE: ProfilAcces = { role: 'partner', is_admin: false };
-const COACH: ProfilAcces = { role: 'coach', is_admin: false };
+/**
+ * Les formes réellement présentes en base — RELUES LE 14/08/2026.
+ *
+ * `users.is_admin` a été SUPPRIMÉE ce jour-là. Les comptes qui administraient
+ * par la colonne seule ont été migrés vers `role = 'admin'` avant le DROP :
+ * `ADMIN_PAR_COLONNE` n'a donc plus d'équivalent en production, et le type ne
+ * permet plus de l'écrire.
+ *
+ * C'est le résultat recherché : la forme dangereuse est devenue INEXPRIMABLE,
+ * pas seulement interdite. Les tests qui la construisaient ne compilent plus,
+ * et c'est ainsi qu'on l'apprend.
+ */
+const ADMIN_PAR_ROLE: ProfilAcces = { role: 'admin' };
+const PILOTE: ProfilAcces = { role: 'pilot' };
+const PARTENAIRE: ProfilAcces = { role: 'partner' };
+const COACH: ProfilAcces = { role: 'coach' };
 
 describe('estAdmin — miroir exact de public.is_admin()', () => {
   // La branche qui manquait. Deux comptes de production en dépendent.
@@ -41,15 +51,17 @@ describe('estAdmin — miroir exact de public.is_admin()', () => {
   });
 
   /**
-   * LA BRANCHE HISTORIQUE EST FERMÉE — lot 8, option B, appliqué le 28/07/2026.
+   * LA BRANCHE HISTORIQUE EST FERMÉE, PUIS SUPPRIMÉE.
    *
-   * `administration@oxvehicle.fr` en dépendait ; il porte désormais
-   * `role = 'admin'`. La fonction `public.is_admin()` ne consulte plus la
-   * colonne, et ce test défend la symétrie : garder un repli côté application
-   * ouvrirait la porte à un compte que la RLS refuse ensuite en silence.
+   * Fermée le 28/07 (lot 8, option B) : `public.is_admin()` cessa de consulter
+   * la colonne. Supprimée le 14/08 : la colonne elle-même a disparu.
+   *
+   * Le test qui refusait « la colonne sans le rôle » n'a plus d'objet — cette
+   * forme ne peut plus être construite. Reste ce qui compte : un pilote reste
+   * un pilote, quoi qu'on prétende de lui.
    */
-  it('REFUSE un compte qui n’a que la colonne, sans le rôle', () => {
-    expect(estAdmin(ADMIN_PAR_COLONNE)).toBe(false);
+  it('REFUSE un pilote, quelle que soit son histoire', () => {
+    expect(estAdmin({ role: 'pilot' })).toBe(false);
   });
 
   it('refuse un pilote ordinaire', () => {
@@ -71,27 +83,26 @@ describe('estAdmin — miroir exact de public.is_admin()', () => {
   /**
    * LE TEST QUI DÉFEND LA RÈGLE, PAS LE CODE.
    *
-   * La colonne ne doit avoir AUCUNE influence, dans aucun sens. Ni ouvrir
-   * (l'application deviendrait plus permissive que la base, et la RLS refuserait
-   * en silence derrière une porte ouverte), ni fermer (le défaut d'origine).
+   * Il exigeait autrefois que la colonne n'ait AUCUNE influence, dans aucun
+   * sens. Elle a été supprimée le 14/08 : la règle est désormais tenue par le
+   * TYPE, qui n'accepte plus qu'un rôle.
+   *
+   * Il reste donc à vérifier ce qui peut encore varier — le rôle, et le fait
+   * qu'aucun autre ne passe.
    */
-  it('la colonne n’a plus aucune influence', () => {
-    expect(estAdmin({ role: 'admin', is_admin: false })).toBe(true);
-    expect(estAdmin({ role: 'admin', is_admin: true })).toBe(true);
-    expect(estAdmin({ role: 'pilot', is_admin: true })).toBe(false);
-    expect(estAdmin({ role: 'pilot', is_admin: false })).toBe(false);
-  });
-
-  it('le seul rôle suffit, la colonne peut être absente', () => {
+  it('le rôle décide seul, et aucun autre ne passe', () => {
     expect(estAdmin({ role: 'admin' })).toBe(true);
     expect(estAdmin({ role: 'pilot' })).toBe(false);
+    expect(estAdmin({ role: 'coach' })).toBe(false);
+    expect(estAdmin({ role: 'partner' })).toBe(false);
+    expect(estAdmin({ role: 'pro_pilot' })).toBe(false);
   });
 });
 
 describe('estCoach — miroir de public.is_coach()', () => {
   it('n’admet que le rôle coach, sans repli sur is_admin', () => {
     expect(estCoach(COACH)).toBe(true);
-    expect(estCoach(ADMIN_PAR_COLONNE)).toBe(false);
+    expect(estCoach({ role: 'pilot' })).toBe(false);
     expect(estCoach(ADMIN_PAR_ROLE)).toBe(false);
     expect(estCoach(null)).toBe(false);
   });
@@ -99,7 +110,7 @@ describe('estCoach — miroir de public.is_coach()', () => {
 
 describe('peutChangerEspace — le sélecteur d’espace', () => {
   it('suit exactement estAdmin', () => {
-    for (const p of [ADMIN_PAR_ROLE, ADMIN_PAR_COLONNE, PILOTE, PARTENAIRE, COACH, null]) {
+    for (const p of [ADMIN_PAR_ROLE, PILOTE, PARTENAIRE, COACH, null]) {
       expect(peutChangerEspace(p)).toBe(estAdmin(p));
     }
   });

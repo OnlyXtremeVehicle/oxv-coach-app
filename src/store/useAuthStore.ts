@@ -19,7 +19,10 @@ type UserProfile = {
   first_name: string | null;
   last_name: string | null;
   pilot_level: string | null;
-  is_admin: boolean;
+  // `is_admin` retiré le 14/08 avec la colonne. Le type le déclarait
+  // `boolean` NON facultatif alors que le SELECT ne le demandait plus : chaque
+  // lecture aurait rendu `undefined` sous la promesse d'un booléen, donc
+  // « false » en silence. Le rôle fait seul autorité — cf. `accesLogic`.
   role: UserRole;
   profile_completed_at: string | null;
   pact_accepted_at: string | null;

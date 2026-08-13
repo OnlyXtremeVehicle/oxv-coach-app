@@ -51,14 +51,14 @@
 import type { UserRole } from '@/store/useAuthStore';
 
 /**
- * La part du profil qui décide de l'accès.
+ * La part du profil qui décide de l'accès : le rôle, et lui seul.
  *
- * `is_admin` reste dans le type parce que la colonne existe encore en base et
- * que le store la charge — mais **elle ne décide plus de rien ici**.
+ * `is_admin` a été retiré du type le 14/08, avec la colonne. Le laisser
+ * facultatif aurait invité à s'en resservir, et ce champ ne pourrait plus
+ * qu'être `undefined` — c'est-à-dire mentir par omission plutôt que par valeur.
  */
 export interface ProfilAcces {
   role: UserRole;
-  is_admin?: boolean;
 }
 
 /**
