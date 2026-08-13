@@ -18,7 +18,24 @@
  */
 
 export const colors = {
-  bg: { base: '#14151A', card: '#1B1D24', card2: '#232630', scrim: 'rgba(10,11,14,0.72)' },
+  /**
+   * `card2` VALAIT `#232630` JUSQU'AU 13/08/2026 — et il tenait le plancher de
+   * justesse en dessous.
+   *
+   * `text.mid` (`#A9ADBB`) y mesurait **6,74**, sous les 7:1 que ce dépôt
+   * s'impose. Sur les deux autres fonds il passait largement — 8,14 sur `base`,
+   * 7,52 sur `card`. **Un seul fond posait problème, et c'est celui-là qu'on
+   * corrige.**
+   *
+   * L'arbitrage du 13/08 pose la raison : relever `mid` écraserait la hiérarchie
+   * des gris, employée partout ; assombrir un fond utilisé à trois endroits ne
+   * coûte rien. Quatre centièmes se comblent avec trois points de luminance.
+   *
+   * `#202329` mesure **7,03**, et la hiérarchie des fonds est intacte —
+   * luminances 0,0076 < 0,0124 < 0,0167. L'écart est invisible à l'œil nu ;
+   * le déplacement d'un gris de texte ne l'aurait pas été.
+   */
+  bg: { base: '#14151A', card: '#1B1D24', card2: '#202329', scrim: 'rgba(10,11,14,0.72)' },
   border: { card: '#2A2D38', strong: '#3A3E4C', hairline: '#22242C' },
   accent: '#C8102E',
   accentGlow: 'rgba(200,16,46,0.35)',
@@ -28,7 +45,9 @@ export const colors = {
    *
    * Contraste WCAG mesuré sur le PIRE des trois fonds (bg.base, bg.card, bg.card2) :
    *   hi  #E8E9ED — 12.44  (inchangé)
-   *   mid #A9ADBB —  6.74  (inchangé)
+   *   mid #A9ADBB —  7.03  (était 6.74 : `bg.card2` a été assombri le 13/08,
+   *                         cf. la note sur `bg` — c'est le fond qui a bougé,
+   *                         pas le gris)
    *   low #9195A3 —  5.05  (était #7A7E8C à 3.73 : échouait sur les cartes)
    *   dim #787C8A —  3.63  (était #5A5E6C à 2.34 : échouait partout, y compris
    *                         le seuil bas de 3.0 — or `dim` porte de vrais textes

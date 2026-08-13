@@ -22,7 +22,7 @@
  * Relevé le 05/08/2026, sur les trois fonds du kit :
  *
  *   hi     15,03 / 13,87 / 12,44   passe partout
- *   mid     8,14 /  7,52 /  6,74   passe sur base et card
+ *   mid     8,14 /  7,52 /  7,03   passe sur les TROIS depuis le 13/08
  *   low     6,10 /  5,64 /  5,05   ÉCHOUE partout
  *   dim     4,38 /  4,05 /  3,63   ÉCHOUE partout, et sous 4,5 sur deux fonds
  *   accent  3,10 /  2,86 /  2,57   ÉCHOUE de très loin
@@ -42,7 +42,11 @@
  *
  * **Deux écarts subsistent, connus et écrits, qu'elle ne couvre pas :**
  *
- *   1. `mid` sur `bg.card2` mesure **6,74** — quatre centièmes sous le
+ *   1. ~~`mid` sur `bg.card2` mesure 6,74~~ — **RÉGLÉ le 13/08/2026.** Le fond a
+ *      été assombri de `#232630` à `#202329` (7,03), plutôt que de relever le
+ *      gris : `mid` est employé partout, `card2` à trois endroits. Ce qui suit
+ *      décrivait le défaut, et reste pour mémoire du raisonnement — quatre
+ *      centièmes sous le
  *      plancher. C'est un défaut de JETON, pas d'écran : le corriger demande de
  *      relever `mid`, ce qui le rapproche de `hi` et écrase un palier de la
  *      hiérarchie. Arbitrage fondateur.

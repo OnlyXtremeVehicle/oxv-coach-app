@@ -239,9 +239,26 @@ function ArmButton({ onArm, disabled }: { onArm: () => void; disabled: boolean }
         </Canvas>
         <View style={styles.armTexts}>
           <Text style={styles.armLabel}>ARMER LA CAPTURE</Text>
-          <Text style={styles.armHint}>Maintenez pour armer</Text>
         </View>
       </View>
+      {/*
+        LA CONSIGNE SORT DU ROUGE — arbitrage du 13/08/2026.
+
+        Elle était posée SUR `#C8102E`, où le blanc pur plafonne à 5,88 : aucune
+        couleur de texte n'y atteint le plancher de 7:1 que ce flux s'impose.
+
+        L'argument qui autorise 5,88 sur un LIBELLÉ — « il est doublé par la
+        forme, la position et le geste » — ne vaut pas ici. « Maintenez pour
+        armer » n'est pas un libellé, c'est une INSTRUCTION : elle existe
+        précisément parce que la forme ne suffit pas à faire comprendre le
+        geste. L'assumer à 5,88 revenait à rendre la consigne la moins lisible
+        du flux celle dont on a le plus besoin.
+
+        Sur le fond sombre, `text.hi` dépasse 12:1. Le bouton garde sa masse
+        rouge — trouvable en plein soleil — et le plancher est tenu là où il
+        protège. On ne choisit plus entre les deux.
+      */}
+      <Text style={styles.armHint}>Maintenez pour armer</Text>
     </GestureDetector>
   );
 }
@@ -803,25 +820,28 @@ const styles = StyleSheet.create({
     color: colors.text.hi,
   },
   /**
-   * « Maintenez pour armer » — LE TEXTE LE MOINS LISIBLE DU FLUX, et c'était
-   * la consigne qui explique comment armer la capture.
+   * « Maintenez pour armer » — SORTIE DU ROUGE le 13/08/2026, et l'affaire est
+   * close.
    *
-   * Mesuré le 05/08/2026 : `text.hi` à 70 % d'opacité sur le rouge de marque
-   * donne **2,90**. Sous le seuil AA ordinaire de 4,5, très loin du plancher de
-   * 7:1 que le jalon impose aux huit écrans du flux — et en plein soleil, au
-   * paddock, sur un bouton qu'il faut trouver avant de rouler.
+   * Historique de la mesure : `text.hi` à 70 % d'opacité sur `#C8102E` donnait
+   * **2,90** (05/08). L'opacité retirée et le blanc pur l'ont portée à **5,88**,
+   * le maximum atteignable sur le rouge de marque — mais le plancher de 7:1 y
+   * reste hors de portée pour TOUTE couleur de texte.
    *
-   * L'opacité est retirée et le blanc pur remplace le gris clair : 5,88, le
-   * MAXIMUM atteignable sur `#C8102E`. Le plancher de 7:1 reste hors de portée
-   * sur le rouge de marque — aucune couleur de texte ne l'atteint. C'est un
-   * arbitrage qui vous revient : changer le rouge, ou passer ces boutons en
-   * bord seul. Consigné au dossier de décisions.
+   * L'arbitrage tranche autrement que par la couleur : on sépare l'instruction
+   * du bouton. Un libellé peut assumer 5,88, parce qu'il est doublé par la
+   * forme, la position et le geste. Une INSTRUCTION n'est doublée par rien —
+   * elle existe parce que la forme ne suffit pas.
+   *
+   * Sur le fond sombre, `text.hi` dépasse **12:1**. Le bouton garde sa masse
+   * rouge, le plancher est tenu là où il protège.
    */
   armHint: {
     fontFamily: typo.mono,
     fontSize: 10,
     letterSpacing: 1,
-    color: '#FFFFFF',
-    marginTop: 3,
+    color: colors.text.hi,
+    marginTop: space.sm,
+    textAlign: 'center',
   },
 });
