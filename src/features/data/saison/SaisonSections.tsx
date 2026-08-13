@@ -38,16 +38,21 @@
  * pour distinguer « panne de lecture » (état erreur + retry) de « compte vide »
  * (état vide).
  *
- * Quatre lectures :
+ * Cinq lectures :
  *  1. TOUR DE RÉFÉRENCE — progression du meilleur tour par circuit (courbe
  *     dorée Skia + GlowStroke, points tappables, ligne pointillée = record).
  *     Source : `fetchAllSessions` → `bestLapCurve`.
  *  2. RÉGULARITÉ — histogramme Skia de la distribution des écarts au tour de
  *     référence + le fait « X % de vos tours à moins d'une seconde ». Source :
- *     `fetchSessionLaps` → `regularityHistogram` (withinOneSecPct).
- *  3. VOS FAITS — grille de statistiques consolidées, chiffres en RollingCounter
+ *     `fetchSessionLaps` → `regularityHistogram` (withinOneSecPct). Les seaux
+ *     sont peints sur une rampe séquentielle (`rampeEcarts.ts`) : l'axe porte
+ *     un ordre, la couleur le rend.
+ *  3. SÉANCE PAR SÉANCE — petits multiples, un profil de tours par séance,
+ *     TOUS SOUS LA MÊME ÉCHELLE, annoncée au-dessus de la grille. Source :
+ *     `lapsBySession` (déjà chargé pour la régularité) → `petitsMultiplesLogic`.
+ *  4. VOS FAITS — grille de statistiques consolidées, chiffres en RollingCounter
  *     au premier viewport. Source : `loadPilotStats` → `pilotStatCells`.
- *  4. CIRCUITS — cartes des circuits roulés (record perso, nombre de séances) +
+ *  5. CIRCUITS — cartes des circuits roulés (record perso, nombre de séances) +
  *     silhouettes pointillées des circuits OXV à découvrir → Sheet (records
  *     perso + écosystème via `listCircuitServices`).
  *
@@ -90,6 +95,7 @@ import {
   useReduceMotion,
 } from '@/ui/v2';
 import { pairesRoulees, seancesDeLaPaire } from '@/features/data/pairesLogic';
+import { PetitsMultiples } from '@/features/data/saison/PetitsMultiples';
 import { couleursDesSeaux } from '@/features/data/saison/rampeEcarts';
 import { vehicleName } from '@/features/vous/garageLogic';
 import { listMyVehicles, type Vehicle } from '@/services/garageService';
@@ -110,6 +116,7 @@ import {
 } from '@/services/ecosystemLogic';
 import { fetchDirectoryCircuits, listCircuitServices } from '@/services/ecosystemService';
 import { fetchAllSessions, fetchSessionLaps } from '@/services/sessionsService';
+import { formatDateShort } from '@/utils/format';
 import { loadPilotStats, type PilotStats } from '@/services/statsService';
 import { useAuthStore } from '@/store/useAuthStore';
 
@@ -372,6 +379,31 @@ export function useSaisonData() {
     return bestLapCurve(input) as CurvePoint[];
   }, [filteredSessions]);
 
+  /**
+   * ── Petits multiples : une séance par panneau, échelle commune ────────────
+   *
+   * ILS SUIVENT LA PAIRE SÉLECTIONNÉE, ET CE N'EST PAS UN DÉTAIL D'ERGONOMIE.
+   * Une échelle de temps au tour partagée entre deux circuits de longueurs
+   * différentes ne compare rien : le panneau du circuit court serait en haut du
+   * cadre par construction, sans qu'aucune performance n'y soit pour quelque
+   * chose. On reste donc au périmètre où la comparaison a un sens — le même que
+   * la courbe et l'histogramme au-dessus.
+   *
+   * De la plus ancienne à la plus récente : la grille se lit dans le sens de
+   * la saison, et la coupe des douze dernières garde bien les dernières.
+   */
+  const seriesMultiples = useMemo(
+    () =>
+      [...filteredSessions]
+        .sort((a, b) => String(a.started_at).localeCompare(String(b.started_at)))
+        .map((s) => ({
+          sessionId: s.id,
+          libelle: formatDateShort(s.started_at),
+          toursMs: lapsBySession.get(s.id) ?? [],
+        })),
+    [filteredSessions, lapsBySession]
+  );
+
   // Régularité : tours du circuit sélectionné, écart au meilleur tour du même
   // périmètre (jamais un mélange inter-circuits).
   const regularity = useMemo(() => {
@@ -414,6 +446,7 @@ export function useSaisonData() {
     selectedName,
     curve,
     regularity,
+    seriesMultiples,
     lapsStatus,
     statCells,
     driven,
@@ -444,6 +477,7 @@ export function SaisonSections({ data }: { data: SaisonData }) {
     selectedName,
     curve,
     regularity,
+    seriesMultiples,
     lapsStatus,
     statCells,
     driven,
@@ -564,7 +598,19 @@ export function SaisonSections({ data }: { data: SaisonData }) {
         </View>
       </View>
 
-      {/* ── 3. Vos faits — statistiques consolidées ─────────────────────── */}
+      {/* ── 3. Séance par séance — petits multiples, échelle commune ────── */}
+      <View style={styles.section}>
+        <SectionHeader eyebrow="SÉANCE PAR SÉANCE" />
+        <View style={styles.card}>
+          {lapsStatus === 'loading' ? (
+            <StateView state="loading" shape="list" />
+          ) : (
+            <PetitsMultiples series={seriesMultiples} width={contentWidth - space.md * 2} />
+          )}
+        </View>
+      </View>
+
+      {/* ── 4. Vos faits — statistiques consolidées ─────────────────────── */}
       <View style={styles.section}>
         <SectionHeader eyebrow="VOS FAITS" />
         {statCells.length > 0 ? (
@@ -576,7 +622,7 @@ export function SaisonSections({ data }: { data: SaisonData }) {
         )}
       </View>
 
-      {/* ── 4. Circuits — roulés + à découvrir ──────────────────────────── */}
+      {/* ── 5. Circuits — roulés + à découvrir ──────────────────────────── */}
       <View style={styles.section}>
         <SectionHeader eyebrow="CIRCUITS" count={driven.length > 0 ? driven.length : undefined} />
         {driven.length > 0 ? (
