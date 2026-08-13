@@ -61,6 +61,16 @@ export interface RecordedLap {
   startLon: number | null;
   endLat: number | null;
   endLon: number | null;
+  /**
+   * Longueur parcourue sur ce tour, en mètres. `null` si non mesurable.
+   *
+   * Même mesure que `distance_km` de la séance — intégration de la vitesse
+   * Doppler du boîtier, pas des positions GPS (la dérive d'un véhicule à
+   * l'arrêt est elle-même une distance : vingt kilomètres en cinq minutes
+   * d'immobilité). Elle alimente `laps.distance_meters`, sans laquelle aucun
+   * tour n'est jamais « comparable » à un autre.
+   */
+  distanceM: number | null;
 }
 
 let recordedLaps: RecordedLap[] = [];
@@ -188,6 +198,10 @@ export function startLapDetection(opts: LapDetectionStartOptions): void {
         startLon: previousLapLon,
         endLat: frame.gps.latitude,
         endLon: frame.gps.longitude,
+        // Longueur figée par `compterTour` À L'INSTANT du franchissement, une
+        // ligne avant la remise à zéro de l'odomètre. La lire ici est le seul
+        // moment où elle existe encore.
+        distanceM: state.derniereLongueurTourM,
       });
     }
     // Le premier passage = fin d'outlap : on mémorise le point de départ du

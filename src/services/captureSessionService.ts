@@ -1054,6 +1054,7 @@ function persisterTourClos(state: CaptureState, lapNumber: number): void {
     start_lon: tour.startLon,
     end_lat: tour.endLat,
     end_lon: tour.endLon,
+    distance_meters: tour.distanceM,
     // Inconnu à cet instant — le lot final tranchera.
     is_best_lap: false,
     is_outlap: false,
@@ -1078,6 +1079,12 @@ function persisterTourClos(state: CaptureState, lapNumber: number): void {
  * ses colonnes à `null` : la lecture les rendra « — ». On n'écrit JAMAIS 0 pour
  * une mesure qui n'a pas eu lieu ; c'est exactement le zéro fabriqué qui donnait
  * une fluidité de 100 sortie de nulle part.
+ *
+ * `distance_meters` suit la même règle et vient de l'odomètre du détecteur, figé
+ * au franchissement. C'est la colonne dont dépend `compteToursComparables` :
+ * sans elle, aucun tour n'est comparable à aucun autre, et le niveau « Le delta
+ * et la trace » reste fermé sur toutes les séances — y compris celles de trois
+ * tours à quatre mètres d'écart.
  */
 function buildLapRows(
   sessionId: string,
@@ -1096,6 +1103,7 @@ function buildLapRows(
     start_lon: l.startLon,
     end_lat: l.endLat,
     end_lon: l.endLon,
+    distance_meters: l.distanceM,
     is_best_lap: l.durationMs === bestMs,
     is_outlap: false,
     is_inlap: false,

@@ -152,6 +152,32 @@ export interface LapDetectorState {
    * elle valait `null` partout. La mesure était pourtant là, à la trame près.
    */
   distanceTotaleM: number;
+  /**
+   * Longueur du DERNIER tour compté (m), figée juste avant la remise à zéro de
+   * l'odomètre. `null` tant qu'aucun tour n'a été compté.
+   *
+   * ---
+   *
+   * POURQUOI CE CHAMP EXISTE : UNE MESURE JETÉE À L'INSTANT OÙ ELLE EST CONNUE
+   *
+   * `compterTour` remettait `distanceSinceLapM` à zéro sans que personne ne
+   * l'ait lue. La longueur du tour — la seule grandeur qui dise si deux tours
+   * couvrent le même parcours — était donc calculée à la trame près, puis
+   * effacée, à chaque tour de chaque séance.
+   *
+   * Conséquence en bout de chaîne, vérifiée sur la séance du 13/08/2026 :
+   * `laps.distance_meters` est resté `null` sur les trois tours réels ;
+   * `etatSeanceService` le lit pour peupler `longueurM` ;
+   * `compteToursComparables` n'accepte que des longueurs strictement positives
+   * et rendait donc TOUJOURS zéro ; et le niveau « Le delta et la trace »
+   * annonçait au pilote *« Aucun tour comparable »* — alors qu'il venait d'en
+   * boucler trois à 5 873, 5 874 et 5 877 m, soit quatre mètres d'écart sur
+   * près de six kilomètres. Les tours les plus comparables qu'on puisse rouler.
+   *
+   * Un niveau qui ne peut structurellement jamais s'ouvrir, et un message faux
+   * sur les données du pilote : la garde posée, non armée, jusqu'à l'écran.
+   */
+  derniereLongueurTourM: number | null;
   /** Dernier point reçu, en degrés — sert uniquement à l'odomètre. */
   lastOdoLat: number | null;
   lastOdoLon: number | null;
@@ -270,6 +296,7 @@ export function createLapDetector(
     lastLapEndAt: null,
     distanceSinceLapM: 0,
     distanceTotaleM: 0,
+    derniereLongueurTourM: null,
     lastOdoLat: null,
     lastOdoLon: null,
     lastOdoAt: null,
@@ -290,8 +317,22 @@ function distanceSuffisante(state: LapDetectorState): boolean {
   return state.distanceSinceLapM >= state.minLapDistanceM;
 }
 
-/** Un tour est compté : on repart d'un odomètre vierge. */
+/**
+ * Un tour est compté : on FIGE sa longueur, puis on repart d'un odomètre vierge.
+ *
+ * L'ordre compte. La longueur du tour n'existe qu'à cet instant précis : une
+ * ligne plus bas, elle vaut zéro pour toujours.
+ *
+ * **Zéro devient `null`, jamais zéro.** Un odomètre resté à zéro ne signifie pas
+ * « ce tour mesure zéro mètre » — il signifie qu'aucune distance n'a pu être
+ * mesurée (boîtier sans vitesse Doppler exploitable, trames absentes). Écrire 0
+ * fabriquerait une mesure ; `null` dit l'absence, et c'est la règle du projet.
+ */
 function compterTour(state: LapDetectorState, timestamp: number): void {
+  state.derniereLongueurTourM =
+    Number.isFinite(state.distanceSinceLapM) && state.distanceSinceLapM > 0
+      ? state.distanceSinceLapM
+      : null;
   state.lastLapEndAt = timestamp;
   state.distanceSinceLapM = 0;
   state.lapEndTimestamps.push(timestamp);
@@ -540,6 +581,7 @@ export function resetLapDetector(state: LapDetectorState): void {
   state.lastLapEndAt = null;
   state.distanceSinceLapM = 0;
   state.distanceTotaleM = 0;
+  state.derniereLongueurTourM = null;
   state.lastOdoLat = null;
   state.lastOdoLon = null;
   state.lastOdoAt = null;

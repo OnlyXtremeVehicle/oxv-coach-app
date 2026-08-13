@@ -153,6 +153,50 @@ psql "$SUPABASE_DB_URL" -c "update public.sessions set date='2026-08-13', start_
 
 ---
 
+## Ce que la séance a rendu, et ce qu'elle a révélé
+
+La détection a tenu. Trois tours, mesurés par deux méthodes indépendantes qui
+concordent à **1,4 m près** :
+
+| Tour | Durée | Odomètre (trame à trame) | Vitesse moyenne × durée |
+|---|---|---|---|
+| 1 | 6:00,5 | 5 875,5 m | 5 876,9 m |
+| 2 | **5:27,5** | 5 873,7 m | 5 873,0 m |
+| 3 | 5:39,5 | 5 874,7 m | 5 874,0 m |
+
+Quatre mètres séparent les trois tours, sur une boucle relevée à 5 913 m. C'est
+le meilleur contrôle qu'on pouvait espérer du chronométrage.
+
+**Et c'est ce qui a mis un défaut au jour.** `laps.distance_meters` n'a jamais
+été écrite — documenté depuis le 26/07, jamais corrigé. Or `etatSeanceService`
+la lit pour décider quels tours sont *comparables*, et `compteToursComparables`
+n'accepte que des longueurs strictement positives. Le compte valait donc
+toujours zéro, et le niveau « Le delta et la trace » ne pouvait s'ouvrir **sur
+aucune séance, jamais**.
+
+Ce que vous avez lu après avoir bouclé ces trois tours :
+
+> « Aucun tour comparable. Cette lecture en demande deux qui couvrent la même
+> distance. »
+
+Une phrase fausse sur vos propres données. L'odomètre connaissait la longueur du
+tour à la trame près, et la remettait à zéro une ligne avant que quiconque ne la
+lise.
+
+C'est corrigé à la source : la longueur est figée au franchissement, portée
+jusqu'à la base, et un test l'éprouve **jusqu'à l'état du niveau** — pas jusqu'au
+champ. Un zéro reste `null` : un odomètre muet ne mesure pas zéro mètre, il ne
+mesure rien.
+
+Vos trois tours du 13/08, eux, gardent leur longueur vide : le correctif vaut
+pour les séances à venir. Pour les renseigner depuis vos propres trames :
+
+```bash
+psql "$SUPABASE_DB_URL" -f scripts/sql/backfill_laps_distance.sql
+```
+
+---
+
 ## Au retour
 
 Ce qu'il faut regarder, dans cet ordre :
