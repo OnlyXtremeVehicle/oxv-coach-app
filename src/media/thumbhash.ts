@@ -32,6 +32,32 @@
  * complète alors que sa moitié amont manque.
  */
 
+/**
+ * ===========================================================================
+ * ⚠ CE MODULE N'EST EXÉCUTÉ PAR AUCUN CODE DE PRODUCTION — MESURÉ LE 14/08/2026
+ * ===========================================================================
+ *
+ * Ses 17 tests passent, et ils ne couvrent RIEN de ce qui tourne :
+ *
+ *   • l'encodage réel se fait côté serveur, dans la fonction Edge
+ *     `generate-thumbhash`, avec `esm.sh/thumbhash@0.1.1` ;
+ *   • le décodage réel est natif, dans `expo-image` — `Photo.tsx` relaie une
+ *     chaîne base64 sans passer par ici ;
+ *   • le seul importeur de ce fichier est son propre test.
+ *
+ * Le dossier T2 promettait « UNE implémentation, sans divergence entre ce que
+ * l'application exécute et ce que le banc vérifie ». Il y en a deux, et la
+ * divergence annoncée comme évitée est exactement celle qui existe.
+ *
+ * **Conséquence à retenir : un défaut de l'encodeur SERVEUR resterait vert
+ * ici.** Ces tests ne sont pas un filet pour la production.
+ *
+ * Le module est conservé plutôt que supprimé : c'est du code correct, et la
+ * règle du fondateur réserve la suppression franche à ce qui CONTREDIT la
+ * doctrine. Sa suppression reste un arbitrage ouvert ; `modulesOrphelins.guard`
+ * le surveille en attendant.
+ */
+
 import {
   rgbaToThumbHash,
   thumbHashToApproximateAspectRatio,

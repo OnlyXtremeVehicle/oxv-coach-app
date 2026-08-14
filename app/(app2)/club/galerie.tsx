@@ -711,6 +711,7 @@ interface ViewablePhotoLite {
   id: string;
   uri: string;
   sessionId: string;
+  thumbhash?: string;
 }
 
 /**
@@ -771,6 +772,7 @@ function GalleryViewer({
           renderItem={({ item }) => (
             <PagerImage
               uri={item.uri}
+              thumbhash={item.thumbhash}
               width={winW}
               height={winH}
               onZoomChange={setZoomed}
@@ -803,12 +805,14 @@ function GalleryViewer({
 
 function PagerImage({
   uri,
+  thumbhash,
   width,
   height,
   onZoomChange,
   onDismiss,
 }: {
   uri: string;
+  thumbhash?: string;
   width: number;
   height: number;
   onZoomChange: (zoomed: boolean) => void;
@@ -894,6 +898,7 @@ function PagerImage({
         <Animated.View style={[{ width, height }, imageStyle]}>
           <Photo
             uri={uri}
+            thumbhash={thumbhash}
             contentFit="contain"
             style={styles.viewerImage}
             accessibilityLabel="Photo de la séance, plein écran"

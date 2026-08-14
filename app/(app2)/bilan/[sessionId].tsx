@@ -327,7 +327,14 @@ export default function BilanScreen() {
         <Animated.View style={[styles.heroWrap, morph.style]}>
           <View ref={morph.ref} onLayout={morph.onLayout} collapsable={false}>
             {heroPhoto?.signedUrl ? (
-              <HeroPhoto uri={heroPhoto.signedUrl} height={HERO_HEIGHT}>
+              <HeroPhoto
+                uri={heroPhoto.signedUrl}
+                // Le hash était en mémoire — `heroPhoto` est un
+                // `SessionMediaItem` complet — et jeté sur le seuil du
+                // composant, qui n'avait pas la prop.
+                thumbhash={heroPhoto.thumbhash ?? undefined}
+                height={HERO_HEIGHT}
+              >
                 <HeroOverlay data={data} />
               </HeroPhoto>
             ) : (

@@ -206,6 +206,12 @@ export interface ViewablePhoto {
   id: string;
   uri: string;
   sessionId: string;
+  /**
+   * Empreinte ThumbHash, si elle a été produite. Les VIGNETTES la passaient
+   * depuis le 04/08 ; le plein écran, non — soit l'inverse de ce qui aide,
+   * puisque c'est la grande image dont le chargement se voit.
+   */
+  thumbhash?: string;
 }
 
 /**
@@ -213,14 +219,23 @@ export interface ViewablePhoto {
  * URL signée — l'ordre est celui du viewer (swipe horizontal entre photos).
  * Les vidéos et les photos sans URL sont exclues (aucun rendu possible).
  */
-export function viewablePhotos<T extends GalleryMediaRef & { signedUrl?: string | null }>(
-  sections: readonly GallerySection<T>[]
-): ViewablePhoto[] {
+export function viewablePhotos<
+  T extends GalleryMediaRef & { signedUrl?: string | null; thumbhash?: string | null },
+>(sections: readonly GallerySection<T>[]): ViewablePhoto[] {
   const out: ViewablePhoto[] = [];
   for (const sec of sections) {
     for (const it of sec.items) {
       if (it.mediaType === 'photo' && typeof it.signedUrl === 'string' && it.signedUrl.length > 0) {
-        out.push({ id: it.id, uri: it.signedUrl, sessionId: sec.sessionId });
+        out.push({
+          id: it.id,
+          uri: it.signedUrl,
+          sessionId: sec.sessionId,
+          // `?? undefined` : le service rend `null` tant que la fonction Edge
+          // n'a pas produit le hash. `Photo` attend `string | undefined` et
+          // retombe alors sur le blurhash titane — un `null` traversant
+          // donnerait un placeholder vide.
+          thumbhash: it.thumbhash ?? undefined,
+        });
       }
     }
   }

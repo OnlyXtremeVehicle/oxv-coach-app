@@ -10,9 +10,9 @@
 
 | Élément                 | Fichier                                  | État                                                   |
 | ----------------------- | ---------------------------------------- | ------------------------------------------------------ |
-| Codec ThumbHash         | `src/media/thumbhashCodec.ts`            | **fait** — porté, 17 tests                             |
-| API applicative         | `src/media/thumbhash.ts`                 | **fait** — encodage, décodage, bornes, couleur moyenne |
-| Consommation par le kit | `src/ui/v2/media/Photo.tsx`              | **fait** — `thumbhash` prioritaire sur `blurhash`      |
+| Codec ThumbHash         | `src/media/thumbhashCodec.ts`            | **porté et testé, mais AUCUN code de production ne l'exécute** — voir « les deux implémentations » |
+| API applicative         | `src/media/thumbhash.ts`                 | idem — seul son propre test l'importe |
+| Consommation par le kit | `src/ui/v2/media/Photo.tsx`              | **fait, mais PAS via le portage** — il importe `./blurhash` et `./mediaMath`, et relaie une chaîne au décodeur natif d'expo-image |
 | Génération serveur      | `supabase/functions/generate-thumbhash/` | **fait ET DÉPLOYÉE** le 03/08/2026 — voir plus bas     |
 | Appel à l'envoi         | `src/services/sessionMediaService.ts`    | **fait** — lancé sans être attendu                     |
 | Colonne en base         | `20260729034239_t2_thumbhash_session_media.sql` | **appliquée** le 29/07/2026            |
@@ -147,12 +147,46 @@ répond correctement à un lot vide — c'est ce qu'on voulait vérifier, et c'e
 tout ce que ce test prouve. **Aucun ThumbHash n'a encore été calculé sur une
 vraie image.** Cela viendra au premier média déposé.
 
-### Ce qui reste ouvert
+### ~~Ce qui reste ouvert~~ — CORRIGÉ, ET L'AFFIRMATION ÉTAIT FAUSSE
 
-**Aucun écran ne passe la prop.** `src/ui/v2/media/Photo.tsx:46` donne bien la
-priorité au `thumbhash` sur le `blurhash`, mais un `grep` sur `app/`,
-`src/components`, `src/features` et le reste de `src/ui` ne rend rien. Même avec
-un hash en base, l'aplat titane resterait affiché.
+> **« Aucun écran ne passe la prop » était vrai le 29/07, faux depuis le
+> 04/08** (commit `92fa4b9`) : quatre grilles de vignettes la passent. Le
+> document déclarait mort ce qui vivait — et vivant, deux lignes plus haut, ce
+> qui était mort.
+
+Ce qui manquait vraiment, et qui est corrigé le 14/08 : **les GRANDES images ne
+recevaient pas le hash.** `HeroPhoto` n'avait même pas la prop, alors que le
+Bilan lui passe un `SessionMediaItem` complet — le hash était en mémoire et
+jeté sur le seuil. La visionneuse plein écran de la galerie ne recevait qu'un
+`uri`.
+
+C'était l'inverse de ce qui aide : le repli soigné servait aux vignettes, dont
+le chargement se voit à peine, et pas aux images plein cadre.
+
+Désormais : `HeroPhoto` porte la prop, `ViewablePhoto` porte le hash jusqu'au
+plein écran, et le Bilan le transmet.
+
+### LES DEUX IMPLÉMENTATIONS — ce que ce dossier promettait d'éviter
+
+Ce document écrit que le portage donne *« UNE implémentation, sans divergence
+entre ce que l'application exécute et ce que le banc vérifie »*.
+
+**Il y en a exactement deux, et la divergence annoncée comme évitée est celle
+qui existe :**
+
+| | ce qui tourne |
+|---|---|
+| encodage | `esm.sh/thumbhash@0.1.1`, dans la fonction Edge |
+| décodage | natif, dans `expo-image` |
+| `src/media/thumbhash*.ts` | **rien** — aucun importeur de production |
+
+Les 17 tests portent donc sur du code que rien n'exécute. Ils ne couvrent pas
+l'encodeur réel : un défaut côté serveur resterait vert.
+
+**Le portage n'est pas supprimé** — c'est du code correct, pas de
+l'anti-doctrine, et la règle du fondateur réserve la suppression franche à ce
+qui contredit la doctrine. Il est ANNOTÉ, et la garde d'orphelins du dépôt le
+surveille déjà. Le supprimer reste un arbitrage ouvert.
 
 **Rien n'appelle le mode rattrapage.** La fonction sait traiter par lot, l'index
 partiel `idx_session_media_thumbhash_manquant` est en place pour ça — mais aucun

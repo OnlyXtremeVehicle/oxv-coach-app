@@ -33,6 +33,16 @@ export interface HeroPhotoProps {
   uri?: string;
   height: number;
   blurhash?: string;
+  /**
+   * Empreinte ThumbHash de l'image, si elle est connue.
+   *
+   * Elle manquait ici alors que les quatre grilles de VIGNETTES la passent
+   * depuis le 04/08 — c'est-à-dire que le repli soigné servait aux petites
+   * images et pas aux GRANDES, celles dont le chargement se voit. Le bilan
+   * donnait à ce composant un `SessionMediaItem` complet, hash compris, et le
+   * hash était jeté sur le seuil.
+   */
+  thumbhash?: string;
   children?: React.ReactNode;
   scrollY?: SharedValue<number>;
   /**
@@ -64,6 +74,7 @@ export function HeroPhoto({
   uri,
   height,
   blurhash,
+  thumbhash,
   children,
   scrollY,
   parallaxOffset = 0,
@@ -84,7 +95,7 @@ export function HeroPhoto({
           <Animated.View
             style={[hasParallax ? styles.photoLayerBleed : StyleSheet.absoluteFill, parallaxStyle]}
           >
-            <Photo uri={uri} blurhash={blurhash} style={styles.photo} />
+            <Photo uri={uri} blurhash={blurhash} thumbhash={thumbhash} style={styles.photo} />
           </Animated.View>
         </>
       ) : (
