@@ -1,5 +1,27 @@
 # T3 — Mesure de performance
 
+> ## ÉTAT AU 14/08/2026 — LE SOCLE EST ARMÉ, IL MANQUE LA MACHINE
+>
+> Ce document décrivait « Flashlight en intégration continue, sur appareil
+> réel ». **Rien ne tournait** : le job portait `if: false`, tournait sur
+> `ubuntu-latest`, et son étape de mesure était un `echo` suivi d'un `exit 1`.
+> Le dossier `perf/` n'existait même pas, alors que le workflow attendait
+> `perf/resultats/*.json` en entrée du juge.
+>
+> Ce qui a été fait aujourd'hui : **quatre parcours** (`perf/parcours/*.yml`,
+> un par écran à risque), le dossier de résultats, la commande de mesure
+> réelle, et un `perf/README.md` qui dit où en est la chaîne.
+>
+> Ce qui manque tient en une phrase : **un exécuteur GitHub avec un téléphone
+> Android branché.** Le jour où il existe, DEUX lignes changent — retirer le
+> `if: false`, remplacer `ubuntu-latest`. C'est délibéré : un harnais à moitié
+> écrit demande une journée le jour où on en a besoin, et ce jour-là on a autre
+> chose à faire.
+>
+> Réserve honnête : **aucune mesure n'a jamais été relevée.** Le budget réel de
+> chaque écran reste inconnu, y compris pour ceux déjà refondus.
+
+
 **Branche `migration/sdk-55`** · 27 juillet 2026
 
 > _« Flashlight en intégration continue, sur appareil réel. Profiler la

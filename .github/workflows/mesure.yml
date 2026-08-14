@@ -37,6 +37,17 @@ jobs:
     name: temps d'image sur appareil réel
     # Garde explicite : tant qu'aucun exécuteur ne porte d'appareil, ce travail
     # ne doit pas être lancé par erreur et rendre un rouge permanent.
+    #
+    # AU 14/08/2026, TOUT LE RESTE EST PRÊT. Les quatre parcours existent, le
+    # dossier de résultats aussi, la commande de mesure est écrite et le juge
+    # est testé. Il ne reste QUE deux lignes à changer le jour où une machine
+    # à appareil arrive :
+    #
+    #   1. retirer le `if: false` ci-dessous ;
+    #   2. remplacer `ubuntu-latest` par l'étiquette de cet exécuteur.
+    #
+    # C'est délibéré : un harnais à moitié écrit demande une journée le jour où
+    # on en a besoin, et ce jour-là on a autre chose à faire.
     if: false
     runs-on: ubuntu-latest # ← à remplacer par l'étiquette de l'exécuteur à appareil
 
@@ -66,14 +77,24 @@ jobs:
           # conclurait « aucune image hors budget » — un faux vert.
           test "$(adb devices | grep -c 'device$')" -ge 1
 
-      # Les parcours restent à écrire : un par écran mesuré, dans le fichier
-      # `perf/parcours/<ecran>.yml`. Le dossier les nommera au lot qui les
-      # concerne — mesurer un écran avant de l'avoir refondu n'a pas d'intérêt.
+      # QUATRE PARCOURS EXISTENT DEPUIS LE 14/08/2026.
+      #
+      # Un par ÉCRAN mesuré : la trace porte alors son nom, et le juge rend un
+      # verdict par écran plutôt qu'un chiffre global qui noierait le coupable.
+      #
+      # Le choix des quatre n'est pas arbitraire — ce sont les écrans qui
+      # portent une animation continue ou un rendu Skia : l'accueil, le bilan,
+      # la séance et la signature. Les autres sont des listes ; les mesurer
+      # avant eux serait mesurer ce qui ne risque rien.
       - name: Mesurer les parcours
         run: |
-          echo "Aucun parcours défini pour l'instant."
-          echo "Voir docs/T3_MESURE.md — la liste vient avec les écrans refondus."
-          exit 1
+          set -e
+          mkdir -p perf/resultats
+          for p in perf/parcours/*.yml; do
+            nom="$(basename "$p" .yml)"
+            echo "── $nom ──"
+            flashlight test               --bundleId fr.oxvehicle.app               --testCommand "maestro test $p"               --resultsFilePath "perf/resultats/$nom.json"               --iterationCount 3
+          done
 
       - name: Juger les traces
         run: npx --yes tsx scripts/juger-mesure.ts perf/resultats/*.json

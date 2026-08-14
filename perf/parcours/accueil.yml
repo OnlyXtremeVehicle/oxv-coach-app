@@ -1,0 +1,29 @@
+# Parcours de mesure — L'accueil du Miroir
+#
+# Format Maestro, tel que Flashlight l'attend (`flashlight test --testCommand`).
+# Un parcours par ECRAN mesure : la trace porte alors le nom de l'ecran, et le
+# juge (`scripts/juger-mesure.ts`) rend un verdict par ecran plutot qu'un
+# chiffre global qui noierait le coupable.
+#
+# POURQUOI CE PARCOURS-CI
+#
+# C'est le premier ecran de chaque ouverture, et il porte le radar Skia,
+# le morph du heros et la carte de trace. Si un budget doit tenir, c'est
+# celui-la.
+#
+# CE QUI EST MESURE, ET CE QUI NE L'EST PAS
+#
+# Le temps d'image PENDANT le geste. Le chargement reseau n'en fait pas partie :
+# il depend du reseau du jour, et le budget de 16,7 ms ne le vise pas.
+#
+# appId : voir app.json. Le bundle de DEVELOPPEMENT est proscrit — le mode
+# debug fausse tout, et un vert obtenu dessus ne veut rien dire.
+# `fr.oxvehicle.app` — releve dans app.json (`android.package`), pas suppose.
+# Flashlight pilote par ADB : c'est donc le paquet ANDROID qui compte.
+appId: fr.oxvehicle.app
+---
+- launchApp:
+    clearState: false
+- assertVisible: 'MIROIR'
+- scroll
+- scroll

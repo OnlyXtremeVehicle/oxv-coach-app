@@ -1,0 +1,9 @@
+Les traces de mesure atterrissent ici (`perf/resultats/<ecran>.json`), une par
+parcours, et le juge les lit : `npx tsx scripts/juger-mesure.ts perf/resultats/*.json`.
+
+Le dossier est versionné VIDE, exprès : le workflow attend son existence en
+entrée du juge, et un dossier absent ferait échouer l'étape de jugement pour
+une raison qui n'a rien à voir avec la performance mesurée.
+
+Les traces elles-mêmes ne sont pas versionnées — elles dépendent de l'appareil,
+du jour et de la température du téléphone.

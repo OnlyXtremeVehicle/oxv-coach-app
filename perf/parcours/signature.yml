@@ -1,0 +1,34 @@
+# Parcours de mesure — La signature et l'empreinte
+#
+# Format Maestro, tel que Flashlight l'attend (`flashlight test --testCommand`).
+# Un parcours par ECRAN mesure : la trace porte alors le nom de l'ecran, et le
+# juge (`scripts/juger-mesure.ts`) rend un verdict par ecran plutot qu'un
+# chiffre global qui noierait le coupable.
+#
+# POURQUOI CE PARCOURS-CI
+#
+# Le morph du grand radar est la seule animation du produit qui traverse
+# le pont UI vers JS a chaque image. Sa preuve profiler est due depuis le
+# lot L1 ; ce parcours est fait pour la produire.
+#
+# CE QUI EST MESURE, ET CE QUI NE L'EST PAS
+#
+# Le temps d'image PENDANT le geste. Le chargement reseau n'en fait pas partie :
+# il depend du reseau du jour, et le budget de 16,7 ms ne le vise pas.
+#
+# appId : voir app.json. Le bundle de DEVELOPPEMENT est proscrit — le mode
+# debug fausse tout, et un vert obtenu dessus ne veut rien dire.
+# `fr.oxvehicle.app` — releve dans app.json (`android.package`), pas suppose.
+# Flashlight pilote par ADB : c'est donc le paquet ANDROID qui compte.
+appId: fr.oxvehicle.app
+---
+- launchApp:
+    clearState: false
+- tapOn: 'MIROIR'
+- tapOn: 'Votre signature'
+- tapOn:
+    index: 1
+    text: '.*'
+- tapOn:
+    index: 2
+    text: '.*'

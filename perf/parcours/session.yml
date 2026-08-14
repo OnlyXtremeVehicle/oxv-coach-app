@@ -1,0 +1,30 @@
+# Parcours de mesure — La seance en detail
+#
+# Format Maestro, tel que Flashlight l'attend (`flashlight test --testCommand`).
+# Un parcours par ECRAN mesure : la trace porte alors le nom de l'ecran, et le
+# juge (`scripts/juger-mesure.ts`) rend un verdict par ecran plutot qu'un
+# chiffre global qui noierait le coupable.
+#
+# POURQUOI CE PARCOURS-CI
+#
+# Cinq onglets, dont un histogramme par tour et un nuage d'appuis. Le
+# passage d'onglet est le geste a mesurer : c'est la que le rendu se refait.
+#
+# CE QUI EST MESURE, ET CE QUI NE L'EST PAS
+#
+# Le temps d'image PENDANT le geste. Le chargement reseau n'en fait pas partie :
+# il depend du reseau du jour, et le budget de 16,7 ms ne le vise pas.
+#
+# appId : voir app.json. Le bundle de DEVELOPPEMENT est proscrit — le mode
+# debug fausse tout, et un vert obtenu dessus ne veut rien dire.
+# `fr.oxvehicle.app` — releve dans app.json (`android.package`), pas suppose.
+# Flashlight pilote par ADB : c'est donc le paquet ANDROID qui compte.
+appId: fr.oxvehicle.app
+---
+- launchApp:
+    clearState: false
+- tapOn: 'DATA'
+- tapOn: 'Tours'
+- tapOn: 'Les mesures'
+- tapOn: 'Appuis'
+- tapOn: 'Au fil du tour'
