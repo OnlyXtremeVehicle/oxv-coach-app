@@ -203,6 +203,42 @@ export function libelleBaseMarge(base: MarginBase): string | null {
   return null;
 }
 
+/**
+ * CE QU'ON DIT AU COACH, AU-DESSUS DE DEUX CHIFFRES CÔTE À CÔTE.
+ *
+ * Comparer suppose que les deux nombres mesurent la même chose. Tant que
+ * toutes les séances partagent la même base, c'est vrai et l'en-tête peut le
+ * nommer. Le jour où un véhicule sera caractérisé et l'autre non, la
+ * comparaison portera sur deux grandeurs différentes — et c'est précisément ce
+ * qu'il faut dire, plutôt que de laisser un écart parler tout seul.
+ *
+ * Une base `null` (ligne antérieure au 14/08/2026) ne se devine pas : on garde
+ * alors le libellé d'origine et on se tait.
+ */
+export function libelleLigneMarge(bases: readonly (MarginBase | null)[]): {
+  label: string;
+  note: string | null;
+} {
+  const connues = bases.filter((b): b is MarginBase => b !== null);
+  if (connues.length !== bases.length || connues.length === 0) {
+    return { label: 'marge globale', note: null };
+  }
+  const distinctes = new Set(connues);
+  if (distinctes.size > 1) {
+    return {
+      label: 'marge',
+      note: 'Ces marges ne reposent pas sur la même base : l’une porte sur le pilotage seul.',
+    };
+  }
+  if (distinctes.has('pilote-seul')) {
+    return {
+      label: 'marge pilote',
+      note: 'Aucun véhicule n’est caractérisé : ces marges portent sur le pilotage.',
+    };
+  }
+  return { label: 'marge globale', note: null };
+}
+
 export interface ComputeMarginOutput {
   marginGlobal: MarginPercent | null;
   marginZone: MarginZone | null;

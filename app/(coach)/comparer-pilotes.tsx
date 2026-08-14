@@ -53,6 +53,7 @@ import {
   loadSessionSnapshot,
   logCoachView,
 } from '@/services/coachService';
+import { libelleLigneMarge } from '@/services/marginCalculator';
 import { type MarginZone, marginLabelOf } from '@/types/domain';
 import { theme } from '@/theme/v2';
 import { AppBar } from '@/ui/AppBar';
@@ -190,13 +191,21 @@ export default function CoachComparerPilotesScreen() {
     </View>
   );
 
+  // Un ÉCART affirme plus fort qu'un chiffre : il pose que les deux valeurs
+  // sont commensurables. Le libellé dit donc sur quoi elles reposent, et la
+  // note prévient si les deux bases diffèrent.
+  const ligneMarge =
+    sideA.snapshot && sideB.snapshot
+      ? libelleLigneMarge([sideA.snapshot.marginBase, sideB.snapshot.marginBase])
+      : { label: 'marge globale', note: null };
+
   const deltaCard =
     sideA.snapshot && sideB.snapshot ? (
       <Card>
         <SectionLabel>{`ÉCART B ${MINUS} A`}</SectionLabel>
         <View style={{ marginTop: spacing.md }}>
           <DeltaLine
-            label="Marge globale"
+            label={ligneMarge.label.charAt(0).toUpperCase() + ligneMarge.label.slice(1)}
             deltaText={formatDelta(sideA.snapshot.marginGlobal, sideB.snapshot.marginGlobal, 'pts')}
           />
           <DeltaLine
@@ -209,6 +218,7 @@ export default function CoachComparerPilotesScreen() {
             )}
           />
         </View>
+        {ligneMarge.note !== null ? <Text style={s.noteMarge}>{ligneMarge.note}</Text> : null}
       </Card>
     ) : null;
 
@@ -588,6 +598,14 @@ function zoneLabelFr(zone: MarginZone | null): string {
 }
 
 const s = StyleSheet.create({
+  /** La note de base : ton de méthode, sous l'écart, atténuée. */
+  noteMarge: {
+    fontFamily: fonts.body,
+    fontSize: 12,
+    lineHeight: 18,
+    color: palette.creamMute,
+    marginTop: spacing.md,
+  },
   headerRow: {
     flexDirection: 'row',
     alignItems: 'flex-start',

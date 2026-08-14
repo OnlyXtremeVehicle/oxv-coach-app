@@ -31,10 +31,33 @@ function nombreOuNull(brut: unknown): number | null {
   return Number.isFinite(n) ? n : null;
 }
 
+/**
+ * Lit la base de calcul dans `margin_breakdown`. Absente ou méconnaissable :
+ * `null`, jamais une supposition — une ligne d'avant le 14/08 ne dit pas sur
+ * quoi elle repose, et prétendre le contraire serait la même faute en plus
+ * discret.
+ */
+function baseDepuisBreakdown(brut: unknown): 'complete' | 'pilote-seul' | 'aucune' | null {
+  if (brut === null || typeof brut !== 'object' || Array.isArray(brut)) return null;
+  const v = (brut as Record<string, unknown>).base;
+  return v === 'complete' || v === 'pilote-seul' || v === 'aucune' ? v : null;
+}
+
 export interface SessionSnapshot {
   sessionId: string;
   startedAt: string;
   marginGlobal: number | null;
+  /**
+   * SUR QUOI LA MARGE REPOSE — `null` pour les lignes antérieures au 14/08/2026.
+   *
+   * Le coach compare deux séances. Tant que la part véhicule venait d'une
+   * constante, l'écart qu'il lisait portait en partie sur une invention. La
+   * constante est retirée ; aujourd'hui toutes les marges valent `pilote-seul`.
+   * Le jour où une seule séance sera caractérisée, comparer les deux chiffres
+   * sans dire lequel est lequel reviendrait à comparer des grandeurs
+   * différentes sous le même nom.
+   */
+  marginBase: 'complete' | 'pilote-seul' | 'aucune' | null;
   marginZone: MarginZone | null;
   bestLapSeconds: number | null;
   lapCount: number | null;
@@ -57,7 +80,7 @@ export async function loadSessionSnapshot(sessionId: string): Promise<SessionSna
     supabase
       .from('telemetry_sessions')
       .select(
-        'id, started_at, best_lap_seconds, lap_count, app_session_analyses(margin_global, margin_zone)'
+        'id, started_at, best_lap_seconds, lap_count, app_session_analyses(margin_global, margin_zone, margin_breakdown)'
       )
       .eq('id', sessionId)
       .maybeSingle(),
@@ -81,10 +104,12 @@ export async function loadSessionSnapshot(sessionId: string): Promise<SessionSna
   }
 
   const row = sessionResult.data as Record<string, unknown>;
-  const analysisJoined = row.app_session_analyses as
-    | { margin_global?: number | null; margin_zone?: string | null }[]
-    | { margin_global?: number | null; margin_zone?: string | null }
-    | null;
+  type AnalyseJointe = {
+    margin_global?: number | null;
+    margin_zone?: string | null;
+    margin_breakdown?: unknown;
+  };
+  const analysisJoined = row.app_session_analyses as AnalyseJointe[] | AnalyseJointe | null;
   const firstAnalysis = Array.isArray(analysisJoined) ? analysisJoined[0] : analysisJoined;
 
   const framesData = (framesResult.data ?? []) as {
@@ -107,6 +132,7 @@ export async function loadSessionSnapshot(sessionId: string): Promise<SessionSna
       firstAnalysis?.margin_global !== null && firstAnalysis?.margin_global !== undefined
         ? Number(firstAnalysis.margin_global)
         : null,
+    marginBase: baseDepuisBreakdown(firstAnalysis?.margin_breakdown ?? null),
     marginZone: (firstAnalysis?.margin_zone as MarginZone | null | undefined) ?? null,
     bestLapSeconds: row.best_lap_seconds !== null ? Number(row.best_lap_seconds) : null,
     lapCount: row.lap_count !== null ? Number(row.lap_count) : null,

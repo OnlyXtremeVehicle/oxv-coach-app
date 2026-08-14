@@ -39,6 +39,7 @@ import {
   loadSessionSnapshot,
   logCoachView,
 } from '@/services/coachService';
+import { libelleLigneMarge } from '@/services/marginCalculator';
 import { computeRegularity } from '@/services/regularityService';
 import { fetchSessionLaps } from '@/services/sessionsService';
 import { theme } from '@/theme/v2';
@@ -256,6 +257,10 @@ function ComparerBody({
     </View>
   );
 
+  // Sur quoi les deux marges reposent — calculé une fois, employé par le
+  // libellé de la ligne ET par la note sous le tableau.
+  const ligneMarge = libelleLigneMarge([snapA.marginBase, snapB.marginBase]);
+
   const table = (
     <View style={s.table}>
       <MetricRow
@@ -278,15 +283,18 @@ function ComparerBody({
           stdA
         )} ; séance B : ${stdSpoken(stdB)}.`}
       />
+      {/* LE LIBELLÉ SUIT LA BASE. Deux chiffres côte à côte affirment qu'ils
+          mesurent la même chose : tant qu'aucun véhicule n'est caractérisé, ce
+          qu'on compare est le PILOTAGE, et l'en-tête le dit. */}
       <MetricRow
-        label="marge globale"
+        label={ligneMarge.label}
         valueA={margeText(snapA)}
         valueB={margeText(snapB)}
         colorA={palette.cream}
         colorB={palette.cream}
-        a11y={`Marge globale. Séance A : ${spoken(margeText(snapA))} ; séance B : ${spoken(
+        a11y={`${ligneMarge.label}. Séance A : ${spoken(margeText(snapA))} ; séance B : ${spoken(
           margeText(snapB)
-        )}.`}
+        )}.${ligneMarge.note !== null ? ` ${ligneMarge.note}` : ''}`}
       />
       <MetricRow
         label="tours"
@@ -302,6 +310,9 @@ function ComparerBody({
     </View>
   );
 
+  const noteMarge =
+    ligneMarge.note !== null ? <Text style={s.noteMarge}>{ligneMarge.note}</Text> : null;
+
   const closing = (
     <Text style={s.closing}>
       Les chiffres sont là. Le sens, vous le posez avec {firstName ? firstName : 'ce pilote'}.
@@ -313,6 +324,7 @@ function ComparerBody({
       {header}
       {headCards}
       {table}
+      {noteMarge}
       {closing}
     </View>
   );
@@ -536,6 +548,16 @@ const s = StyleSheet.create({
     fontSize: theme.fontSize.eyebrow,
     letterSpacing: 1,
     color: palette.eyebrow,
+  },
+
+  /** La note de base : ton de méthode, sous le tableau, atténuée. */
+  noteMarge: {
+    fontFamily: theme.fonts.body,
+    fontSize: theme.fontSize.small,
+    lineHeight: theme.fontSize.small * 1.5,
+    color: palette.creamMute,
+    marginTop: spacing.md,
+    paddingHorizontal: spacing.md,
   },
 
   closing: {

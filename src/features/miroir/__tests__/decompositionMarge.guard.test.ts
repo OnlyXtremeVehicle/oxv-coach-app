@@ -34,7 +34,7 @@ import { codeExecutable } from '@/test-utils/codeSeul';
 import { join } from 'path';
 
 import { debriefModel } from '../bilanLogic';
-import { libelleBaseMarge } from '@/services/marginCalculator';
+import { libelleBaseMarge, libelleLigneMarge } from '@/services/marginCalculator';
 
 const RACINE = process.cwd();
 
@@ -115,6 +115,54 @@ describe('la décomposition de la marge', () => {
     );
     expect(ecran).toMatch(/debrief\.baseNote !== null/);
     expect(ecran).toMatch(/\{data\.debrief\.baseNote\}/);
+  });
+
+  /**
+   * CÔTÉ COACH, un ÉCART affirme plus fort qu'un chiffre : il pose que les
+   * deux valeurs sont commensurables. Le libellé doit donc suivre la base.
+   */
+  describe('deux marges côte à côte', () => {
+    it('toutes pilote-seul : la ligne le dit', () => {
+      const l = libelleLigneMarge(['pilote-seul', 'pilote-seul']);
+      expect(l.label).toBe('marge pilote');
+      expect(l.note).toMatch(/pilotage/);
+    });
+
+    it('toutes complètes : rien à préciser', () => {
+      const l = libelleLigneMarge(['complete', 'complete']);
+      expect(l.label).toBe('marge globale');
+      expect(l.note).toBeNull();
+    });
+
+    /** LE CAS QUI COMPTE : deux bases différentes, un écart qui ne veut rien dire. */
+    it('bases différentes : la comparaison est signalée', () => {
+      const l = libelleLigneMarge(['complete', 'pilote-seul']);
+      expect(l.note).toMatch(/pas sur la même base/);
+    });
+
+    it('une base inconnue : on ne devine pas, on garde le libellé d’origine', () => {
+      expect(libelleLigneMarge(['pilote-seul', null])).toEqual({
+        label: 'marge globale',
+        note: null,
+      });
+      expect(libelleLigneMarge([])).toEqual({ label: 'marge globale', note: null });
+    });
+
+    it('les deux écrans de comparaison emploient le libellé, pas une chaîne en dur', () => {
+      for (const ecran of ['comparer.tsx', 'comparer-pilotes.tsx']) {
+        const code = codeExecutable(readFileSync(join(RACINE, 'app', '(coach)', ecran), 'utf8'));
+        expect({ ecran, code: /libelleLigneMarge\(/.test(code) }).toEqual({ ecran, code: true });
+        expect({ ecran, code: /ligneMarge\.note/.test(code) }).toEqual({ ecran, code: true });
+      }
+    });
+
+    it('et le cliché de séance porte la base — sinon le libellé n’aurait rien à lire', () => {
+      const service = codeExecutable(
+        readFileSync(join(RACINE, 'src', 'services', 'coachService.ts'), 'utf8')
+      );
+      expect(service).toMatch(/marginBase:\s*baseDepuisBreakdown/);
+      expect(service).toMatch(/margin_breakdown/);
+    });
   });
 
   /**
