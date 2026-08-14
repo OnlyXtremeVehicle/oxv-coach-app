@@ -1,6 +1,6 @@
 # Point de fin — les jalons du programme V3
 
-> **14 août 2026.** Branche `migration/sdk-55`, quatorze commits.
+> **14 août 2026.** Branche `migration/sdk-55`, seize commits.
 >
 > Ce document remplace l'état de [`POINT_JALONS_2026-08-13.md`](POINT_JALONS_2026-08-13.md),
 > qui garde sa valeur de constat de la veille. Le livrable d'acceptation
@@ -261,6 +261,103 @@ pour lire les journaux. Même projet, même fonction.
 
 ---
 
+## L'après-midi : une quatrième fabrication, et la première garde qui lit un arbre
+
+Une relecture du dépôt, faite en parallèle avec un accès à la production, a
+trouvé ce que treize commits n'avaient pas vu.
+
+### La fabrication n'avait pas la forme des trois autres
+
+Les trois premières se ressemblaient : un `?? 0` posé au moment d'écrire.
+Celle-ci avait la forme d'un **paramètre**.
+
+```ts
+export const DEFAULT_VEHICLE: VehicleParameters = { maxGLateral: 1.0 };
+const vehicle = input.vehicle ?? DEFAULT_VEHICLE;
+```
+
+`input.vehicle` était optionnel. L'unique appelant de production appelle
+`computeMargin({ session, laps })`. Et la table `vehicles` ne porte **aucune
+grandeur d'adhérence** — dix-sept colonnes, une masse, pas un g. Personne
+n'aurait pu le renseigner.
+
+La part véhicule pèse **40 % de la marge globale**. Sur Bouteville, la seule
+séance de la base portant une vraie mesure, cela faisait **7,7 points** sortis
+d'une constante. La fabrication de régularité corrigée le matin en valait 12,2.
+
+Sans véhicule caractérisé, la marge porte désormais sur le **pilote seul**, et
+l'écran le dit — hors des actes du débrief, pour que la note survive à un récit
+généré sans mélanger deux provenances sous une même étiquette. Côté coach, le
+libellé de la ligne suit la base : un **écart** affirme plus fort qu'un chiffre,
+il pose que les deux valeurs sont commensurables.
+
+**Vérifié en production**, après déploiement de `cron-v3.0` : onze lignes
+recalculées, **zéro** marge véhicule fabriquée, Bouteville passe de 51,44 (dont
+38,00 venus de la constante) à 60,40 en base `pilote-seul`. Le rattrapage par
+version, posé le matin, a fonctionné.
+
+### « Freinage sur 0 m avant la corde »
+
+L'anatomie de virage écrivait `0` pour chaque grandeur non mesurée. L'écran
+avait une garde — elle testait `Number.isFinite`, **qui vaut `true` sur zéro**.
+
+Le correctif est double, et l'un sans l'autre ne changeait rien : `null` à la
+source, `!= null` dans le composant, parce que les lignes déjà en base portent
+encore des zéros. Et la source qui comptait n'était pas `sessionInsightsEngine.ts`
+— un miroir testable que rien n'appelle — mais l'edge function
+`compute-session-insights`. Corriger le miroir seul aurait laissé le défaut
+intact avec un test vert.
+
+### Dix-huit fichiers de police, puis douze
+
+Tout ce que `useAppFonts` monte se charge **devant le splash**. Syncopate (2
+graisses) et Inter (4) ne servaient qu'à `lotProfilTokens`, dont les seuls
+importateurs vivent dans `archive/arbre-v1/`.
+
+Le contrôle inverse — « une police chargée sans être employée » — était annoncé
+dans l'en-tête de `policesChargees.test.ts` depuis le premier jour. Il n'existait
+pas. C'est le motif du dépôt, une fois de plus. Il existe maintenant, **en échec
+et non en avertissement** : un avertissement que personne ne lit ne vaut pas
+mieux que le contrôle absent.
+
+### La première garde qui lit un arbre syntaxique
+
+Trente-cinq gardes veillaient sur ce dépôt ce matin. **Trente-quatre lisaient le
+fichier comme du texte.** Or ce qui trahissait la fabrication n'était pas une
+chaîne : c'était une **relation** entre une déclaration et l'ensemble de ses
+appels.
+
+`entreesOptionnelles.ts` parse tout `src/`, `app/` et `supabase/functions/`, et
+croise les entrées optionnelles des fonctions exportées avec ce que les
+appelants fournissent — par **nom** pour une propriété d'objet, par **arité**
+pour un paramètre positionnel. L'inventaire compte **83 entrées** ; toute
+nouvelle fait échouer la garde.
+
+Deux pièges rencontrés en l'écrivant, tous deux rendant l'outil aveugle à son
+propre cas d'origine :
+
+- compter les clés **globalement** — `vehicle` est écrit ailleurs comme clé du
+  détail de marge, et la fabrication devenait invisible ;
+- compter les **tests** parmi les appelants — `computeMargin(vehicle)` était
+  exercé par sa propre batterie et par rien d'autre. C'est la moitié du défaut.
+
+Une première version accusait aussi `forcePilotConsent(administrateurId)` et
+`setAttendance(pointeurId)`, deux traçabilités pourtant bien passées — en
+deuxième position, sans jamais écrire leur nom. Dix-huit faux verdicts sur
+quatre-vingts, corrigés par la mesure d'arité.
+
+### Une chose signalée, non faite
+
+`session_insights` ne contient **qu'une seule ligne** en production, et son
+`engine_version` vaut `mirror-insights-demo` : sept virages de chiffres
+inventés. Elle est neutralisée à la lecture par `MOTEURS_INSIGHTS_REELS`, et
+seul l'export RGPD la voit encore — ce qui est correct.
+
+Mais c'est une garde, pas une absence. **Supprimer cette ligne est une décision
+de production ; je ne l'ai pas prise seul.**
+
+---
+
 ## Les gardes posées aujourd'hui
 
 Neuf, et toutes falsifiées avant d'être livrées :
@@ -270,6 +367,11 @@ Neuf, et toutes falsifiées avant d'être livrées :
 `rangNonAchetable` · `methodePubliee` · `eligibiliteArmee` ·
 `rattrapageParVersion`
 
+Puis **trois de plus l'après-midi**, également falsifiées :
+`absenceJamaisZero` · `decompositionMarge` · `entreeOptionnelleMorte` — la
+dernière étant la première du dépôt à lire un arbre syntaxique plutôt qu'un
+texte. Le contrôle inverse de `policesChargees` a été armé au passage.
+
 **Quatre** d'entre elles ont d'abord rendu un **verdict faux** et ont été
 reprises — la dernière, `cronMemeFormule`, accusait le fichier de porter encore
 `max_g_lateral ?? 0` parce que mon propre en-tête citait le motif retiré. Elle
@@ -277,4 +379,4 @@ ne dépouillait que les commentaires de ligne.
 
 Une garde qui accuse ce qui va bien fait défaire du travail juste.
 
-**tsc 0 · lint 0 · jest 3 358.**
+**tsc 0 · lint 0 · jest 3 403.**
