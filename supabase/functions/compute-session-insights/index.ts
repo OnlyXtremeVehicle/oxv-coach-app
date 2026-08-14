@@ -25,8 +25,25 @@ import { createClient } from 'jsr:@supabase/supabase-js@2';
 const ENGINE_VERSION = 'mirror-insights-v1';
 const G = 9.81;
 
-function distanceBetweenSpeeds(vFromKmh: number, vToKmh: number, gAbs: number): number {
-  if (!gAbs || gAbs <= 0) return 0;
+// L'ABSENCE N'EST PAS UN ZERO — corrige le 14/08/2026.
+//
+// Cette fonction est le SEUL producteur en production de `session_insights.
+// anatomy` (l'app appelle `compute-session-insights` depuis analyzeSessionService).
+// Elle ecrivait `0` pour chaque grandeur non mesuree, et l'ecran rendait alors,
+// en toutes lettres : « Freinage sur 0 m avant la corde ».
+//
+// La garde de l'ecran ne pouvait pas l'arreter : elle testait `Number.isFinite`,
+// qui vaut `true` sur zero. Les deux moities sont corrigees ensemble — `null`
+// ici, `!= null` la-bas — parce que l'une sans l'autre ne change rien.
+
+/** Distance de deceleration (m), ou `null` si la mesure manque. */
+function distanceBetweenSpeeds(
+  vFromKmh: number | null,
+  vToKmh: number | null,
+  gAbs: number | null
+): number | null {
+  if (gAbs === null || !gAbs || gAbs <= 0) return null;
+  if (vFromKmh === null || vToKmh === null) return null;
   const vFrom = vFromKmh / 3.6;
   const vTo = vToKmh / 3.6;
   return Math.round(Math.abs(vFrom * vFrom - vTo * vTo) / (2 * gAbs * G));
@@ -35,6 +52,13 @@ function distanceBetweenSpeeds(vFromKmh: number, vToKmh: number, gAbs: number): 
 function num(v: unknown, dflt = 0): number {
   const n = typeof v === 'number' ? v : Number(v);
   return Number.isFinite(n) ? n : dflt;
+}
+
+/** `num` qui rend `null` plutot qu'un zero de remplissage. */
+function numOrNull(v: unknown): number | null {
+  if (v === null || v === undefined || v === '') return null;
+  const n = typeof v === 'number' ? v : Number(v);
+  return Number.isFinite(n) ? n : null;
 }
 
 Deno.serve(async (req: Request) => {
@@ -70,18 +94,22 @@ Deno.serve(async (req: Request) => {
 
     const anatomy = (segRows ?? []).map((s: Record<string, unknown>) => ({
       corner_index: num(s.segment_index),
-      apex_speed_kmh: s.apex_speed_kmh != null ? Number(num(s.apex_speed_kmh).toFixed(1)) : 0,
+      apex_speed_kmh: numOrNull(s.apex_speed_kmh) !== null
+        ? Number(num(s.apex_speed_kmh).toFixed(1))
+        : null,
       brake_dist_m: distanceBetweenSpeeds(
-        num(s.entry_speed_kmh),
-        num(s.min_speed_kmh),
-        num(s.max_g_braking)
+        numOrNull(s.entry_speed_kmh),
+        numOrNull(s.min_speed_kmh),
+        numOrNull(s.max_g_braking)
       ),
       accel_dist_m: distanceBetweenSpeeds(
-        num(s.exit_speed_kmh),
-        num(s.min_speed_kmh),
-        num(s.max_g_accel)
+        numOrNull(s.exit_speed_kmh),
+        numOrNull(s.min_speed_kmh),
+        numOrNull(s.max_g_accel)
       ),
-      g_lat_apex: Number(num(s.max_g_lateral).toFixed(2)),
+      g_lat_apex: numOrNull(s.max_g_lateral) !== null
+        ? Number(num(s.max_g_lateral).toFixed(2))
+        : null,
     }));
 
     // 2) Tours valides (hors out/in lap).

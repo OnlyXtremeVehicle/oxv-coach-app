@@ -186,8 +186,25 @@ export type ThemeV2 = typeof theme;
 // panel-cartes.html). N'altère AUCUN token v2 existant ; réservé aux écrans
 // du lot (profil, profil-edition, cartes). L'or Heritage reste INTERDIT sur
 // ces écrans ; les écarts de temps y sont en gris NEUTRE (deltaNeutre).
-// Polices : Syncopate / Inter / JetBrains Mono (déjà en dépendances,
-// chargées dans src/theme/fonts.ts).
+// Polices : Hanken Grotesk / JetBrains Mono.
+//
+// SYNCOPATE ET INTER SONT SORTIS LE 14/08/2026. Ces jetons nommaient six
+// graisses de deux familles que le chargeur montait derrière le splash — pour
+// un usage nul : les seuls fichiers qui importent `lotProfilTokens` vivent
+// dans `archive/arbre-v1/`, l'arbre V1 hors application. Six fichiers de
+// police chargés à chaque démarrage à froid pour une table que rien de vivant
+// ne lit.
+//
+// Inter part sans réserve : l'arbitrage du 13/08 le disait « une redondance
+// pure — il fait exactement le travail de Hanken Grotesk ». Syncopate portait
+// une réserve — « regardez PROFIL et les cartes avant de le figer » —, et la
+// mesure la lève : ces deux écrans sont archivés, il n'y a plus d'écran vivant
+// à regarder.
+//
+// La table reste, avec des familles chargées : si un écran archivé revient, il
+// rendra du texte juste. Une police nommée mais non chargée ne lève AUCUNE
+// erreur — React Native retombe en silence sur la police système, et
+// `policesChargees.test.ts` est la seule chose qui le verrait.
 export const lotProfilTokens = {
   noir: '#0A0A0A', // fond global
   blanc: '#FFFFFF', // texte principal
@@ -199,12 +216,12 @@ export const lotProfilTokens = {
   grisSombre: '#555555', // labels, légendes
   deltaNeutre: '#D6D6D6', // écarts de temps — gris NEUTRE, jamais un jugement
   fonts: {
-    display: 'Syncopate_700Bold', // titres, nom du pilote, dates, bouton Comparer
-    displayReg: 'Syncopate_400Regular',
-    corps: 'Inter_400Regular', // corps, bio
-    corpsItalique: 'Inter_400Regular_Italic', // manifeste
-    corpsMedium: 'Inter_500Medium',
-    corpsSemi: 'Inter_600SemiBold',
+    display: 'HankenGrotesk_700Bold', // titres, nom du pilote, dates, bouton Comparer
+    displayReg: 'HankenGrotesk_600SemiBold',
+    corps: 'HankenGrotesk_400Regular', // corps, bio
+    corpsItalique: 'HankenGrotesk_400Regular_Italic', // manifeste
+    corpsMedium: 'HankenGrotesk_500Medium',
+    corpsSemi: 'HankenGrotesk_600SemiBold',
     mono: 'JetBrainsMono_400Regular', // données chiffrées, eyebrows, labels
     monoMedium: 'JetBrainsMono_500Medium',
     monoBold: 'JetBrainsMono_700Bold', // odomètre, valeurs

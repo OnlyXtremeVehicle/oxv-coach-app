@@ -26,6 +26,13 @@ export interface SessionAnalysis {
    * (un 0 fabriqué déclencherait un récit d'intensité sans mesure).
    */
   marginGlobalMeasured: number | null;
+  /**
+   * Sur quoi la marge repose, tel que le calcul l'a inscrit dans
+   * `margin_breakdown.base`. `null` sur les lignes antérieures au 14/08 — le
+   * champ n'existait pas, et on ne DEVINE pas : une ligne muette reste muette
+   * jusqu'à ce que le balayage la reprenne en `cron-v3.0`.
+   */
+  marginBase: 'complete' | 'pilote-seul' | 'aucune' | null;
   marginZone: MarginZone | null;
   marginVehicle: number | null;
   marginPilot: number | null;
@@ -94,6 +101,19 @@ export async function listRecentAnalyses(userId: string, limit = 50): Promise<Re
   });
 }
 
+/**
+ * `margin_breakdown.base`, ou `null`.
+ *
+ * Le breakdown est un `jsonb` : rien ne garantit sa forme. On n'accepte que
+ * les trois valeurs connues — une quatrième, venue d'une version future,
+ * vaut mieux `null` qu'un affichage qu'on ne sait pas rédiger.
+ */
+function baseDepuisBreakdown(brut: Json | null): 'complete' | 'pilote-seul' | 'aucune' | null {
+  if (brut === null || typeof brut !== 'object' || Array.isArray(brut)) return null;
+  const v = (brut as Record<string, unknown>).base;
+  return v === 'complete' || v === 'pilote-seul' || v === 'aucune' ? v : null;
+}
+
 export async function getAnalysisForSession(
   telemetrySessionId: string
 ): Promise<SessionAnalysis | null> {
@@ -160,6 +180,9 @@ function mapRow(row: AnalysisRow): SessionAnalysis {
     userId: row.user_id,
     marginGlobal: Number(row.margin_global ?? 0),
     marginGlobalMeasured: row.margin_global !== null ? Number(row.margin_global) : null,
+    // Lu, jamais deviné : une ligne antérieure au 14/08 n'a pas de `base`, et
+    // lui en attribuer une reviendrait à affirmer sur quoi elle reposait.
+    marginBase: baseDepuisBreakdown(row.margin_breakdown),
     marginZone: (row.margin_zone as MarginZone) ?? null,
     marginVehicle: row.margin_vehicle !== null ? Number(row.margin_vehicle) : null,
     marginPilot: row.margin_pilot !== null ? Number(row.margin_pilot) : null,

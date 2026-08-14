@@ -154,6 +154,7 @@ const CONNUS: readonly string[] = [
   // même nuance que `hauteSaintonge` — « plus aucun code de production ne s'en
   // sert » est ici l'état voulu, pas une dette.
   '/src/test-utils/codeseul.ts',
+  '/src/test-utils/entreesoptionnelles.ts',
   '/src/services/coachbusinessservice.ts',
   '/src/services/coachconsoleservice.ts',
   '/src/services/datalablogic.ts',

@@ -422,7 +422,11 @@ export function useBilan(sessionId: string | undefined): UseBilanResult {
         // absente ne fabrique pas un récit d'intensité.
         debrief: debriefModel(
           analysis
-            ? { debriefText: analysis.debriefText, marginGlobal: analysis.marginGlobalMeasured }
+            ? {
+                debriefText: analysis.debriefText,
+                marginGlobal: analysis.marginGlobalMeasured,
+                marginBase: analysis.marginBase,
+              }
             : null,
           firstName
         ),

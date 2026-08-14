@@ -44,9 +44,27 @@ describe('computeInsightsBlocks (mirror-insights-v1, 7 virages)', () => {
     expect(a.accel_dist_m).toBeGreaterThan(0); // sortie 130 > min 85
   });
 
-  it('brake_dist = 0 si pas de freinage (entrée = min) ou G nul', () => {
+  /**
+   * `null`, PAS `0` — corrigé le 14/08/2026.
+   *
+   * Sans G de freinage, il n'y a pas de distance de freinage : il y a une
+   * absence de mesure. Le zéro d'avant remontait jusqu'à l'écran, qui écrivait
+   * « Freinage sur 0 m avant la corde » — et sa garde `Number.isFinite` ne
+   * pouvait pas l'arrêter, `Number.isFinite(0)` valant `true`.
+   */
+  it('brake_dist = null si le G de freinage est nul — jamais un zéro', () => {
     const [a] = computeInsightsBlocks({
       segments: [seg({ cornerIndex: 1, entrySpeedKmh: 85, minSpeedKmh: 85, maxGBraking: 0 })],
+      laps: [],
+      frameCount: 10,
+    }).anatomy;
+    expect(a.brake_dist_m).toBeNull();
+  });
+
+  /** Entrée = min avec un vrai G : la mesure existe, et elle vaut zéro mètre. */
+  it('mais un vrai G avec entrée = min rend bien 0 m — une mesure, pas un trou', () => {
+    const [a] = computeInsightsBlocks({
+      segments: [seg({ cornerIndex: 1, entrySpeedKmh: 85, minSpeedKmh: 85, maxGBraking: 1.1 })],
       laps: [],
       frameCount: 10,
     }).anatomy;

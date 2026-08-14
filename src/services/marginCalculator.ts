@@ -43,10 +43,62 @@ export interface VehicleParameters {
   maxGLateral: number;
 }
 
-/** Profil "route sportive" par défaut — calibration GT3 à venir en V2. */
-export const DEFAULT_VEHICLE: VehicleParameters = {
-  maxGLateral: 1.0,
-};
+/**
+ * ===========================================================================
+ * IL N'Y A PLUS DE VÉHICULE PAR DÉFAUT — RETIRÉ LE 14/08/2026
+ * ===========================================================================
+ *
+ * Ce fichier portait :
+ *
+ *     /** Profil "route sportive" par défaut — calibration GT3 à venir en V2. *\/
+ *     export const DEFAULT_VEHICLE = { maxGLateral: 1.0 };
+ *
+ * Et `input.vehicle` n'était JAMAIS passé : l'unique appelant de production,
+ * `analyzeSessionService.ts`, appelle `computeMargin({ session, laps })`. La
+ * constante s'appliquait donc à **100 % des séances**.
+ *
+ * ===========================================================================
+ * CE QUE ÇA COÛTAIT, CHIFFRÉ
+ * ===========================================================================
+ *
+ * `VEHICLE_WEIGHT = 0.4`. Sur Bouteville, `observedG = 0,62 g` :
+ *
+ *   | dénominateur              | marge véhicule | marge globale |
+ *   |---------------------------|---------------:|--------------:|
+ *   | 1,0 g — la constante      |           38,0 |          51,4 |
+ *   | 1,45 g — une GT3 réelle   |           57,2 |          59,1 |
+ *   | 0,95 g — une routière     |           34,7 |          50,1 |
+ *
+ * **7,7 points** dus à un véhicule inventé. La fabrication corrigée le même
+ * jour — la constance en écart-type absolu — en valait 12,2.
+ *
+ * ===========================================================================
+ * POURQUOI ELLE A SURVÉCU À TROIS PASSES DE MESURE
+ * ===========================================================================
+ *
+ * Parce qu'elle n'avait pas la forme des autres. `?? 0`, `?? 100`,
+ * `temperature: 0` se cherchent au grep. Celle-ci était une constante
+ * **nommée, exportée, typée, documentée** — avec un commentaire qui promettait
+ * même la suite.
+ *
+ * Elle ne ressemblait pas à une fabrication. Elle ressemblait à un paramètre.
+ *
+ * ===========================================================================
+ * ET ON NE LA CALIBRE PAS : ON REND `null`
+ * ===========================================================================
+ *
+ * La tentation serait une table d'adhérence par modèle, ou un g maximal
+ * déclaré par le pilote. Les deux fabriquent encore : une valeur tabulée ne
+ * connaît ni les pneus, ni la pression, ni la température de piste ; un pilote
+ * qui déclare « 1,3 g » déclare une croyance.
+ *
+ * La table `vehicles` ne porte AUCUNE grandeur d'adhérence — dix-sept colonnes,
+ * `mass_kg` ajoutée le 29/07, le g latéral jamais. Il n'y a donc rien à passer.
+ *
+ * **La caractérisation se mesure.** Le g latéral maximal d'une voiture donnée
+ * sur des pneus donnés, c'est le maximum observé sur plusieurs séances. La
+ * donnée existe déjà ; il lui manque des séances.
+ */
 
 /**
  * Sous-composantes 0..100. `null` = entrée absente, donc rien à dire.
@@ -121,11 +173,43 @@ export interface ComputeMarginInput {
   vehicle?: VehicleParameters;
 }
 
+/**
+ * SUR QUOI LE CHIFFRE REPOSE — à dire au pilote, toujours.
+ *
+ *   • `complete`    — véhicule ET pilote mesurés, pondération 40/60 ;
+ *   • `pilote-seul` — véhicule non caractérisé : c'est la marge PILOTE ;
+ *   • `aucune`      — pas assez de tours, il n'y a pas de marge.
+ *
+ * Aujourd'hui, `pilote-seul` est le cas de TOUTES les séances : la table
+ * `vehicles` ne porte aucune grandeur d'adhérence. Ce n'est pas un état
+ * dégradé exceptionnel, c'est l'état normal tant que la caractérisation n'est
+ * pas mesurée — et l'écran doit le dire plutôt que de laisser croire à une
+ * marge complète.
+ */
+export type MarginBase = 'complete' | 'pilote-seul' | 'aucune';
+
+/**
+ * CE QU'ON DIT AU PILOTE, SOUS LE CHIFFRE.
+ *
+ * `null` quand la base est complète : rien à préciser, la marge est ce qu'elle
+ * annonce. Sinon la phrase dit sur quoi elle repose — parce qu'un chiffre dont
+ * la nature a changé sans le dire est pire qu'un chiffre absent.
+ */
+export function libelleBaseMarge(base: MarginBase): string | null {
+  if (base === 'complete') return null;
+  if (base === 'pilote-seul') {
+    return 'Cette marge porte sur votre pilotage seul : votre véhicule n’est pas caractérisé.';
+  }
+  return null;
+}
+
 export interface ComputeMarginOutput {
   marginGlobal: MarginPercent | null;
   marginZone: MarginZone | null;
   marginVehicle: number | null;
   marginPilot: number | null;
+  /** Ce sur quoi `marginGlobal` repose. Jamais tu. */
+  base: MarginBase;
   breakdown: MarginBreakdown;
   /** Nombre de tours valides utilisés pour le calcul (hors outlap/inlap). */
   validLapCount: number;
@@ -178,24 +262,40 @@ const CONSISTENCY_WEIGHT = 0.6;
 const SMOOTHNESS_WEIGHT = 0.4;
 
 export function computeMargin(input: ComputeMarginInput): ComputeMarginOutput {
-  const vehicle = input.vehicle ?? DEFAULT_VEHICLE;
-
-  const marginVehicle = computeVehicleMargin(input.session, vehicle);
+  // Aucun repli : sans véhicule caractérisé, il n'y a pas de marge véhicule.
+  const marginVehicle =
+    input.vehicle !== undefined ? computeVehicleMargin(input.session, input.vehicle) : null;
   const pilot = computePilotMargin(input.laps);
 
-  // Une composante absente ne se pondère pas : la somme 40/60 n'a de sens que
-  // si ses deux termes existent. Sinon il n'y a pas de marge globale — et non
-  // pas « une marge de 100 % ».
+  /**
+   * LA MARGE GLOBALE SE REPLIE SUR CE QU'ELLE CONNAÎT.
+   *
+   * Les deux composantes présentes → la pondération 40/60.
+   *
+   * Le véhicule absent → **la marge pilote seule**, et `base` le dit. Un
+   * chiffre sur une base connue vaut mieux qu'un chiffre sur une base
+   * inventée ; le taire entièrement priverait le pilote de la moitié qui EST
+   * mesurée.
+   *
+   * Le pilote absent → rien. La séance n'a pas assez de tours, et une marge
+   * véhicule seule ne décrit pas un pilotage.
+   */
   const marginGlobal =
-    marginVehicle !== null && pilot.marginPilot !== null
-      ? clampMargin(VEHICLE_WEIGHT * marginVehicle + PILOT_WEIGHT * pilot.marginPilot)
-      : null;
+    pilot.marginPilot === null
+      ? null
+      : marginVehicle !== null
+        ? clampMargin(VEHICLE_WEIGHT * marginVehicle + PILOT_WEIGHT * pilot.marginPilot)
+        : pilot.marginPilot;
+
+  const base: MarginBase =
+    marginGlobal === null ? 'aucune' : marginVehicle !== null ? 'complete' : 'pilote-seul';
 
   return {
     marginGlobal,
     marginZone: marginGlobal !== null ? marginZoneOf(marginGlobal) : null,
     marginVehicle,
     marginPilot: pilot.marginPilot,
+    base,
     breakdown: {
       vehicle: marginVehicle,
       pilot: pilot.marginPilot,

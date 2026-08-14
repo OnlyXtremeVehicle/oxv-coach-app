@@ -66,9 +66,15 @@ export interface InsightsBlocks {
   data_quality: DataQuality;
 }
 
-/** Distance de décélération (m) entre deux vitesses (km/h) sous |g| longitudinal. */
-function distanceBetweenSpeeds(vFromKmh: number, vToKmh: number, gAbs: number): number {
-  if (gAbs <= 0) return 0;
+/**
+ * Distance de décélération (m) entre deux vitesses (km/h) sous |g| longitudinal.
+ *
+ * `null` quand le G est nul ou négatif : sans décélération observée, il n'y a
+ * pas de distance de freinage. Cette fonction rendait `0`, et l'écran affichait
+ * « Freinage sur 0 m avant la corde » — une absence présentée comme une mesure.
+ */
+function distanceBetweenSpeeds(vFromKmh: number, vToKmh: number, gAbs: number): number | null {
+  if (gAbs <= 0) return null;
   const vFrom = vFromKmh / 3.6;
   const vTo = vToKmh / 3.6;
   const d = Math.abs(vFrom * vFrom - vTo * vTo) / (2 * gAbs * G);
@@ -78,7 +84,8 @@ function distanceBetweenSpeeds(vFromKmh: number, vToKmh: number, gAbs: number): 
 function anatomyFromSegment(s: InsightSegmentInput): AnatomyCorner {
   return {
     corner_index: s.cornerIndex,
-    apex_speed_kmh: s.apexSpeedKmh != null ? Number(s.apexSpeedKmh.toFixed(1)) : 0,
+    // `null`, pas `0` : une corde non mesurée n'est pas un arrêt.
+    apex_speed_kmh: s.apexSpeedKmh != null ? Number(s.apexSpeedKmh.toFixed(1)) : null,
     // Distance de freinage : de l'entrée jusqu'au point le plus lent, sous le G
     // de freinage observé. Estimation physique simple (V1), pas une mesure.
     brake_dist_m: distanceBetweenSpeeds(s.entrySpeedKmh, s.minSpeedKmh, s.maxGBraking),

@@ -484,6 +484,13 @@ export default function BilanScreen() {
                       <Text style={styles.debriefActBody}>{act.body}</Text>
                     </View>
                   ))}
+                  {/* SUR QUOI LE CHIFFRE REPOSE. Hors des actes : la note vaut
+                      pour un récit généré comme pour le repli, et l'y fondre
+                      romprait l'étiquette de provenance affichée plus haut.
+                      Rendue seulement quand il y a quelque chose à dire. */}
+                  {data.debrief.baseNote !== null ? (
+                    <Text style={styles.debriefBase}>{data.debrief.baseNote}</Text>
+                  ) : null}
                 </>
               )}
             </View>
@@ -1156,6 +1163,20 @@ const styles = StyleSheet.create({
     fontSize: 14,
     lineHeight: 21,
     color: colors.text.hi,
+  },
+  /**
+   * La note de base : ton de METHODE, pas de récit. Texte atténué, filet au-
+   * dessus — elle dit d'où vient le chiffre, elle ne raconte pas la séance.
+   */
+  debriefBase: {
+    fontFamily: typo.body,
+    fontSize: 12,
+    lineHeight: 18,
+    color: colors.text.low,
+    marginTop: space.lg,
+    paddingTop: space.md,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: colors.border.hairline,
   },
   threadEmpty: {
     fontFamily: typo.body,

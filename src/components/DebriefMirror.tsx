@@ -67,12 +67,17 @@ export const F: { display?: string; body?: string; mono?: string } = {
 };
 
 /* ============================ TYPES (contrats) ============================ */
+/**
+ * Les quatre scalaires sont NULLABLES : le producteur écrit `null` quand la
+ * grandeur n'a pas été mesurée (corrigé le 14/08/2026 — il écrivait `0`, et
+ * l'anatomie affichait « Freinage sur 0 m »). Ce type le dit désormais aussi.
+ */
 export type Anatomy = {
   corner_index: number;
-  apex_speed_kmh: number;
-  brake_dist_m: number;
-  accel_dist_m: number;
-  g_lat_apex: number;
+  apex_speed_kmh: number | null;
+  brake_dist_m: number | null;
+  accel_dist_m: number | null;
+  g_lat_apex: number | null;
 };
 export type RefLaps = {
   best_of_day: { lap_index: number; lap_time_s: number } | null;
@@ -516,7 +521,13 @@ const DebriefMirror: React.FC<DebriefMirrorProps> = ({
   const modState = dq?.modules?.state;
 
   const anatomy = insights?.anatomy ?? [];
-  const speeds = anatomy.map((a) => n(a.apex_speed_kmh)).filter((x) => x > 0);
+  // `!= null` d'abord : une vitesse absente n'entre pas dans le min/max. Le
+  // `> 0` qui suit écarte en plus les zéros hérités des lignes déjà écrites
+  // avant la correction du 14/08 — elles restent en base.
+  const speeds = anatomy
+    .filter((a) => a.apex_speed_kmh != null)
+    .map((a) => n(a.apex_speed_kmh))
+    .filter((x) => x > 0);
   const vMin = speeds.length ? Math.min(...speeds) : null;
   const vMax = speeds.length ? Math.max(...speeds) : null;
   const ref = insights?.reference_laps ?? null;
@@ -606,7 +617,7 @@ const DebriefMirror: React.FC<DebriefMirrorProps> = ({
           title="Vitesse"
           badge="live · anatomy"
           field="session_insights.anatomy[].apex_speed_kmh"
-          filled={anatomy.length > 0}
+          filled={speeds.length > 0}
           live
         >
           {vMin != null && <Fact first k="Le plus lent" v={`${vMin} km/h`} />}

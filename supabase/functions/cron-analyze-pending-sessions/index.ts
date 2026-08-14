@@ -62,17 +62,39 @@ import { createClient } from 'jsr:@supabase/supabase-js@2';
  * moteur périmé redevient éligible, une fois. **C'est la seule discipline que
  * ce mécanisme demande, et il ne vaut que par elle.**
  *
- * `v2.0` et non `v1.1` : le calcul de constance a changé de NATURE, pas de
- * réglage.
+ * `v2.0` : le calcul de constance a changé de NATURE, pas de réglage.
+ * `v3.0`, le même jour : la marge véhicule reposait sur une constante inventée
+ * de 1,0 g — retirée. La marge globale se replie sur la marge pilote, et TOUT
+ * l'historique doit être repris.
  */
-const ALGO_VERSION = 'cron-v2.0';
+const ALGO_VERSION = 'cron-v3.0';
 
 const MAX_SESSIONS_PER_RUN = 50;
 const CONSISTENCY_WEIGHT = 0.6;
 const SMOOTHNESS_WEIGHT = 0.4;
 const VEHICLE_WEIGHT = 0.4;
 const PILOT_WEIGHT = 0.6;
-const DEFAULT_VEHICLE_G_LAT = 1.0;
+/**
+ * ===========================================================================
+ * IL N'Y A PLUS DE VÉHICULE PAR DÉFAUT — RETIRÉ LE 14/08/2026
+ * ===========================================================================
+ *
+ * Cette constante valait 1,0 g et servait de dénominateur à la marge véhicule
+ * pour 100 % des séances : la table `vehicles` ne porte AUCUNE grandeur
+ * d'adhérence, et l'application ne passait donc jamais de véhicule.
+ *
+ * `VEHICLE_WEIGHT = 0.4` : sur Bouteville, elle décalait la marge globale de
+ * 7,7 points. La fabrication corrigée le matin même en valait 12,2.
+ *
+ * Elle a survécu à trois passes de mesure parce qu'elle n'avait pas la forme
+ * des autres : pas un `?? 0`, mais une constante nommée et documentée. Elle ne
+ * ressemblait pas à une fabrication, elle ressemblait à un paramètre.
+ *
+ * La marge véhicule vaut désormais `null`, et la marge globale se replie sur
+ * la marge PILOTE — même règle que `marginCalculator.computeMargin` côté
+ * application. Les deux doivent rester d'accord : c'est cette divergence-là
+ * qui a produit deux formules de constance.
+ */
 
 function clampMargin(x: number): number {
   if (!Number.isFinite(x)) return 0;
@@ -268,12 +290,11 @@ async function processSessions(supabase: any, sessions: any[]) {
       // encore, et il a écrit cinq lignes à `margin_global = 100`.
       //
       // Absence → on n'écrit rien du tout.
-      const brut = session.max_g_lateral;
-      const observedG = brut === null || brut === undefined ? null : Number(brut);
-      const vehicleMargin =
-        observedG !== null && Number.isFinite(observedG) && observedG > 0
-          ? clampMargin((1 - observedG / DEFAULT_VEHICLE_G_LAT) * 100)
-          : null;
+      // Le véhicule n'est caractérisé nulle part : la marge véhicule est
+      // toujours `null` aujourd'hui. `observedG` reste lu — il redeviendra
+      // utile le jour où une adhérence mesurée existera — mais il ne sert plus
+      // de numérateur à un dénominateur inventé.
+      const vehicleMargin: number | null = null;
 
       // Récupérer les laps valides (hors outlap/inlap)
       const { data: laps } = await supabase
@@ -318,7 +339,9 @@ async function processSessions(supabase: any, sessions: any[]) {
       // Elle dit exactement ce qui s'est passé : EXAMINÉE, RIEN À MESURER. C'est
       // vrai, c'est utile, et c'est ce que le principe de non-fabrication
       // demande — l'absence est une information, pas un trou à combler.
-      if (pilotMargin === null || vehicleMargin === null) {
+      // LE REPLI, IDENTIQUE À L'APPLICATION : sans marge pilote il n'y a rien ;
+      // sans marge véhicule la globale EST la marge pilote.
+      if (pilotMargin === null) {
         const { error: videErr } = await supabase.from('app_session_analyses').upsert(
           {
             telemetry_session_id: session.id,
@@ -342,9 +365,10 @@ async function processSessions(supabase: any, sessions: any[]) {
         continue;
       }
 
-      const marginGlobal = clampMargin(
-        VEHICLE_WEIGHT * vehicleMargin + PILOT_WEIGHT * pilotMargin
-      );
+      const marginGlobal =
+        vehicleMargin !== null
+          ? clampMargin(VEHICLE_WEIGHT * vehicleMargin + PILOT_WEIGHT * pilotMargin)
+          : pilotMargin;
       const zone = marginZoneOf(marginGlobal);
 
       // Upsert
@@ -361,6 +385,9 @@ async function processSessions(supabase: any, sessions: any[]) {
             pilot: pilotMargin,
             consistency,
             smoothness,
+            // Sur quoi le chiffre repose. Même vocabulaire que `MarginBase`
+            // côté application — l'écran doit pouvoir le dire au pilote.
+            base: vehicleMargin !== null ? 'complete' : 'pilote-seul',
           },
           algo_version: ALGO_VERSION,
           computed_at: new Date().toISOString(),

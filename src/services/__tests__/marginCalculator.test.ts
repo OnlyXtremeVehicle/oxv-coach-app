@@ -6,7 +6,17 @@
  * l'algo ne soit étendu en V2 (transfert de charge, sous/sur-virage).
  */
 
-import { computeMargin, isMarginResolved, DEFAULT_VEHICLE } from '../marginCalculator';
+import { computeMargin, isMarginResolved } from '../marginCalculator';
+
+/**
+ * UN VÉHICULE CARACTÉRISÉ, EXPLICITE.
+ *
+ * Ces tests portent sur l'ARITHMÉTIQUE de la marge véhicule : il leur faut donc
+ * un dénominateur. Il est écrit ici, dans le test, et non repris d'un défaut du
+ * code de production — c'est toute la différence avec `DEFAULT_VEHICLE`, qui
+ * s'appliquait aux vraies séances sans qu'aucune donnée le soutienne.
+ */
+const VEHICULE = { maxGLateral: 1.0 } as const;
 import type { Lap, TelemetrySession } from '@/types/telemetry';
 
 function lap(overrides: Partial<Lap> = {}): Lap {
@@ -64,7 +74,7 @@ describe('computeMargin', () => {
   it('renvoie 100 de marge véhicule sur un 0 g RÉELLEMENT observé', () => {
     // 0 g mesuré = la voiture n'a jamais tourné : la marge véhicule est
     // entière. C'est le seul cas où 100 est honnête (contraste avec le NULL).
-    const out = computeMargin({ session: session(0), laps: regularLaps() });
+    const out = computeMargin({ session: session(0), laps: regularLaps(), vehicle: VEHICULE });
     expect(out.marginVehicle).toBe(100);
     expect(isMarginResolved(out)).toBe(true);
   });
@@ -101,7 +111,7 @@ describe('computeMargin', () => {
       lap({ lap_number: 4, duration_seconds: 99.9, max_g_lateral: 0.59 }),
       lap({ lap_number: 5, duration_seconds: 140, is_inlap: true, max_g_lateral: 0.2 }),
     ];
-    const out = computeMargin({ session: session(0.65), laps });
+    const out = computeMargin({ session: session(0.65), laps, vehicle: VEHICULE });
     // Seuls les tours 2, 3 et 4 comptent : très réguliers.
     expect(out.validLapCount).toBe(3);
     expect(out.breakdown.consistency).toBeGreaterThan(95);
@@ -124,7 +134,7 @@ describe('computeMargin', () => {
     ];
     // Tours parfaitement réguliers → pilote 100. Véhicule à G ~ 50% → marge ~ 50.
     // Attendu global ≈ 0.4 * 50 + 0.6 * 100 = 80.
-    const out = computeMargin({ session: session(0.5), laps });
+    const out = computeMargin({ session: session(0.5), laps, vehicle: VEHICULE });
     expect(out.marginGlobal).toBeGreaterThanOrEqual(75);
     expect(out.marginGlobal).toBeLessThanOrEqual(85);
   });
@@ -138,12 +148,45 @@ describe('computeMargin', () => {
     expect(out.marginGlobal).toBeLessThanOrEqual(100);
   });
 
-  it('utilise DEFAULT_VEHICLE quand pas de vehicle fourni', () => {
+  /**
+   * CE TEST ÉPINGLAIT LA FABRICATION — IL ÉPINGLE MAINTENANT SON RETRAIT.
+   *
+   * Il s'appelait « utilise DEFAULT_VEHICLE quand pas de vehicle fourni » et
+   * vérifiait que la constante inventée s'appliquait bien. Il passait, et il
+   * décrivait exactement le défaut : `input.vehicle` n'est JAMAIS passé par le
+   * seul appelant de production, donc 100 % des séances portaient un
+   * dénominateur de 1,0 g qu'aucune donnée ne soutenait.
+   *
+   * Un test vert peut documenter une fabrication aussi fidèlement qu'il
+   * documenterait une règle.
+   */
+  it('sans véhicule fourni, il n’y a PAS de marge véhicule', () => {
+    const out = computeMargin({ session: session(0.5), laps: regularLaps() });
+    expect(out.marginVehicle).toBeNull();
+    expect(out.base).toBe('pilote-seul');
+  });
+
+  it('la marge globale se replie alors sur la marge PILOTE, à l’identique', () => {
+    const out = computeMargin({ session: session(0.5), laps: regularLaps() });
+    expect(out.marginGlobal).toBe(out.marginPilot);
+  });
+
+  /**
+   * Et quand le véhicule EST caractérisé, la pondération 40/60 reprend. Le
+   * chemin n'est pas mort : il attend une donnée que la base ne porte pas
+   * encore.
+   */
+  it('un véhicule caractérisé rend la pondération 40/60', () => {
     const out = computeMargin({
-      session: session(DEFAULT_VEHICLE.maxGLateral / 2),
+      session: session(0.5),
       laps: regularLaps(),
+      vehicle: { maxGLateral: 1.0 },
     });
     expect(out.marginVehicle).toBe(50);
+    expect(out.base).toBe('complete');
+    expect(out.marginGlobal).toBe(
+      Math.round(0.4 * 50 + 0.6 * (out.marginPilot as number))
+    );
   });
 });
 
@@ -157,20 +200,32 @@ describe('computeMargin', () => {
 // ============================================================================
 describe('computeMargin — honnêteté de la donnée absente', () => {
   it('ne fabrique JAMAIS 100 % quand max_g_lateral est NULL (session non close)', () => {
-    const out = computeMargin({ session: session(null), laps: regularLaps() });
+    const out = computeMargin({ session: session(null), laps: regularLaps(), vehicle: VEHICULE });
 
     expect(out.marginVehicle).toBeNull();
-    expect(out.marginGlobal).toBeNull();
-    expect(out.marginZone).toBeNull();
     expect(out.breakdown.vehicle).toBeNull();
     expect(isMarginResolved(out)).toBe(false);
-    // Le verrou du finding : surtout pas 100.
-    expect(out.marginGlobal).not.toBe(100);
+    /**
+     * MISE À JOUR DU 14/08 — ET UNE NUANCE QUI M'A REPRIS.
+     *
+     * La marge globale ne devient plus nulle : le véhicule n'est pas mesurable
+     * sur cette séance, elle se replie donc sur le PILOTE, et `base` le dit.
+     *
+     * J'avais d'abord ajouté ici `marginGlobal).not.toBe(100)`, par réflexe.
+     * Faux : ce cas emploie `regularLaps()`, des tours parfaitement réguliers.
+     * La marge pilote VAUT 100, et c'est honnête — 100 fabriqué et 100 mesuré
+     * sont deux choses différentes, et c'est précisément la distinction que ce
+     * bloc de tests défend.
+     *
+     * Le verrou porte donc sur le VÉHICULE, qui est le sujet du finding.
+     */
+    expect(out.marginGlobal).toBe(out.marginPilot);
+    expect(out.base).toBe('pilote-seul');
     expect(out.marginVehicle).not.toBe(100);
   });
 
   it('ne fabrique JAMAIS 100 % de marge pilote sans tours (session vierge)', () => {
-    const out = computeMargin({ session: session(0.8), laps: [] });
+    const out = computeMargin({ session: session(0.8), laps: [], vehicle: VEHICULE });
 
     expect(out.marginPilot).toBeNull();
     expect(out.breakdown.consistency).toBeNull();
@@ -219,7 +274,9 @@ describe('computeMargin — honnêteté de la donnée absente', () => {
       laps: regularLaps(),
     });
     expect(out.marginVehicle).toBeNull();
-    expect(out.marginGlobal).toBeNull();
+    // Comme ci-dessus : repli sur la marge pilote, jamais un 100 % fabriqué.
+    expect(out.marginGlobal).toBe(out.marginPilot);
+    expect(out.base).toBe('pilote-seul');
   });
 });
 
@@ -274,7 +331,7 @@ describe('computeMargin — fluidité : tours sans mesure', () => {
       lap({ lap_number: 2, duration_seconds: 100, max_g_lateral: 0.62 }),
       lap({ lap_number: 3, duration_seconds: 100, max_g_lateral: null }),
     ];
-    const out = computeMargin({ session: session(0.65), laps });
+    const out = computeMargin({ session: session(0.65), laps, vehicle: VEHICULE });
 
     // stddev([0.6, 0.62]) = 0.01 ≤ 0.05 → fluidité 100, et cette fois c'est vrai.
     expect(out.breakdown.smoothness).toBe(100);
@@ -354,7 +411,7 @@ describe('la constance exige trois tours, et le dit par une absence', () => {
 
 describe('isMarginResolved', () => {
   it('accepte une marge dont toutes les composantes sont réelles', () => {
-    const out = computeMargin({ session: session(0.5), laps: regularLaps() });
+    const out = computeMargin({ session: session(0.5), laps: regularLaps(), vehicle: VEHICULE });
     expect(isMarginResolved(out)).toBe(true);
     if (isMarginResolved(out)) {
       // Le narrowing donne bien des nombres aux appelants (persistance, coach).

@@ -8,12 +8,28 @@
  * l'app affiche un état vide explicite, jamais une valeur inventée (doc 09 §5).
  */
 
+/**
+ * L'ANATOMIE D'UN VIRAGE — `null` QUAND LA GRANDEUR N'EST PAS MESURÉE.
+ *
+ * Ces quatre champs étaient des `number` non nullables, et l'amont y écrivait
+ * `0` faute de mesure. Le pilote lisait alors, en toutes lettres :
+ *
+ *     « Freinage sur 0 m avant la corde »
+ *     « Vitesse mini à la corde : 0 km/h »
+ *
+ * C'est la forme exacte du `temperature_celsius: 0` retiré le 13/08 — une
+ * absence rendue en zéro. Et le garde-fou de l'écran ne pouvait pas l'arrêter :
+ * il testait `Number.isFinite`, **qui vaut `true` sur zéro**.
+ *
+ * Le type dit désormais l'absence, et le composant la reconnaît. L'un sans
+ * l'autre ne suffisait pas.
+ */
 export interface AnatomyCorner {
   corner_index: number;
-  apex_speed_kmh: number;
-  brake_dist_m: number;
-  accel_dist_m: number;
-  g_lat_apex: number;
+  apex_speed_kmh: number | null;
+  brake_dist_m: number | null;
+  accel_dist_m: number | null;
+  g_lat_apex: number | null;
 }
 
 /** Valeur par virage, clés « corner_1 », « corner_2 »… */

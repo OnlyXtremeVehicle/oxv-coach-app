@@ -50,18 +50,19 @@ export interface AnatomieVizProps {
 const DASH = '—';
 
 /**
- * Entier en français (arrondi km/h & m). Champ null/manquant/NaN → tiret.
- * Le type déclare `number`, mais la donnée peut être absente en prod (doc 09
- * §5) : on garde le contrôle Number.isFinite pour ne jamais appeler Math.round
- * sur un null.
+ * Entier en français (arrondi km/h & m). Absent → tiret.
+ *
+ * `n == null` D'ABORD, `Number.isFinite` ENSUITE : le second seul laissait
+ * passer le zéro, et le zéro était précisément ce que l'amont écrivait faute
+ * de mesure. Le type dit maintenant `number | null` ; la garde le suit.
  */
-function frInt(n: number): string {
-  return Number.isFinite(n) ? String(Math.round(n)) : DASH;
+function frInt(n: number | null): string {
+  return n != null && Number.isFinite(n) ? String(Math.round(n)) : DASH;
 }
 
 /** Décimal en français (virgule) — utilisé pour les g. Absent → tiret. */
-function frDec(n: number, decimals: number): string {
-  return Number.isFinite(n) ? n.toFixed(decimals).replace('.', ',') : DASH;
+function frDec(n: number | null, decimals: number): string {
+  return n != null && Number.isFinite(n) ? n.toFixed(decimals).replace('.', ',') : DASH;
 }
 
 export function AnatomieViz({ anatomy }: AnatomieVizProps) {
@@ -90,12 +91,25 @@ export function AnatomieViz({ anatomy }: AnatomieVizProps) {
   // HONNÊTE-VIDE : sans virage exploitable — ou avec un virage dont TOUS les
   // scalaires sont absents — on ne fabrique rien, on affiche l'état sobre.
   const corner = anatomy && anatomy.length > 0 ? anatomy[0] : null;
+  /**
+   * `!= null` ET NON `Number.isFinite` — CORRIGÉ LE 14/08/2026.
+   *
+   * `Number.isFinite(0)` vaut **`true`**. Cette garde se déclenchait donc sur
+   * `null` et sur `NaN`, jamais sur un zéro — or le zéro était précisément ce
+   * que l'amont produisait faute de mesure.
+   *
+   * Le pilote lisait « Freinage sur 0 m avant la corde ». Une garde qu'on
+   * croyait protectrice laissait passer exactement ce qu'elle devait arrêter.
+   *
+   * `DebriefMirror.tsx` filtrait déjà les mêmes valeurs par `> 0` : la
+   * protection existait à un endroit et manquait à l'autre.
+   */
   const hasScalar =
     corner != null &&
-    (Number.isFinite(corner.apex_speed_kmh) ||
-      Number.isFinite(corner.brake_dist_m) ||
-      Number.isFinite(corner.accel_dist_m) ||
-      Number.isFinite(corner.g_lat_apex));
+    (corner.apex_speed_kmh != null ||
+      corner.brake_dist_m != null ||
+      corner.accel_dist_m != null ||
+      corner.g_lat_apex != null);
   if (!corner || !hasScalar) {
     return (
       <View style={styles.card}>
@@ -112,23 +126,36 @@ export function AnatomieViz({ anatomy }: AnatomieVizProps) {
 
   // Trois temps : freinage (distance) / corde (vitesse mini + g lat.) / réaccél.
   // (distance). Le g d'entrée/sortie n'est pas dans la tranche → non fabriqué.
+  //
+  // Une grandeur absente ne se met pas en phrase : « Freinage sur — m avant la
+  // corde » habillerait un trou en mesure. La phrase dit alors ce qui est vrai,
+  // et le cartouche porte le tiret.
   const PHASES: Phase[] = [
     {
       color: C.brake,
       label: 'Freinage',
-      text: `Freinage sur **${brake} m** avant la corde`,
+      text:
+        corner.brake_dist_m != null
+          ? `Freinage sur **${brake} m** avant la corde`
+          : 'Distance de freinage non mesurée sur ce virage',
       value: `${brake} m`,
     },
     {
       color: CREAM,
       label: 'Corde',
-      text: `Vitesse mini à la corde : **${apex} km/h**`,
+      text:
+        corner.apex_speed_kmh != null
+          ? `Vitesse mini à la corde : **${apex} km/h**`
+          : 'Vitesse à la corde non mesurée sur ce virage',
       value: `${gLat} g lat.`,
     },
     {
       color: C.accel,
       label: 'Réaccél.',
-      text: `Réaccélération sur **${accel} m** jusqu’à la prochaine zone`,
+      text:
+        corner.accel_dist_m != null
+          ? `Réaccélération sur **${accel} m** jusqu’à la prochaine zone`
+          : 'Distance de réaccélération non mesurée sur ce virage',
       value: `${accel} m`,
     },
   ];

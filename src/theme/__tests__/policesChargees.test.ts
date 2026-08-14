@@ -97,4 +97,51 @@ describe('polices — nommées et chargées', () => {
       expect(nom).not.toMatch(/^(Geist|GeistMono|Rajdhani|InstrumentSerif)_/);
     }
   });
+
+  /**
+   * L'AUTRE SENS, ARMÉ LE 14/08/2026.
+   *
+   * L'en-tête de ce fichier annonçait ce contrôle depuis le premier jour, « en
+   * avertissement plutôt qu'en échec ». Il n'existait pas. C'est le motif que
+   * ce dépôt répète : la garde est décrite, elle n'est pas posée.
+   *
+   * Ce qu'elle coûtait : Syncopate (2 graisses) et Inter (4) étaient montés
+   * DEVANT le splash pour `lotProfilTokens`, dont les seuls importateurs
+   * vivent dans `archive/arbre-v1/`. Six fichiers de police téléchargés et
+   * décodés à chaque démarrage à froid, pour une table que rien de vivant ne
+   * lisait — et rien ne le disait.
+   *
+   * En échec et non en avertissement : un avertissement que personne ne lit ne
+   * vaut pas mieux que le contrôle absent. Pour poser une graisse en prévision
+   * d'un lot, on la nomme dans le jeton qui l'attend — c'est plus honnête
+   * qu'un chargement muet.
+   */
+  it('AUCUNE police chargée n’est inemployée — le splash n’attend rien pour rien', () => {
+    const citees = new Set(policesCitees().keys());
+    const inutiles = [...CHARGEES].filter((n) => !citees.has(n));
+    expect(inutiles).toEqual([]);
+  });
+
+  /**
+   * Et le compte, écrit noir sur blanc. Douze graisses au 14/08 : Hanken
+   * Grotesk (7), JetBrains Mono (4), Michroma (1). Ce nombre n'est pas un
+   * détail de style — c'est du temps de démarrage à froid pris à tous les
+   * pilotes. Le faire bouger doit être un geste conscient, pas une dérive.
+   */
+  it('le chargeur monte douze graisses, pas dix-huit', () => {
+    expect([...CHARGEES].sort()).toEqual([
+      'HankenGrotesk_300Light',
+      'HankenGrotesk_400Regular',
+      'HankenGrotesk_400Regular_Italic',
+      'HankenGrotesk_500Medium',
+      'HankenGrotesk_600SemiBold',
+      'HankenGrotesk_700Bold',
+      'HankenGrotesk_800ExtraBold',
+      'JetBrainsMono_400Regular',
+      'JetBrainsMono_500Medium',
+      'JetBrainsMono_600SemiBold',
+      'JetBrainsMono_700Bold',
+      'Michroma_400Regular',
+    ]);
+  });
 });

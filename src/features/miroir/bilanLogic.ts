@@ -13,6 +13,7 @@
 import { projectToMeters, type LatLon } from '@/circuit/circuitGenerator';
 import { getCorner } from '@/lib/circuitTopology';
 import { isDoctrineSafe } from '@/services/aiSafetyFilter';
+import { libelleBaseMarge, type MarginBase } from '@/services/marginCalculator';
 import { colors } from '@/ui/v2/tokens';
 
 // ---------------------------------------------------------------------------
@@ -482,6 +483,19 @@ export type BilanDebrief =
   | {
       kind: 'generated' | 'fallback';
       acts: DebriefAct[];
+      /**
+       * SUR QUOI LE CHIFFRE REPOSE — hors des actes, et dans les deux branches.
+       *
+       * Cette note ne peut pas vivre DANS le récit : quand le débrief est
+       * généré, mêler une phrase écrite ici à un texte produit ailleurs
+       * romprait la pureté de provenance que l'écran affiche (« RÉCIT GÉNÉRÉ
+       * AUTOMATIQUEMENT »). Elle vit donc à côté, et l'écran la rend sous les
+       * actes, quelle que soit l'origine du texte.
+       *
+       * `null` quand la marge repose sur tout ce qu'elle devrait — il n'y a
+       * alors rien à signaler, et une note qui ne dit rien use la confiance.
+       */
+      baseNote: string | null;
     }
   | { kind: 'pending' };
 
@@ -542,10 +556,19 @@ export const DEBRIEF_PENDING_TEXT = 'Le débrief littéraire personnalisé arriv
  * ici même si le serveur l'a laissé passer (même ceinture que #19 v1).
  */
 export function debriefModel(
-  analysis: { debriefText: string | null; marginGlobal: number | null } | null,
+  analysis: {
+    debriefText: string | null;
+    marginGlobal: number | null;
+    /** Sur quoi la marge repose. `null` = ligne antérieure au 14/08. */
+    marginBase?: MarginBase | null;
+  } | null,
   firstName: string | null | undefined
 ): BilanDebrief {
   if (analysis === null) return { kind: 'pending' };
+
+  // La base est calculée AVANT de choisir la branche : elle vaut pour un récit
+  // généré comme pour le repli. C'est une propriété du CHIFFRE, pas du texte.
+  const baseNote = analysis.marginBase ? libelleBaseMarge(analysis.marginBase) : null;
 
   const raw = analysis.debriefText ?? '';
   const safe = raw && isDoctrineSafe(raw) ? raw : '';
@@ -557,7 +580,7 @@ export function debriefModel(
     if (parsed.preparation) acts.push({ title: 'Préparation', body: parsed.preparation });
     // Provenance pure : soit tout est généré, soit repli intégral — jamais
     // un mélange étiqueté « généré » (transparence RGPD/IA).
-    if (acts.length > 0) return { kind: 'generated', acts };
+    if (acts.length > 0) return { kind: 'generated', acts, baseNote };
   }
 
   return {
@@ -567,6 +590,7 @@ export function debriefModel(
       { title: 'Méta-analyse', body: fallbackMeta() },
       { title: 'Préparation', body: fallbackPreparation() },
     ],
+    baseNote,
   };
 }
 
