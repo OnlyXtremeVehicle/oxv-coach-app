@@ -23,10 +23,28 @@ export interface StatCellProps {
    * lit pas).
    */
   accessibilityLabel?: string;
+  /**
+   * POURQUOI la valeur est absente. Ignorée quand la valeur est présente.
+   *
+   * « non mesuré » est un CONSTAT : le lecteur voit déjà le tiret. Ce qu'il
+   * ignore, c'est la cause — boîtier muet, séance interrompue, aucun passage à
+   * l'arrivée. La raison est dite au lecteur d'écran ET rendue sous la cellule.
+   *
+   * Elle reste facultative : sans raison établie, on garde le tiret nu plutôt
+   * que d'inventer une explication.
+   */
+  raison?: string;
   style?: StyleProp<ViewStyle>;
 }
 
-export function StatCell({ label, value, children, style, accessibilityLabel }: StatCellProps) {
+export function StatCell({
+  label,
+  value,
+  children,
+  style,
+  accessibilityLabel,
+  raison,
+}: StatCellProps) {
   // Regroupement : l'étiquette et le chiffre sont UNE donnée, lue d'un seul
   // tenant — sans quoi le lecteur d'écran énonce « Record » puis, au balayage
   // suivant, « 1:41.203 », le lien perdu. Absence dite « non mesuré », comme
@@ -34,7 +52,9 @@ export function StatCell({ label, value, children, style, accessibilityLabel }: 
   const absent = value === undefined || value === '—';
   const groupedLabel =
     accessibilityLabel ??
-    (children !== undefined ? undefined : `${label} : ${absent ? 'non mesuré' : value}`);
+    (children !== undefined
+      ? undefined
+      : `${label} : ${absent ? `non mesuré${raison ? ` — ${raison}` : ''}` : value}`);
 
   return (
     <View style={style} accessible={groupedLabel !== undefined} accessibilityLabel={groupedLabel}>
@@ -46,11 +66,24 @@ export function StatCell({ label, value, children, style, accessibilityLabel }: 
           {value ?? '—'}
         </Text>
       )}
+      {absent && raison ? <Text style={styles.raison}>{raison}</Text> : null}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
+  /**
+   * La raison est DISCRÈTE : plus petite que la valeur, en gris de second
+   * rang. Elle informe qui la cherche, sans crier l'absence — un manque
+   * expliqué n'est pas une alarme.
+   */
+  raison: {
+    fontFamily: typo.body,
+    fontSize: 11,
+    lineHeight: 15,
+    color: colors.text.low,
+    marginTop: space.xs,
+  },
   label: {
     fontFamily: typo.mono,
     fontSize: 11,

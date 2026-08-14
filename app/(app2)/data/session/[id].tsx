@@ -89,6 +89,7 @@ import {
   useReduceMotion,
 } from '@/ui/v2';
 import { couleurTexteSure } from '@/ui/v2/couleurTexte';
+import { raisonsResume } from '@/features/data/raisonAbsence';
 import { formatDeltaMs } from '@/features/data/comparerLogic';
 import { AnatomieViz } from '@/components/insights/AnatomieViz';
 import { DispersionViz } from '@/components/insights/DispersionViz';
@@ -893,22 +894,55 @@ function ResumeSection({ session, laps }: { session: TelemetrySession; laps: Lap
       : '—';
   const vmax = session.max_speed_kmh !== null ? `${Math.round(session.max_speed_kmh)} km/h` : '—';
 
+  /**
+   * POURQUOI CES CHIFFRES SONT ABSENTS.
+   *
+   * Ces quatre nombres imprimaient « — » sans un mot. Ce sont pourtant les
+   * premiers que le pilote regarde en rouvrant sa séance, et les seuls qu'il
+   * verra si la capture a mal tourné.
+   *
+   * Le mécanisme existait pour les LECTURES (`disponibilite.ts`, six raisons
+   * nommées, rendues à l'écran) et s'arrêtait là. Chaque phrase est adossée à
+   * un champ réel — `total_frames`, `lap_count`, `status` — et vaut `null`
+   * quand aucune règle ne s'applique : on ne fabrique pas une raison.
+   */
+  const raisons = raisonsResume(session, laps.length, {
+    chrono: bestMs !== null,
+    tours: tours > 0,
+    distance: distance !== '—',
+    vmax: vmax !== '—',
+  });
+
   return (
     <View style={styles.resumeCard}>
       <Text style={styles.resumeEyebrow}>TOUR DE RÉFÉRENCE</Text>
       {bestMs !== null ? (
         <ChronoHero chronoMs={bestMs} size="l" />
       ) : (
-        <Text style={styles.resumeNoChrono}>—</Text>
+        <>
+          <Text style={styles.resumeNoChrono}>—</Text>
+          {raisons.chrono ? <Text style={styles.resumeRaison}>{raisons.chrono}</Text> : null}
+        </>
       )}
       <View style={styles.hairlineRow}>
         <StatCell
           label="Tours"
           value={tours > 0 ? String(tours) : '—'}
+          raison={raisons.tours ?? undefined}
           style={styles.hairlineCell}
         />
-        <StatCell label="Distance" value={distance} style={styles.hairlineCell} />
-        <StatCell label="Vitesse maxi" value={vmax} style={styles.hairlineCell} />
+        <StatCell
+          label="Distance"
+          value={distance}
+          raison={raisons.distance ?? undefined}
+          style={styles.hairlineCell}
+        />
+        <StatCell
+          label="Vitesse maxi"
+          value={vmax}
+          raison={raisons.vmax ?? undefined}
+          style={styles.hairlineCell}
+        />
       </View>
     </View>
   );
@@ -2507,6 +2541,13 @@ const styles = StyleSheet.create({
     letterSpacing: 2,
     color: colors.accent,
     marginBottom: space.sm,
+  },
+  resumeRaison: {
+    fontFamily: typo.body,
+    fontSize: 12,
+    lineHeight: 17,
+    color: colors.text.low,
+    marginTop: space.xs,
   },
   resumeNoChrono: {
     fontFamily: typo.monoSemi,
