@@ -403,6 +403,30 @@ function PassCard({
         Il ne s'affiche que le jour même : le reste du temps, la carte reste ce
         qu'elle était.
       */}
+      {/*
+        VOS PIÈCES — frère de la carte, comme le bouton du jour J, et pour la
+        même raison : deux cibles imbriquées se disputent le toucher.
+
+        Il n'apparaît que sur les journées À VENIR, où déclarer sert encore à
+        quelque chose. `declare_eligibility_item` existait depuis le 11/08 sans
+        aucun appelant : le pilote ne pouvait rien déclarer, nulle part.
+      */}
+      <Pressable
+        onPress={() =>
+          router.push({
+            pathname: '/(app2)/vous/pieces',
+            params: { registrationId: reg.registrationId },
+          } as never)
+        }
+        accessibilityRole="button"
+        accessibilityLabel={`Vos pièces pour le ${dayLabel(j.date)}`}
+        accessibilityHint="Indiquer ce que vous apportez au portail"
+        style={styles.pieces}
+      >
+        <Text style={styles.piecesLabel}>VOS PIÈCES</Text>
+        <Text style={styles.piecesHint}>Ce que vous apportez au portail</Text>
+      </Pressable>
+
       {onJourJ !== null ? (
         <Pressable
           onPress={onJourJ}
@@ -590,13 +614,37 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  pieces: {
+    minHeight: 56,
+    marginTop: space.sm,
+    paddingVertical: space.md,
+    paddingHorizontal: space.lg,
+    borderRadius: radius.card,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: colors.border.card,
+    backgroundColor: colors.bg.card2,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   jourJLabel: {
     fontFamily: typo.bodySemi,
     fontSize: 14,
     letterSpacing: 1.4,
     color: colors.text.hi,
   },
+  piecesLabel: {
+    fontFamily: typo.bodySemi,
+    fontSize: 14,
+    letterSpacing: 1.4,
+    color: colors.text.hi,
+  },
   jourJHint: {
+    fontFamily: typo.body,
+    fontSize: 12,
+    color: colors.text.mid,
+    marginTop: 2,
+  },
+  piecesHint: {
     fontFamily: typo.body,
     fontSize: 12,
     color: colors.text.mid,
