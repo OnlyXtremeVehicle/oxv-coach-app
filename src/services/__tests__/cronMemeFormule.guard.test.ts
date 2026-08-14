@@ -114,7 +114,12 @@ describe('la fonction serveur n’a pas dérivé de l’application', () => {
    * lui, et non le nom de la clé, qui produisait le désaccord.
    */
   it('le seuil absolu en secondes a bien disparu du serveur', () => {
-    const codeSeul = source.replace(/^[ \t]*\/\/.*$/gm, '');
+    // Les commentaires de BLOC aussi, pas seulement ceux de ligne : le 14/08,
+    // l'en-tête d'`ALGO_VERSION` a cité `max_g_lateral ?? 0` pour raconter la
+    // fabrication retirée, et cette garde a accusé le fichier de la porter
+    // encore. Une garde qui tombe sur sa propre documentation rend un verdict
+    // faux — c'est la quatrième fois de la journée.
+    const codeSeul = source.replace(/\/\*[\s\S]*?\*\//g, ' ').replace(/^[ \t]*\/\/.*$/gm, '');
     expect(codeSeul).not.toMatch(/stddev\(lapSeconds\)\s*-\s*1/);
     expect(codeSeul).toMatch(/cv\s*\/\s*0\.06|cv,\s*0,\s*0\.06/);
   });
@@ -125,7 +130,12 @@ describe('la fonction serveur n’a pas dérivé de l’application', () => {
    * pour chaque tour non mesuré.
    */
   it('le serveur ne fabrique plus de 0 g pour les tours non mesurés', () => {
-    const codeSeul = source.replace(/^[ \t]*\/\/.*$/gm, '');
+    // Les commentaires de BLOC aussi, pas seulement ceux de ligne : le 14/08,
+    // l'en-tête d'`ALGO_VERSION` a cité `max_g_lateral ?? 0` pour raconter la
+    // fabrication retirée, et cette garde a accusé le fichier de la porter
+    // encore. Une garde qui tombe sur sa propre documentation rend un verdict
+    // faux — c'est la quatrième fois de la journée.
+    const codeSeul = source.replace(/\/\*[\s\S]*?\*\//g, ' ').replace(/^[ \t]*\/\/.*$/gm, '');
     expect(codeSeul).not.toMatch(/max_g_lateral\s*\?\?\s*0/);
   });
 });

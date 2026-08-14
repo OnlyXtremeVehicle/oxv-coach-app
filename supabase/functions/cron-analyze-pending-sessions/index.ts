@@ -47,6 +47,26 @@ import { createClient } from 'jsr:@supabase/supabase-js@2';
 // Le CRITÈRE de ce balayage a lui-même changé le 14/08 : il portait sur
 // `margin_global IS NOT NULL`, et c'était une boucle en attente. Voir la
 // requête, plus bas.
+/**
+ * LA VERSION DU MOTEUR DE CALCUL — à incrémenter à CHAQUE changement de calcul.
+ *
+ * Elle valait `'cron-v1.0'` dans la v18 comme dans la v20, après trois
+ * fabrications retirées (`pilotMargin = 100` par défaut, `max_g_lateral ?? 0`,
+ * la clé `regularity`) et une formule de constance changée de nature —
+ * d'un seuil en secondes vers un coefficient de variation.
+ *
+ * Elle ne versionnait rien : onze lignes de production portaient la même
+ * étiquette pour deux calculs différents.
+ *
+ * Elle commande désormais l'éligibilité au balayage. Une ligne calculée par un
+ * moteur périmé redevient éligible, une fois. **C'est la seule discipline que
+ * ce mécanisme demande, et il ne vaut que par elle.**
+ *
+ * `v2.0` et non `v1.1` : le calcul de constance a changé de NATURE, pas de
+ * réglage.
+ */
+const ALGO_VERSION = 'cron-v2.0';
+
 const MAX_SESSIONS_PER_RUN = 50;
 const CONSISTENCY_WEIGHT = 0.6;
 const SMOOTHNESS_WEIGHT = 0.4;
@@ -146,11 +166,50 @@ Deno.serve(async (req: Request) => {
     // Le critère juste est l'EXISTENCE de la ligne : « cette séance a-t-elle été
     // examinée ? », et non « en a-t-on tiré un chiffre ? ». Une séance sans
     // matière est examinée une fois, et c'est tout.
+    //
+    // ─────────────────────────────────────────────────────────────────────
+    // 14/08, SECONDE CORRECTION : LE CRITÈRE PORTE SUR LA VERSION DU MOTEUR
+    // ─────────────────────────────────────────────────────────────────────
+    //
+    // Le critère « la séance a-t-elle une ligne ? » ferme la boucle, mais il
+    // ferme AUSSI le rattrapage. Constaté le jour même en production :
+    //
+    //   Bouteville, la SEULE séance de la base qui porte une vraie mesure,
+    //   garde `margin_global = 39.20` et `breakdown.regularity = 0` —
+    //   l'ancienne clé et l'ancienne formule — alors que le calcul livré
+    //   quelques heures plus tôt donne 51,44. La fonction tournait toutes les
+    //   heures, rendait 200, et traitait zéro séance. Correctement.
+    //
+    // Et rien d'autre ne pouvait la rattraper : `analyzeAndPersistSession`
+    // n'est appelée QUE par `rec/fin`, à la clôture. Rouvrir une séance ne
+    // recalcule pas.
+    //
+    // Le critère juste est donc : « cette séance a-t-elle été examinée PAR LE
+    // MOTEUR COURANT ? » Une ligne calculée par un moteur périmé redevient
+    // éligible, une fois, jusqu'à ce qu'elle porte la version du jour.
+    //
+    // Trois propriétés à la fois :
+    //   • la boucle reste FERMÉE — après recalcul la ligne porte la version
+    //     courante et ressort de la file, qu'elle contienne un chiffre ou un
+    //     « rien à mesurer » ;
+    //   • le rattrapage devient AUTOMATIQUE — incrémenter la constante suffit
+    //     à faire repasser tout l'historique, une fois ;
+    //   • et `algo_version` recommence à dire quelque chose. Elle valait
+    //     'cron-v1.0' dans la v18 comme dans la v20, après trois fabrications
+    //     retirées, une formule changée de nature et une clé renommée. Elle ne
+    //     versionnait rien.
+    //
+    // À INCRÉMENTER À CHAQUE CHANGEMENT DE CALCUL. C'est la seule discipline
+    // que ce mécanisme demande, et il ne vaut que par elle.
     const { data: pending, error } = await supabase
       .from('telemetry_sessions')
       .select('id, user_id, max_g_lateral')
       .eq('status', 'completed')
-      .not('id', 'in', `(SELECT telemetry_session_id FROM app_session_analyses)`)
+      .not(
+        'id',
+        'in',
+        `(SELECT telemetry_session_id FROM app_session_analyses WHERE algo_version = '${ALGO_VERSION}')`
+      )
       .limit(MAX_SESSIONS_PER_RUN);
 
     if (error) {
@@ -167,7 +226,12 @@ Deno.serve(async (req: Request) => {
       // donc invisiblement.
       const { data: existingAnalyses } = await supabase
         .from('app_session_analyses')
-        .select('telemetry_session_id');
+        .select('telemetry_session_id')
+        // MÊME critère que la requête principale, version comprise. Un repli
+        // qui ignorerait `algo_version` refermerait le rattrapage par la porte
+        // de derrière — et seulement quand la sous-requête échoue, donc
+        // rarement, donc invisiblement.
+        .eq('algo_version', ALGO_VERSION);
       const analyzedIds = new Set(
         (existingAnalyses ?? []).map((r: { telemetry_session_id: string }) => r.telemetry_session_id)
       );
@@ -264,7 +328,7 @@ async function processSessions(supabase: any, sessions: any[]) {
             margin_vehicle: vehicleMargin,
             margin_pilot: pilotMargin,
             margin_breakdown: null,
-            algo_version: 'cron-v1.0',
+            algo_version: ALGO_VERSION,
             computed_at: new Date().toISOString(),
           },
           { onConflict: 'telemetry_session_id' }
@@ -298,7 +362,7 @@ async function processSessions(supabase: any, sessions: any[]) {
             consistency,
             smoothness,
           },
-          algo_version: 'cron-v1.0',
+          algo_version: ALGO_VERSION,
           computed_at: new Date().toISOString(),
         },
         { onConflict: 'telemetry_session_id' }

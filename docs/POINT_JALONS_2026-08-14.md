@@ -130,15 +130,48 @@ Elle est adversariale, pas infaillible. Vérification faite :
 
 ## Ce qui reste, et qui ne s'écrit pas
 
-### Un geste qui coûte quelque chose chaque jour
+### Le geste qui presse — et ce n'est pas celui que j'avais mis en tête
 
-**`ritual_dispatcher`.** Le correctif météo du 13/08 est dans le dépôt ; la
-fonction déployée lui est antérieure. Le code d'avant écrivait
-`temperature_celsius: 0` avec le commentaire « sera caché par CSS si valeur 0 »
-— le zéro fabriqué que la consigne A-WEATHER-1 interdit.
+**Déployer la version 21 du cron d'analyse.**
 
-Déployer modifie une fonction qui **écrit à vos clients** : ce n'est pas mon
-geste. Et je n'ai pas pu relire la version en ligne, l'accès m'étant refusé.
+Une vérification en production, le 14/08 à 14 h 10, a montré ce que je n'avais
+pas vu. Le correctif du matin fermait la boucle infinie — et fermait avec elle
+le **rattrapage** :
+
+> Bouteville, la seule séance de la base portant une vraie mesure, garde
+> `margin_global = 39.20` et `breakdown.regularity = 0` — l'ancienne clé et
+> l'ancienne formule — alors que le calcul livré le matin donne **51,44**. La
+> fonction tourne toutes les heures, rend 200, et traite zéro séance.
+> Correctement, du point de vue du critère.
+
+Et rien d'autre ne pouvait la rattraper. J'avais écrit dans l'en-tête de ma
+migration qu'elle serait reprise « jusqu'à ce que l'application rouvre la
+séance » : **c'était faux, et je ne l'avais pas vérifié.**
+`analyzeAndPersistSession` n'est appelée que par `rec/fin`, à la clôture.
+Rouvrir une séance ne recalcule rien.
+
+Le correctif retenu ne répare pas ce cas mais sa CLASSE : le critère porte
+désormais sur `ALGO_VERSION`, pas sur l'existence d'une ligne. Toute correction
+future de formule rattrapera l'historique en incrémentant une constante.
+
+### Et `ritual_dispatcher`, que j'avais mal classé
+
+Je l'avais placé en tête, sous le titre *« un geste qui coûte quelque chose
+chaque jour »*. **La mesure dit le contraire :**
+
+| | mesuré le 14/08 |
+|---|---:|
+| lignes dans `ritual_dispatches` | **0** — aucun rituel n'a jamais été envoyé |
+| sessions à venir | **1**, le 24/12/2026 |
+| inscrits confirmés sur celle-ci | **0** |
+
+La fonction s'exécute quatre fois par jour et n'a **aucun destinataire**. Le
+zéro fabriqué existe dans le code déployé — version 28, du 21/07, vérifiée en
+ligne : deux occurrences de « Conditions à confirmer », zéro de « Prévision
+indisponible ». Il n'atteint personne, et n'atteindra personne avant le 23/12.
+
+Elle doit être déployée. Elle ne pressait pas, et la placer en tête a détourné
+l'attention de Bouteville.
 
 ### Ce qui attend une commande
 
@@ -171,15 +204,47 @@ contredit la doctrine. Il est annoté, la garde d'orphelins le surveille.
 
 ---
 
+## Et une leçon de supervision, qui vaut pour les neuf tâches planifiées
+
+Le 14/08 au matin, j'ai déployé le cron avec `verify_jwt` basculé à `true` par
+omission — la plateforme rejetait alors en 401 **avant** d'entrer dans la
+fonction. Je m'en suis rassuré en lisant `cron.job_run_details`, qui ne
+montrait aucune exécution dans la fenêtre.
+
+**Cette lecture ne pouvait rien me dire.** `pg_cron` rapporte `succeeded` à
+chaque exécution, y compris pendant un 401 : il ne mesure que l'ÉMISSION du
+`net.http_post`, qui est asynchrone. Il dira toujours « réussi ».
+
+La seule preuve est du côté de la fonction :
+
+```sql
+select timestamp, event_message
+  from logs
+ where source = 'function_edge_logs'
+   and log_attributes['function_id'] = '90dba0b3-bacb-4340-b9c2-e22eba743b9f'
+ order by timestamp desc
+```
+
+C'est là que se lisent le code retour, la version servie et la taille de la
+réponse — les trois chiffres qui ont établi que la fonction traitait zéro
+séance. **`cron.job_run_details` est aveugle ; `function_edge_logs` voit.**
+
+---
+
 ## Les gardes posées aujourd'hui
 
 Neuf, et toutes falsifiées avant d'être livrées :
 
 `colonneSupprimeeBalayee` · `chaineAudioArmee` · `ecurieSansChrono` ·
 `intentionJuxtaposee` · `loiCouleurTexte` · `vocabulairePilote` ·
-`rangNonAchetable` · `methodePubliee` · `eligibiliteArmee`
+`rangNonAchetable` · `methodePubliee` · `eligibiliteArmee` ·
+`rattrapageParVersion`
 
-Trois d'entre elles ont d'abord rendu un **verdict faux** et ont été reprises :
-une garde qui accuse ce qui va bien fait défaire du travail juste.
+**Quatre** d'entre elles ont d'abord rendu un **verdict faux** et ont été
+reprises — la dernière, `cronMemeFormule`, accusait le fichier de porter encore
+`max_g_lateral ?? 0` parce que mon propre en-tête citait le motif retiré. Elle
+ne dépouillait que les commentaires de ligne.
+
+Une garde qui accuse ce qui va bien fait défaire du travail juste.
 
 **tsc 0 · lint 0 · jest 3 358.**
