@@ -19,6 +19,9 @@
 > Les chiffres du 29/07 sont CONSERVÉS ci-dessous, datés : ils sont le constat
 > d'avant l'essai terrain, et c'est leur valeur. Ce qui a changé est marqué.
 >
+> **L'état du jour vit dans [`POINT_JALONS_2026-08-14.md`](POINT_JALONS_2026-08-14.md)** —
+> ce fichier-ci reste le constat du 29/07, corrigé là où il était faux.
+>
 > **Provenance des chiffres du 14/08** : relevé adversarial de soixante-huit
 > agents sur le dépôt et les migrations, chaque verdict soumis à un réfutateur.
 > L'accès SQL à la production m'étant refusé ce jour-là, les nombres de
