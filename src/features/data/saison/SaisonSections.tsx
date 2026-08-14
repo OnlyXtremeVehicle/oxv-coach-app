@@ -97,6 +97,7 @@ import {
 import { pairesRoulees, seancesDeLaPaire } from '@/features/data/pairesLogic';
 import { PetitsMultiples } from '@/features/data/saison/PetitsMultiples';
 import { couleursDesSeaux } from '@/features/data/saison/rampeEcarts';
+import { ressentiSaison } from '@/features/data/saison/ressentiSaisonLogic';
 import { vehicleName } from '@/features/vous/garageLogic';
 import { listMyVehicles, type Vehicle } from '@/services/garageService';
 import {
@@ -115,6 +116,7 @@ import {
   type DirectoryCircuit,
 } from '@/services/ecosystemLogic';
 import { fetchDirectoryCircuits, listCircuitServices } from '@/services/ecosystemService';
+import { listMyNotes } from '@/services/pilotNotesService';
 import { fetchAllSessions, fetchSessionLaps } from '@/services/sessionsService';
 import { formatDateShort } from '@/utils/format';
 import { loadPilotStats, type PilotStats } from '@/services/statsService';
@@ -239,6 +241,19 @@ export function useSaisonData() {
   const [lapsBySession, setLapsBySession] = useState<Map<string, number[]>>(new Map());
   const [lapsStatus, setLapsStatus] = useState<LoadStatus>('loading');
 
+  /**
+   * LE RESSENTI SUR LA SAISON — best-effort.
+   *
+   * `pilot_notes.theme` est saisi après chaque run, persisté en colonne
+   * dédiée, relu par le service… et jeté par ses trois consommateurs. La
+   * migration a même créé `pilot_notes_theme_idx on (user_id, theme)`, l'index
+   * exact qu'exigerait ce comptage, qu'aucune requête n'empruntait.
+   *
+   * Une lecture en échec masque la section : elle n'a jamais à faire tomber la
+   * Saison.
+   */
+  const [themes, setThemes] = useState<(string | null)[] | null>(null);
+
   const [selectedPaireCle, setSelectedPaireCle] = useState<string | null>(null);
   /** Le garage ne sert QU'À NOMMER les véhicules des puces. */
   const [garage, setGarage] = useState<Vehicle[]>([]);
@@ -314,6 +329,23 @@ export function useSaisonData() {
       setSelectedPaireCle(chips[0].cle);
     }
   }, [chips, selectedPaireCle]);
+
+  // ── Les thèmes nommés après les runs (best-effort) ─────────────────────────
+  useEffect(() => {
+    if (!userId) return;
+    let annule = false;
+    listMyNotes()
+      .then((notes) => {
+        if (!annule) setThemes(notes.map((n) => n.theme));
+      })
+      // Section masquée en cas d'échec : on ne compte pas ce qu'on n'a pas lu.
+      .catch(() => {
+        if (!annule) setThemes(null);
+      });
+    return () => {
+      annule = true;
+    };
+  }, [userId, reloadKey]);
 
   // ── Tours des séances (borné) → Map<sessionId, number[] ms> ─────────────────
   useEffect(() => {
@@ -440,6 +472,7 @@ export function useSaisonData() {
     status,
     userId,
     reload,
+    ressenti: themes === null ? null : ressentiSaison(themes),
     chips,
     selectedPaireCle,
     setSelectedPaireCle,
@@ -621,6 +654,30 @@ export function SaisonSections({ data }: { data: SaisonData }) {
           </View>
         )}
       </View>
+
+      {/*
+        ── 4bis. CE QUE VOUS AVEZ NOMMÉ ────────────────────────────────────
+
+        Le pilote choisit un thème après chaque run. La matière était saisie,
+        persistée, relue — et jetée par tous ses consommateurs.
+
+        La section ne s'affiche que si le comptage a une phrase OU une raison
+        de ne pas en avoir. Elle disparaît complètement si la lecture a
+        échoué : on ne compte pas ce qu'on n'a pas lu.
+
+        ON COMPTE, ON N'INTERPRÈTE PAS. La phrase dit ce que le pilote a nommé
+        le plus souvent. Elle ne dit pas que c'est sa faiblesse, ni ce qu'il
+        faudrait en faire — un thème qui revient est un thème qui l'occupe, et
+        le sens lui appartient.
+      */}
+      {data.ressenti !== null ? (
+        <View style={styles.section}>
+          <SectionHeader eyebrow="CE QUE VOUS AVEZ NOMMÉ" />
+          <View style={styles.card}>
+            <Text style={styles.ressentiTexte}>{data.ressenti.phrase ?? data.ressenti.raison}</Text>
+          </View>
+        </View>
+      ) : null}
 
       {/* ── 5. Circuits — roulés + à découvrir ──────────────────────────── */}
       <View style={styles.section}>
@@ -1190,6 +1247,12 @@ const styles = StyleSheet.create({
   section: {
     // Marge laterale fournie par l hote.
     marginTop: space.xxl,
+  },
+  ressentiTexte: {
+    fontFamily: typo.body,
+    fontSize: 14,
+    lineHeight: 21,
+    color: colors.text.mid,
   },
   card: {
     marginTop: space.lg,
