@@ -43,13 +43,11 @@
  */
 
 import { readFileSync, readdirSync } from 'fs';
+
+import { codeSansCommentaires } from '@/test-utils/codeSeul';
 import { join } from 'path';
 
 const RACINE = process.cwd();
-
-function sansCommentaires(src: string): string {
-  return src.replace(/\/\*[\s\S]*?\*\//g, ' ').replace(/^\s*\/\/.*$/gm, ' ');
-}
 
 function fichiers(dir: string, acc: string[] = []): string[] {
   for (const e of readdirSync(dir, { withFileTypes: true })) {
@@ -83,7 +81,7 @@ function clesIsAdmin(): { fichier: string; ligne: number; texte: string }[] {
   for (const racine of ['app', 'src']) {
     for (const f of fichiers(join(RACINE, racine))) {
       if (LEGITIMES.some((l) => f.endsWith(l))) continue;
-      const lignes = sansCommentaires(readFileSync(f, 'utf8')).split('\n');
+      const lignes = codeSansCommentaires(readFileSync(f, 'utf8')).split('\n');
       lignes.forEach((texte, i) => {
         // `is_admin:` = une clé d'objet — lecture, écriture ou déclaration de
         // type. `is_admin()` = la fonction serveur, qui elle demeure.
@@ -110,7 +108,7 @@ describe('la colonne users.is_admin a été balayée partout', () => {
    * DOIT trouver les usages légitimes quand on les lui présente.
    */
   it('le motif fonctionne — il trouve bien les usages légitimes', () => {
-    const support = sansCommentaires(
+    const support = codeSansCommentaires(
       readFileSync(join(RACINE, 'src', 'services', 'supportService.ts'), 'utf8')
     );
     expect(/\bis_admin\s*[?]?\s*:/.test(support)).toBe(true);
@@ -121,7 +119,7 @@ describe('la colonne users.is_admin a été balayée partout', () => {
    * écriture éteint la seule vérification qui aurait vu la colonne partir.
    */
   it('setUserRole n’écrit plus que le rôle, sans cast', () => {
-    const code = sansCommentaires(
+    const code = codeSansCommentaires(
       readFileSync(join(RACINE, 'src', 'services', 'adminUsersService.ts'), 'utf8')
     );
     expect(code).toContain(".update({ role }).eq('id', userId)");

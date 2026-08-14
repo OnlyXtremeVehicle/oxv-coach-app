@@ -29,6 +29,8 @@
  */
 
 import { readFileSync } from 'fs';
+
+import { codeExecutable } from '@/test-utils/codeSeul';
 import { join } from 'path';
 
 import { computeRegularite } from '@/services/qdiLogic';
@@ -119,7 +121,7 @@ describe('la fonction serveur n’a pas dérivé de l’application', () => {
     // fabrication retirée, et cette garde a accusé le fichier de la porter
     // encore. Une garde qui tombe sur sa propre documentation rend un verdict
     // faux — c'est la quatrième fois de la journée.
-    const codeSeul = source.replace(/\/\*[\s\S]*?\*\//g, ' ').replace(/^[ \t]*\/\/.*$/gm, '');
+    const codeSeul = codeExecutable(source);
     expect(codeSeul).not.toMatch(/stddev\(lapSeconds\)\s*-\s*1/);
     expect(codeSeul).toMatch(/cv\s*\/\s*0\.06|cv,\s*0,\s*0\.06/);
   });
@@ -135,7 +137,7 @@ describe('la fonction serveur n’a pas dérivé de l’application', () => {
     // fabrication retirée, et cette garde a accusé le fichier de la porter
     // encore. Une garde qui tombe sur sa propre documentation rend un verdict
     // faux — c'est la quatrième fois de la journée.
-    const codeSeul = source.replace(/\/\*[\s\S]*?\*\//g, ' ').replace(/^[ \t]*\/\/.*$/gm, '');
+    const codeSeul = codeExecutable(source);
     expect(codeSeul).not.toMatch(/max_g_lateral\s*\?\?\s*0/);
   });
 });

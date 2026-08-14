@@ -150,6 +150,10 @@ const CONNUS: readonly string[] = [
   '/src/render/decimate.ts',
   '/src/render/gg.ts',
   '/src/render/ribbon.ts',
+  // Outil des GARDES : seuls des tests l'importent, par construction. C'est la
+  // même nuance que `hauteSaintonge` — « plus aucun code de production ne s'en
+  // sert » est ici l'état voulu, pas une dette.
+  '/src/test-utils/codeseul.ts',
   '/src/services/coachbusinessservice.ts',
   '/src/services/coachconsoleservice.ts',
   '/src/services/datalablogic.ts',

@@ -33,6 +33,8 @@
  */
 
 import { readFileSync, readdirSync } from 'node:fs';
+
+import { codeSansCommentaires } from '@/test-utils/codeSeul';
 import { join, sep } from 'node:path';
 
 const RACINE = join(__dirname, '..', '..', '..');
@@ -50,7 +52,7 @@ function fichiers(dossier: string, acc: string[] = []): string[] {
 /** Le code vivant, commentaires retirés. */
 function corpusVivant(): string {
   return [...fichiers(join(RACINE, 'app')), ...fichiers(join(RACINE, 'src'))]
-    .map((f) => readFileSync(f, 'utf8'))
+    .map((f) => codeSansCommentaires(readFileSync(f, 'utf8')))
     .join('\n')
     .replace(/\/\*[\s\S]*?\*\//g, '')
     .replace(/^\s*\/\/.*$/gm, '');

@@ -30,17 +30,17 @@
  */
 
 import { readFileSync } from 'fs';
+
+import { codeSansCommentaires } from '@/test-utils/codeSeul';
 import { join } from 'path';
 
 import { BANQUE, peutEtreChiffreRoi } from '../provenance';
 
 const RACINE = process.cwd();
 
-function sansCommentaires(src: string): string {
-  return src.replace(/\/\*[\s\S]*?\*\//g, ' ').replace(/^\s*\/\/.*$/gm, ' ');
-}
-
-const ECRAN = sansCommentaires(readFileSync(join(RACINE, 'app', '(app2)', 'methode.tsx'), 'utf8'));
+const ECRAN = codeSansCommentaires(
+  readFileSync(join(RACINE, 'app', '(app2)', 'methode.tsx'), 'utf8')
+);
 
 describe('la méthode publiée', () => {
   it('l’écran itère la BANQUE entière, sans liste recopiée', () => {
@@ -77,7 +77,7 @@ describe('la méthode publiée', () => {
   });
 
   it('l’écran est atteignable depuis la Signature', () => {
-    const signature = sansCommentaires(
+    const signature = codeSansCommentaires(
       readFileSync(join(RACINE, 'app', '(app2)', 'signature.tsx'), 'utf8')
     );
     expect(signature).toContain('/(app2)/methode');

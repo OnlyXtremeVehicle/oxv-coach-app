@@ -27,6 +27,8 @@
  */
 
 import { readFileSync, readdirSync } from 'fs';
+
+import { codeExecutable, codeSansCommentaires } from '@/test-utils/codeSeul';
 import { join } from 'path';
 
 const RACINE = process.cwd();
@@ -36,12 +38,6 @@ function lire(...morceaux: string[]): string {
 }
 
 /** Le source privé de ses commentaires — blocs, lignes et JSX. */
-function sansCommentaires(src: string): string {
-  return src
-    .replace(/\/\*[\s\S]*?\*\//g, ' ')
-    .replace(/^\s*\/\/.*$/gm, ' ')
-    .replace(/\{\s*\/\*[\s\S]*?\*\/\s*\}/g, ' ');
-}
 
 function fichiers(dir: string, acc: string[] = []): string[] {
   for (const e of readdirSync(dir, { withFileTypes: true })) {
@@ -61,7 +57,7 @@ function appelants(nom: string, saufFichier: string): string[] {
   for (const racine of ['app', 'src']) {
     for (const f of fichiers(join(RACINE, racine))) {
       if (f.includes(saufFichier)) continue;
-      if (motif.test(sansCommentaires(readFileSync(f, 'utf8')))) {
+      if (motif.test(codeExecutable(readFileSync(f, 'utf8')))) {
         out.push(f.replace(RACINE, '').split(/[\\/]/).join('/'));
       }
     }
@@ -97,7 +93,7 @@ describe('l’écurie ne porte aucun chrono', () => {
     ['la logique', LOGIQUE],
     ['le hook', HOOK],
   ])('%s ne porte aucun marqueur de chrono', (_nom, chemin) => {
-    const code = sansCommentaires(lire(...chemin)).toLowerCase();
+    const code = codeExecutable(lire(...chemin)).toLowerCase();
     const trouves = MARQUEURS_CHRONO.filter((m) => code.includes(m.toLowerCase()));
     expect(trouves).toEqual([]);
   });
@@ -131,7 +127,8 @@ describe('les fonctions serveur d’écurie sont armées', () => {
    * mort. Le hub du Club doit mener à l'écurie.
    */
   it('le hub du Club ouvre réellement l’écran d’écurie', () => {
-    const hub = sansCommentaires(lire('app', '(app2)', 'club', 'index.tsx'));
+    // La route est une CHAÎNE : `codeSansCommentaires`, pas `codeExecutable`.
+    const hub = codeSansCommentaires(lire('app', '(app2)', 'club', 'index.tsx'));
     // Le groupe de route fait partie du chemin : `orphelinsApp2.guard` cherche
     // `/(app2)/<route>`, et un lien sans le groupe laisserait l'écran compté
     // orphelin. Elle a attrapé exactement cela au premier jet.

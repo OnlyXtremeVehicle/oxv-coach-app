@@ -32,16 +32,14 @@
  */
 
 import { readFileSync, readdirSync } from 'fs';
+
+import { codeSansCommentaires } from '@/test-utils/codeSeul';
 import { join } from 'path';
 
 const RACINE = process.cwd();
 
 function lire(...m: string[]): string {
   return readFileSync(join(RACINE, ...m), 'utf8');
-}
-
-function sansCommentaires(src: string): string {
-  return src.replace(/\/\*[\s\S]*?\*\//g, ' ').replace(/^\s*\/\/.*$/gm, ' ');
 }
 
 function fichiers(dir: string, acc: string[] = []): string[] {
@@ -63,13 +61,13 @@ describe('l’intention revient au pilote', () => {
    * champ. Elle exige un appelant qui l'EXPOSE.
    */
   it('le bilan charge l’intention de la séance', () => {
-    const hook = sansCommentaires(lire('src', 'features', 'miroir', 'useBilan.ts'));
+    const hook = codeSansCommentaires(lire('src', 'features', 'miroir', 'useBilan.ts'));
     expect(hook).toContain('getIntentionForSession(sessionId)');
     expect(hook).toContain('intention: settled(intentionR, null)');
   });
 
   it('et l’écran la rend réellement', () => {
-    const ecran = sansCommentaires(lire('app', '(app2)', 'bilan', '[sessionId].tsx'));
+    const ecran = codeSansCommentaires(lire('app', '(app2)', 'bilan', '[sessionId].tsx'));
     expect(ecran).toContain('data.intention');
     // Absente sans intention : la section disparaît, elle ne se vide pas.
     expect(ecran).toMatch(/data\.intention \?/);
@@ -83,7 +81,7 @@ describe('l’intention revient au pilote', () => {
    * deux pour énoncer l'interdit.
    */
   it('aucun verdict n’est rendu sur l’intention', () => {
-    const ecran = sansCommentaires(lire('app', '(app2)', 'bilan', '[sessionId].tsx'));
+    const ecran = codeSansCommentaires(lire('app', '(app2)', 'bilan', '[sessionId].tsx'));
     const bloc = ecran.slice(
       Math.max(0, ecran.indexOf('data.intention') - 400),
       ecran.indexOf('data.intention') + 900
@@ -102,7 +100,7 @@ describe('l’intention revient au pilote', () => {
     for (const racine of ['app', 'src']) {
       for (const f of fichiers(join(RACINE, racine))) {
         if (f.endsWith('intentionsService.ts')) continue;
-        if (motif.test(sansCommentaires(readFileSync(f, 'utf8')))) appelants.push(f);
+        if (motif.test(codeSansCommentaires(readFileSync(f, 'utf8')))) appelants.push(f);
       }
     }
     expect(appelants.length).toBeGreaterThan(0);

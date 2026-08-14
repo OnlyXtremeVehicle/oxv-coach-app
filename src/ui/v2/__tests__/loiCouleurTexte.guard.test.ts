@@ -28,16 +28,14 @@
  */
 
 import { readFileSync, readdirSync } from 'fs';
+
+import { codeExecutable, codeSansCommentaires } from '@/test-utils/codeSeul';
 import { join } from 'path';
 
 import { colors } from '../tokens';
 import { contraste, SEUIL_TEXTE } from '../couleurTexte';
 
 const RACINE = process.cwd();
-
-function sansCommentaires(src: string): string {
-  return src.replace(/\/\*[\s\S]*?\*\//g, ' ').replace(/^\s*\/\/.*$/gm, ' ');
-}
 
 function fichiers(dir: string, acc: string[] = []): string[] {
   for (const e of readdirSync(dir, { withFileTypes: true })) {
@@ -74,7 +72,7 @@ describe('loi 1 — le rouge de donnée ne porte pas de texte', () => {
     const interdit = /\bcolor:\s*colors\.qdi\.freinage/;
     const fautifs: string[] = [];
     for (const f of TOUS) {
-      const code = sansCommentaires(readFileSync(f, 'utf8'));
+      const code = codeExecutable(readFileSync(f, 'utf8'));
       const zones: string[] = [];
       const iSheet = code.indexOf('StyleSheet.create(');
       if (iSheet >= 0) zones.push(code.slice(iSheet));
@@ -129,7 +127,7 @@ describe('loi 2 — le sigle ne se prononce pas', () => {
     const monteurs: string[] = [];
     for (const f of TOUS) {
       if (f.endsWith('QdiRadar.tsx')) continue;
-      if (/<QdiRadar\b/.test(sansCommentaires(readFileSync(f, 'utf8')))) {
+      if (/<QdiRadar\b/.test(codeExecutable(readFileSync(f, 'utf8')))) {
         monteurs.push(f.replace(RACINE, '').split(/[\\/]/).join('/'));
       }
     }
@@ -144,7 +142,8 @@ describe('loi 2 — le sigle ne se prononce pas', () => {
       // L'espace COACH est un espace de métier : le sigle y est admis.
       if (chemin.includes('/(coach)/') || chemin.includes('/(admin)/')) continue;
       if (EXEMPTS_CAR_COACH.includes(chemin)) continue;
-      const code = sansCommentaires(readFileSync(f, 'utf8'));
+      // Le sigle vit DANS une chaîne : il faut donc la voir.
+      const code = codeSansCommentaires(readFileSync(f, 'utf8'));
       // Une étiquette d'accessibilité contenant le sigle, sur une même ligne.
       for (const ligne of code.split('\n')) {
         if (/accessibilityLabel/.test(ligne) && /\bQDI\b/.test(ligne)) {
@@ -156,7 +155,11 @@ describe('loi 2 — le sigle ne se prononce pas', () => {
   });
 
   it('le radar dit « Votre signature », comme l’écran', () => {
-    const radar = sansCommentaires(
+    // `codeSansCommentaires` ici, PAS `codeExecutable` : ce test vérifie la
+    // présence d'une chaîne rendue. Retirer les littéraux la ferait disparaître
+    // et la garde échouerait sur un code juste — le choix se fait par
+    // ASSERTION, pas par fichier.
+    const radar = codeSansCommentaires(
       readFileSync(join(RACINE, 'src', 'ui', 'v2', 'RadarQdi.tsx'), 'utf8')
     );
     expect(radar).toContain('Votre signature —');

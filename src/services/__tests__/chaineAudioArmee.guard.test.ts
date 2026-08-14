@@ -28,6 +28,8 @@
  */
 
 import { readFileSync, readdirSync } from 'fs';
+
+import { codeSansCommentaires } from '@/test-utils/codeSeul';
 import { join } from 'path';
 
 const RACINE = process.cwd();
@@ -55,7 +57,10 @@ function appelants(nom: string): string[] {
   for (const racine of ['app', 'src']) {
     for (const f of fichiers(join(RACINE, racine))) {
       if (f.includes('coachAudioService')) continue;
-      if (motif.test(readFileSync(f, 'utf8'))) {
+      // Le fichier privé de ses commentaires : un service NOMMÉ dans une
+      // explication n'est pas un appelant. C'est le motif qui a rendu quatre
+      // verdicts faux le 14/08.
+      if (motif.test(codeSansCommentaires(readFileSync(f, 'utf8')))) {
         out.push(f.replace(RACINE, '').split(/[\\/]/).join('/'));
       }
     }

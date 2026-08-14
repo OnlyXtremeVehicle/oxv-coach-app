@@ -25,15 +25,13 @@
  */
 
 import { readFileSync, readdirSync } from 'fs';
+
+import { codeSansCommentaires } from '@/test-utils/codeSeul';
 import { join } from 'path';
 
 import { CLES_DECLARABLES, CLES_ELIGIBILITE } from '../eligibilityLogic';
 
 const RACINE = process.cwd();
-
-function sansCommentaires(src: string): string {
-  return src.replace(/\/\*[\s\S]*?\*\//g, ' ').replace(/^\s*\/\/.*$/gm, ' ');
-}
 
 function fichiers(dir: string, acc: string[] = []): string[] {
   for (const e of readdirSync(dir, { withFileTypes: true })) {
@@ -47,10 +45,10 @@ function fichiers(dir: string, acc: string[] = []): string[] {
   return acc;
 }
 
-const SERVICE = sansCommentaires(
+const SERVICE = codeSansCommentaires(
   readFileSync(join(RACINE, 'src', 'services', 'eligibilityService.ts'), 'utf8')
 );
-const ECRAN = sansCommentaires(
+const ECRAN = codeSansCommentaires(
   readFileSync(join(RACINE, 'app', '(app2)', 'vous', 'pieces.tsx'), 'utf8')
 );
 
@@ -61,7 +59,7 @@ describe('la chaîne des pièces est armée', () => {
     for (const racine of ['app', 'src']) {
       for (const f of fichiers(join(RACINE, racine))) {
         if (f.endsWith('database.types.ts')) continue;
-        if (/declare_eligibility_item/.test(sansCommentaires(readFileSync(f, 'utf8')))) {
+        if (/declare_eligibility_item/.test(codeSansCommentaires(readFileSync(f, 'utf8')))) {
           appelants.push(f.replace(RACINE, '').split(/[\\/]/).join('/'));
         }
       }
@@ -75,7 +73,7 @@ describe('la chaîne des pièces est armée', () => {
   });
 
   it('l’écran est atteignable depuis le Pass', () => {
-    const pass = sansCommentaires(
+    const pass = codeSansCommentaires(
       readFileSync(join(RACINE, 'app', '(app2)', 'club', 'pass.tsx'), 'utf8')
     );
     expect(pass).toContain('/(app2)/vous/pieces');

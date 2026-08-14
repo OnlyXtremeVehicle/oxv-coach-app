@@ -37,6 +37,8 @@
  */
 
 import { readFileSync } from 'fs';
+
+import { codeSansCommentaires } from '@/test-utils/codeSeul';
 import { join } from 'path';
 
 const RACINE = process.cwd();
@@ -47,7 +49,7 @@ const SOURCE = readFileSync(
 );
 
 /** Le code seul — commentaires de bloc ET de ligne retirés. */
-const CODE = SOURCE.replace(/\/\*[\s\S]*?\*\//g, ' ').replace(/^[ \t]*\/\/.*$/gm, ' ');
+const CODE = codeSansCommentaires(SOURCE);
 
 describe('le rattrapage par version', () => {
   it('la version du moteur est une constante, écrite une fois', () => {
