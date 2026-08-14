@@ -107,9 +107,21 @@ export async function fetchPublishedPlaces(): Promise<Place[]> {
     });
   }
 
-  // Premium d'abord, puis ordre alphabétique.
-  return places.sort((a, b) => {
-    if (a.isPremium !== b.isPremium) return a.isPremium ? -1 : 1;
-    return a.name.localeCompare(b.name, 'fr');
-  });
+  /**
+   * ORDRE ALPHABÉTIQUE, ET RIEN D'AUTRE.
+   *
+   * Ce tri disait « premium d'abord », c'est-à-dire : un lieu qui a payé passe
+   * devant. La décision du 12 juillet 2026 — *« régie 100 % saison »* — l'a
+   * rendu caduc, et le dossier l'écrit sans ambiguïté : **un lieu ne se
+   * distingue jamais par ce qu'il a payé.**
+   *
+   * Le plan range cette ligne parmi les gestes de schéma, donc parmi les
+   * bloqués — la colonne `is_premium` attend en effet un arbitrage. Mais
+   * l'ordre achetable, lui, vivait en TypeScript. Il part aujourd'hui.
+   *
+   * `ecosystemService`, la voie qui a un consommateur réel, triait déjà par
+   * nom : c'est bien ce module-ci, sans appelant de production, qui portait le
+   * dernier endroit où un partenaire achetait un rang.
+   */
+  return places.sort((a, b) => a.name.localeCompare(b.name, 'fr'));
 }
