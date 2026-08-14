@@ -101,13 +101,23 @@ export function RadarQdi({
   const margin = showLabels ? LABEL_MARGIN : 0;
   const box = px + margin * 2;
 
+  /**
+   * LE SIGLE NE SE PRONONCE PAS.
+   *
+   * « QDI » n'apparaît NULLE PART visuellement dans l'espace pilote — c'est une
+   * décision de vocabulaire du jalon 5. Il restait pourtant dans cette étiquette,
+   * donc dans l'oreille de qui utilise VoiceOver : le seul pilote à qui
+   * l'application parlait en sigles était celui qui ne voyait pas l'écran.
+   *
+   * Le nom rendu est celui que l'écran porte : votre signature.
+   */
   const accessibilityLabel = useMemo(() => {
-    if (layout.measuredCount === 0) return 'Radar QDI — aucun axe mesuré';
+    if (layout.measuredCount === 0) return 'Votre signature — aucun axe mesuré';
     const parts = layout.points.map(
       (p) => `${labels?.[p.branch] ?? QDI_BRANCH_LABELS[p.branch]} ${Math.round(p.value)}`
     );
     const suffix = layout.measuredCount < 5 ? ` — ${layout.measuredCount} axes mesurés sur 5` : '';
-    return `Radar QDI — ${parts.join(', ')}${suffix}`;
+    return `Votre signature — ${parts.join(', ')}${suffix}`;
   }, [layout, labels]);
 
   return (

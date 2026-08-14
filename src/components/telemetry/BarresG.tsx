@@ -42,6 +42,7 @@
 import { StyleSheet, Text, View } from 'react-native';
 
 import { colors, space, typo } from '@/ui/v2';
+import { couleurTexteSure } from '@/ui/v2/couleurTexte';
 import { virgule } from '@/utils/format';
 
 /** Échelle par défaut, en g. Couvre largement une voiture de série sur piste. */
@@ -102,7 +103,14 @@ function Barre({
     <View accessible accessibilityLabel={`${label}, ${mesure ? texte : 'non mesuré'}`}>
       <View style={styles.ligneHaut}>
         <Text style={styles.label}>{label}</Text>
-        <Text style={[styles.valeur, mesure ? { color: teinte } : null]}>{texte}</Text>
+        {/* La teinte va sur la BARRE, pas forcément sur le chiffre. Le freinage
+            (#E63946) mesure 4,04:1 sur une carte : il échoue au seuil AA, et
+            `couleurTexteSure` le remplace par le gris fort. L'association à la
+            branche reste portée par le remplissage, juste dessous — c'est là
+            que la doctrine la voulait. Voir `couleurTexte.ts`. */}
+        <Text style={[styles.valeur, mesure ? { color: couleurTexteSure(teinte) } : null]}>
+          {texte}
+        </Text>
       </View>
       <View style={styles.rail}>
         {/* Aucune barre dessinée quand rien n'est mesuré : un rail vide dit

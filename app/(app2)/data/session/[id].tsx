@@ -88,6 +88,7 @@ import {
   useFirstViewport,
   useReduceMotion,
 } from '@/ui/v2';
+import { couleurTexteSure } from '@/ui/v2/couleurTexte';
 import { formatDeltaMs } from '@/features/data/comparerLogic';
 import { AnatomieViz } from '@/components/insights/AnatomieViz';
 import { DispersionViz } from '@/components/insights/DispersionViz';
@@ -2660,7 +2661,10 @@ const styles = StyleSheet.create({
   chanValueAlt: {
     fontFamily: typo.monoSemi,
     fontSize: 18,
-    color: colors.qdi.freinage,
+    // Le freinage mesure 4,04:1 sur une carte — sous le seuil AA. La teinte
+    // reste sur les traits et les remplissages ; le chiffre passe au gris fort.
+    // Calculé, pas décrété : cf. `src/ui/v2/couleurTexte.ts`.
+    color: couleurTexteSure(colors.qdi.freinage),
   },
   chanLabel: {
     fontFamily: typo.mono,

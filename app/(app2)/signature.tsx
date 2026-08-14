@@ -71,6 +71,7 @@ import {
 } from '@/ui/v2';
 import {
   branchesEqual,
+  branchesAccessibles,
   branchesToRadarValues,
   defaultSelection,
   formatMeasuredAxes,
@@ -256,7 +257,24 @@ export default function SignatureScreen() {
         <Animated.View entering={staggerEntering(index)} style={styles.monthCell}>
           <PressScale
             onPress={() => onMonthPress(item.monthKey)}
-            accessibilityLabel={`Signature de ${item.monthLabel}`}
+            /**
+             * LES VALEURS SONT DITES, PAS SEULEMENT COLORÉES.
+             *
+             * `PressScale` aplatit ses enfants pour l'accessibilité : l'étiquette
+             * que `RadarQdi` construit — branches et valeurs — était donc perdue,
+             * et la cellule ne disait que le mois.
+             *
+             * Le radar compact ne porte pas de libellés : à 140 px, cinq
+             * étiquettes de 96 px se chevaucheraient et seraient moins lisibles
+             * que rien. Sur l'accueil, une légende voisine comble ce manque ;
+             * ici, il n'y en a pas. La couleur restait donc SEULE porteuse de
+             * l'identité des branches — ce que la deutéranopie rend illisible.
+             *
+             * On ne force pas des libellés dans une vignette : on les dit.
+             */
+            accessibilityLabel={`Signature de ${item.monthLabel} — ${branchesAccessibles(
+              item.branches
+            )}`}
             accessibilityState={{ selected }}
             style={[styles.monthCard, selected && styles.monthCardSelected]}
           >

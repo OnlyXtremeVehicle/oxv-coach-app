@@ -92,7 +92,7 @@
  */
 
 import type { QdiBranches } from '@/services/qdiLogic';
-import { QDI_BRANCHES, type QdiBranch } from '@/ui/v2/vizMath';
+import { QDI_BRANCH_LABELS, QDI_BRANCHES, type QdiBranch } from '@/ui/v2/vizMath';
 
 // ---------------------------------------------------------------------------
 // Labels de sommets
@@ -167,6 +167,28 @@ export function branchesToRadarValues(branches: QdiBranches): Partial<Record<Qdi
     if (isMeasured(v)) out[b] = v;
   }
   return out;
+}
+
+/**
+ * Les branches DITES, pour l'accessibilité d'une vignette sans libellés.
+ *
+ * Le radar compact (140 px) ne porte pas d'étiquettes de sommets : cinq
+ * libellés de 96 px s'y chevaucheraient. Sur l'accueil, une légende voisine
+ * comble ce manque ; dans la grille des mois, il n'y en a pas — la couleur
+ * restait donc SEULE porteuse de l'identité des branches, ce que la
+ * deutéranopie rend illisible.
+ *
+ * Les valeurs sont arrondies à l'entier, comme le radar les annonce déjà.
+ * Une branche non mesurée est NOMMÉE non mesurée, jamais tue et jamais zéro.
+ */
+export function branchesAccessibles(branches: QdiBranches): string {
+  const parts = QDI_BRANCHES.map((b) => {
+    const v = branches[b];
+    return isMeasured(v)
+      ? `${QDI_BRANCH_LABELS[b]} ${Math.round(v)}`
+      : `${QDI_BRANCH_LABELS[b]} non mesurée`;
+  });
+  return parts.join(', ');
 }
 
 /** Égalité branche à branche (les non-mesurées comptent comme égales entre elles). */
