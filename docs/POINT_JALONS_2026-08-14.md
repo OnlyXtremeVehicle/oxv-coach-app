@@ -132,7 +132,20 @@ Elle est adversariale, pas infaillible. Vérification faite :
 
 ### Le geste qui presse — et ce n'est pas celui que j'avais mis en tête
 
-**Déployer la version 21 du cron d'analyse.**
+~~**Déployer la version 21 du cron d'analyse.**~~ — **FAIT, 14/08.**
+
+`cron-analyze-pending-sessions` **version 21**, `verify_jwt: false`, ACTIVE.
+Déployée depuis le fichier du dépôt par la CLI plutôt que retranscrite dans un
+appel : 393 lignes recopiées à la main, dans une fonction de production sans
+test sur l'artefact déployé, c'est un risque qu'aucun gain ne payait.
+
+`verify_jwt` est resté à `false` parce que `config.toml` le déclare — le piège
+du matin, où un déploiement l'avait basculé à `true` par omission et aurait
+fait rejeter le cron en 401, ne pouvait pas se reproduire par cette voie.
+
+**À vérifier à l'heure ronde suivante** : `margin_global` doit valoir **51,44**
+sur Bouteville, `margin_breakdown` porter `consistency` et non `regularity`, et
+`algo_version` valoir `cron-v2.0` sur les onze lignes.
 
 Une vérification en production, le 14/08 à 14 h 10, a montré ce que je n'avais
 pas vu. Le correctif du matin fermait la boucle infinie — et fermait avec elle
@@ -228,6 +241,23 @@ select timestamp, event_message
 C'est là que se lisent le code retour, la version servie et la taille de la
 réponse — les trois chiffres qui ont établi que la fonction traitait zéro
 séance. **`cron.job_run_details` est aveugle ; `function_edge_logs` voit.**
+
+---
+
+## Une anomalie que je signale sans l'expliquer
+
+Toute la journée, mes appels MCP portaient `project_id = gjwvcgexcsjeqfhnpvyc`,
+et ils ont réussi. Or le projet lié, celui que `.env` utilise et que la
+vérification a lu, est **`fouvuqkdxarjpjbqnsjq` — « oxv-platform »**.
+
+Deux références différentes pour des écritures qui ont manifestement atteint la
+même base : la vérification a retrouvé mes cinq migrations et ma version 20. Je
+ne sais pas laquelle des deux le serveur MCP honore réellement, et je préfère
+le dire plutôt que d'inventer une explication.
+
+**Ce qui est établi** : l'identifiant de la fonction déployée aujourd'hui
+(`90dba0b3-bacb-4340-b9c2-e22eba743b9f`) est celui que la vérification cite
+pour lire les journaux. Même projet, même fonction.
 
 ---
 
