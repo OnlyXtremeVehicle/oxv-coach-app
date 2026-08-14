@@ -339,7 +339,7 @@ export default function ReglagesScreen() {
           {s.hasLiveCoach ? (
             <ToggleRow
               label="Partage en direct avec mon coach"
-              caption="Votre télémétrie et votre position en temps réel, pendant que vous roulez."
+              caption="Vos mesures et votre position en temps réel, pendant que vous roulez."
               value={s.liveCoach}
               onValueChange={(v) => {
                 if (!v) haptic('warn');

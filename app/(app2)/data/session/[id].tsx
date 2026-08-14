@@ -698,7 +698,7 @@ export default function SeanceScreen() {
 
         {/* ── 3 · DELTA ───────────────────────────────────────────────── */}
         <View style={styles.section} onLayout={registerSection(2)}>
-          <SectionHeader eyebrow="DELTA" title="Où le temps se fait" />
+          <SectionHeader eyebrow="L’ÉCART" title="Où le temps se fait" />
 
           {/*
             LE STRIP MAP OUVRE LA SECTION, ET CE N'EST PAS DÉCORATIF.
@@ -750,7 +750,7 @@ export default function SeanceScreen() {
 
         {/* ── 5 · TÉLÉMÉTRIE ──────────────────────────────────────────── */}
         <View style={styles.section} onLayout={registerSection(4)}>
-          <SectionHeader eyebrow="TÉLÉMÉTRIE" />
+          <SectionHeader eyebrow="LES MESURES" />
           <TelemetrieSection sessionId={data.session.id} />
         </View>
 
@@ -1359,13 +1359,13 @@ function CornerZoomSheet({
             {fact('Vitesse d’entrée', km(corner.entrySpeedKmh))}
             {fact('Vitesse à la corde', km(corner.minSpeedKmh ?? corner.apexSpeedKmh))}
             {fact('Vitesse de sortie', km(corner.exitSpeedKmh))}
-            {fact('G latéral maxi', g(corner.maxGLateral))}
+            {fact('Appui maxi en virage', g(corner.maxGLateral))}
             {corner.marginZone ? fact('Marge', marginLabel(corner.marginZone)) : null}
           </View>
 
           {/*
             Les trois axes de G, portés au lot J5 (décision « porter les deux »).
-            La ligne « G latéral maxi » ci-dessus reste : le chiffre exact se lit
+            La ligne « Appui maxi en virage » ci-dessus reste : le chiffre exact se lit
             en mono, les barres donnent l'équilibre entre les axes d'un coup
             d'œil. Elles décrivent le virage sur TOUTE LA SÉANCE — la table
             `app_segment_analyses` n'a pas de colonne de tour, et c'est dit sous
@@ -1669,7 +1669,9 @@ function CornerEvolutionCanvas({ evolution }: { evolution: CornerEvolution }) {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
-// 4 · TÉLÉMÉTRIE — onglets internes G-G / Canaux / Heatmap / Replay.
+// 4 · LES MESURES — onglets internes Appuis / Au fil du tour / Sur le tracé /
+//     Rejouer. Les quatre portaient du jargon, dont deux mots anglais :
+//     dernier verrou du jalon 5 (« QDI et vocabulaire technique »).
 // ═══════════════════════════════════════════════════════════════════════════
 
 type TeleTab = 'gg' | 'canaux' | 'heatmap' | 'replay';
@@ -1732,20 +1734,20 @@ function TelemetrieSection({ sessionId }: { sessionId: string }) {
   return (
     <Animated.View ref={refTele}>
       <View style={styles.tabRow}>
-        <Chip label="G-G" active={tab === 'gg'} onPress={() => setTab('gg')} />
-        <Chip label="Canaux" active={tab === 'canaux'} onPress={() => setTab('canaux')} />
-        <Chip label="Heatmap" active={tab === 'heatmap'} onPress={() => setTab('heatmap')} />
-        <Chip label="Replay" active={tab === 'replay'} onPress={() => setTab('replay')} />
+        <Chip label="Appuis" active={tab === 'gg'} onPress={() => setTab('gg')} />
+        <Chip label="Au fil du tour" active={tab === 'canaux'} onPress={() => setTab('canaux')} />
+        <Chip label="Sur le tracé" active={tab === 'heatmap'} onPress={() => setTab('heatmap')} />
+        <Chip label="Rejouer" active={tab === 'replay'} onPress={() => setTab('replay')} />
       </View>
 
       {status === 'loading' ? (
         <StateView state="loading" shape="hero" />
       ) : status === 'error' ? (
-        <StateView state="error" errorMessage="Télémétrie indisponible pour l'instant." />
+        <StateView state="error" errorMessage="Mesures indisponibles pour l'instant." />
       ) : !hasAny ? (
         <StateView
           state="empty"
-          emptyMessage="Aucune trame du boîtier pour cette séance — la télémétrie s'affichera dès la première vraie capture."
+          emptyMessage="Aucune trame du boîtier pour cette séance — les mesures s'afficheront dès la première vraie capture."
         />
       ) : tab === 'gg' ? (
         <GGScatter points={gg ?? []} />
@@ -1769,7 +1771,7 @@ function GGScatter({
   points: { gLat: number; gLong: number; speedKmh: number | null }[];
 }) {
   if (points.length === 0) {
-    return <StateView state="empty" emptyMessage="Nuage G-G indisponible." />;
+    return <StateView state="empty" emptyMessage="Appuis indisponibles." />;
   }
   // Sous-échantillonnage doux pour rester fluide (BASIC).
   // TODO device-tune : ajuster le pas selon la densité réelle sur appareil.
@@ -1794,7 +1796,7 @@ function GGScatter({
       <Canvas
         style={{ width: GG_SIZE, height: GG_SIZE }}
         accessible
-        accessibilityLabel={`Diagramme G-G, ${sampled.length} points`}
+        accessibilityLabel={`Les appuis de la voiture, ${sampled.length} points`}
       >
         {/* Croix centrale — repère neutre, jamais un verdict. */}
         <Rect x={R - 0.5} y={0} width={1} height={GG_SIZE} color={colors.border.card} />
@@ -1898,7 +1900,7 @@ function ChannelsChart({
   );
 
   if (speed.length < 2 && brake.length < 2) {
-    return <StateView state="empty" emptyMessage="Canaux indisponibles." />;
+    return <StateView state="empty" emptyMessage="Mesures indisponibles." />;
   }
 
   // Libellés au curseur : index le plus proche en O(1) (progress = i/(n−1), pas
@@ -1929,7 +1931,7 @@ function ChannelsChart({
       <View
         style={styles.chanHead}
         accessible
-        accessibilityLabel={`Au curseur — vitesse ${speedSpoken}, G longitudinal ${brakeSpoken}`}
+        accessibilityLabel={`Au curseur — vitesse ${speedSpoken}, freinage et accélération ${brakeSpoken}`}
       >
         <Text style={styles.chanValue}>{speedRead}</Text>
         <Text style={styles.chanValueAlt}>{brakeRead}</Text>
@@ -1947,7 +1949,7 @@ function ChannelsChart({
           // deviendraient inaudibles. Or celle du canal G porte la clé de lecture
           // du signe (bas = freinage, haut = accélération) — sans elle, la valeur
           // annoncée n'a pas de sens. On la reprend donc ici.
-          accessibilityLabel="Canaux : vitesse, et G longitudinal (bas : freinage, haut : accélération)"
+          accessibilityLabel="Au fil du tour : la vitesse, et les appuis (bas : freinage, haut : accélération)"
           accessibilityValue={{ text: `${speedSpoken}, ${brakeSpoken}` }}
           accessibilityActions={[{ name: 'increment' }, { name: 'decrement' }]}
           onAccessibilityAction={(e) => {
@@ -2105,7 +2107,7 @@ function ReplayTrace({ traj }: { traj: TrajectoryFramePoint[] }) {
   }, [pts.length, reduce]);
 
   if (traj.length < 2) {
-    return <StateView state="empty" emptyMessage="Replay indisponible." />;
+    return <StateView state="empty" emptyMessage="Lecture indisponible." />;
   }
 
   const head = pts.length > 0 ? pts[Math.min(idx, pts.length - 1)] : null;

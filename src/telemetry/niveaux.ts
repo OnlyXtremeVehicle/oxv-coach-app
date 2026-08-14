@@ -48,6 +48,20 @@
 import { ECART_LONGUEUR_TOLERE } from './adaptation';
 
 /** Clé stable d'un niveau. */
+/**
+ * LES NOMS ONT ÉTÉ TRADUITS LE 14/08/2026.
+ *
+ * Les CLÉS (`delta`, `enveloppe`) restent techniques : elles ne sont jamais
+ * affichées, et les renommer aurait cassé des données persistées pour un gain
+ * nul. Ce sont les `nom` que le pilote lit, et deux d'entre eux parlaient une
+ * langue qui n'est pas la sienne :
+ *
+ *   « Le delta et la trace » → « L'écart entre vos tours »
+ *   « L'enveloppe »          → « Les appuis de la voiture »
+ *
+ * Dernier verrou du jalon 5 : *« QDI et vocabulaire technique »*. Le QDI avait
+ * été traité le 13/08 ; le vocabulaire, jamais.
+ */
 export type CleNiveau = 'chrono' | 'regularite' | 'delta' | 'phases' | 'enveloppe';
 
 export interface Niveau {
@@ -123,7 +137,7 @@ export const NIVEAUX: readonly Niveau[] = [
   {
     cle: 'delta',
     rang: 3,
-    nom: 'Le delta et la trace',
+    nom: 'L’écart entre vos tours',
     contenu:
       'Où le temps se fait le long du tour, et la forme de votre trace de vitesse — freinages compris.',
     lecture: 'Se lit en base distance, jamais en base temps. La pente dit le rythme.',
@@ -153,7 +167,7 @@ export const NIVEAUX: readonly Niveau[] = [
   {
     cle: 'enveloppe',
     rang: 5,
-    nom: 'L’enveloppe',
+    nom: 'Les appuis de la voiture',
     contenu: 'Le nuage des accélérations, et la forme qu’il prend sur la séance.',
     lecture: 'La lecture la plus technique. La forme du nuage porte plus que ses extrêmes.',
     grandeurs: ['gg.gLat', 'gg.gLong', 'gg.reachedHull', 'gg.exploitationRate'],

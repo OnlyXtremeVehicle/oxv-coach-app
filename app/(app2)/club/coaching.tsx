@@ -461,15 +461,15 @@ function AssignmentCard({
             qu'une immédiateté annoncée.
           */}
           <Text style={styles.switchHint}>
-            Votre télémétrie et votre position en temps réel, pendant que vous roulez. Le flux
-            s’arrête dans les quinze secondes qui suivent votre retrait.
+            Vos mesures et votre position en temps réel, pendant que vous roulez. Le flux s’arrête
+            dans les quinze secondes qui suivent votre retrait.
           </Text>
         </View>
         <Switch
           value={live}
           disabled={!consented}
           accessibilityLabel="Partage en direct"
-          accessibilityHint="Votre télémétrie et votre position en temps réel, pendant que vous roulez."
+          accessibilityHint="Vos mesures et votre position en temps réel, pendant que vous roulez."
           onValueChange={(next) => {
             haptic('tap');
             void onLive(assignment.id, next);
