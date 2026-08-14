@@ -15,6 +15,7 @@
 import * as FileSystem from 'expo-file-system/legacy';
 import { Buffer } from 'buffer';
 
+import type { EtatSuivi } from '@/features/rec/incidentSuiviLogic';
 import { supabase } from '@/lib/supabase';
 import type { SuiviBrut } from '@/features/rec/incidentSuiviLogic';
 
@@ -216,4 +217,102 @@ export async function listFollowups(
     });
   }
   return par;
+}
+
+// ---------------------------------------------------------------------------
+// CÔTÉ ADMINISTRATION — lire tous les signalements, y ajouter un acte de suivi
+// ---------------------------------------------------------------------------
+
+/**
+ * TOUS les signalements, pour l'administration.
+ *
+ * La RLS `incident_reports` ouvre la lecture complète à `is_admin()` ; un
+ * pilote n'obtiendra que les siens, ce qui rend cette fonction inoffensive
+ * même appelée par erreur hors de l'espace admin.
+ *
+ * Rejette plutôt que de rendre `[]` : « aucun signalement » et « je n'ai pas
+ * pu lire » ne commandent pas le même écran, et l'administrateur doit savoir
+ * lequel des deux il regarde.
+ */
+export async function listAllIncidents(limite = 200): Promise<IncidentRow[]> {
+  const { data, error } = await supabase
+    .from('incident_reports')
+    .select('id, session_id, occurred_at, description, photo_path, created_at')
+    .order('created_at', { ascending: false })
+    .limit(limite);
+
+  if (error) throw new Error(error.message);
+
+  return (data ?? []).map((r) => {
+    const row = r as {
+      id: string;
+      session_id: string | null;
+      occurred_at: string;
+      description: string;
+      photo_path: string | null;
+      created_at: string;
+    };
+    return {
+      id: row.id,
+      sessionId: row.session_id,
+      occurredAt: row.occurred_at,
+      description: row.description,
+      photoPath: row.photo_path,
+      createdAt: row.created_at,
+    };
+  });
+}
+
+/**
+ * Ajouter un acte de suivi : reçu, traité, clos.
+ *
+ * ===========================================================================
+ * ON AJOUTE UN ACTE, ON NE CORRIGE PAS UN ÉTAT
+ * ===========================================================================
+ *
+ * La table est faite pour ça, et son commentaire le dit : *« Aucune valeur ne
+ * se supprime : on ajoute un acte. »* Le signalement lui-même reste en
+ * écriture unique — la migration BE-1 interdit `UPDATE` et `DELETE` dessus,
+ * parce que le récit d'un pilote ne se réécrit pas.
+ *
+ * L'historique complet reste donc lisible, y compris un « traité » suivi d'un
+ * retour en « reçu » : c'est un fait de l'organisation, pas une erreur à
+ * effacer.
+ *
+ * ===========================================================================
+ * LE VOCABULAIRE VIENT DU CHECK, PAS DE L'APPLICATION
+ * ===========================================================================
+ *
+ * `state` est borné à `('recu','traite','clos')`. Ce dépôt nommait
+ * `en_examen` côté application jusqu'au 14/08 : une écriture l'aurait vu
+ * rejeter par Postgres, et une ligne en `traite` s'affichait au pilote comme
+ * un état inconnu. Le type `EtatSuivi` dit désormais ce que la base accepte.
+ *
+ * `author_id` est `not null` : un acte sans auteur n'engage personne, et la
+ * table refuse d'en enregistrer un.
+ */
+export async function addFollowup(input: {
+  incidentId: string;
+  state: EtatSuivi;
+  note?: string | null;
+}): Promise<{ ok: boolean; error?: string }> {
+  const { data: auth } = await supabase.auth.getUser();
+  const uid = auth?.user?.id ?? null;
+  if (!uid) return { ok: false, error: 'Session expirée.' };
+
+  const note = input.note?.trim() ?? '';
+  // Le CHECK borne la note entre 1 et 2000 caractères OU null. Une chaîne
+  // vide serait refusée : on envoie `null`, qui est la forme prévue.
+  const { error } = await supabase.from('incident_followups').insert({
+    incident_id: input.incidentId,
+    state: input.state,
+    note: note.length > 0 ? note.slice(0, 2000) : null,
+    author_id: uid,
+  });
+
+  if (error) {
+    console.warn('[OXV][incident] addFollowup :', error.message);
+    return { ok: false, error: error.message };
+  }
+  return { ok: true };
 }

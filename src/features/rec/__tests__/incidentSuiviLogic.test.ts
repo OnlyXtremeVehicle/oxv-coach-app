@@ -18,8 +18,22 @@ import {
 describe('libelleEtat — traduire ce qu’on connaît, signaler le reste', () => {
   it('traduit les trois états connus', () => {
     expect(libelleEtat('recu')).toEqual({ texte: 'Reçue', inconnu: false });
-    expect(libelleEtat('en_examen').texte).toBe('En cours d’examen');
+    // « traite », et non « en_examen » : c'est le vocabulaire du CHECK de
+    // `incident_followups`. L'application nommait un état que la contrainte
+    // refuse — corrigé le 14/08.
+    expect(libelleEtat('traite').texte).toBe('En cours de traitement');
     expect(libelleEtat('clos').texte).toBe('Clôturée');
+  });
+
+  /**
+   * LE VOCABULAIRE VIENT DE LA BASE, PAS DE L'APPLICATION.
+   *
+   * `en_examen` était le mot de ce module ; le CHECK ne connaît que
+   * `('recu','traite','clos')`. Une ligne n'a donc jamais pu le porter, et une
+   * écriture applicative l'aurait vu rejeter.
+   */
+  it('« en_examen » n’est PAS un état connu — le CHECK ne l’accepte pas', () => {
+    expect(libelleEtat('en_examen').inconnu).toBe(true);
   });
 
   it('tolère la casse et les espaces — la base ne les garantit pas', () => {
@@ -58,7 +72,7 @@ describe('suivisAffichables — du plus récent au plus ancien', () => {
     const r = suivisAffichables([
       brut('a', 'recu', '2026-08-01T10:00:00Z'),
       brut('c', 'clos', '2026-08-03T10:00:00Z'),
-      brut('b', 'en_examen', '2026-08-02T10:00:00Z'),
+      brut('b', 'traite', '2026-08-02T10:00:00Z'),
     ]);
     expect(r.map((s) => s.id)).toEqual(['c', 'b', 'a']);
   });

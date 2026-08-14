@@ -36,8 +36,27 @@
  * arrêté, la contrainte tient en une migration.
  */
 
-/** Les états que l'application sait nommer. */
-export type EtatSuivi = 'recu' | 'en_examen' | 'clos';
+/**
+ * Les états que l'application sait nommer.
+ *
+ * ===========================================================================
+ * « en_examen » N'A JAMAIS PU EXISTER EN BASE — CORRIGÉ LE 14/08/2026
+ * ===========================================================================
+ *
+ * Le CHECK de `incident_followups` borne `state` à `('recu','traite','clos')`.
+ * Ce module nommait `en_examen`, que la contrainte refuse.
+ *
+ * Deux conséquences, toutes deux silencieuses :
+ *
+ *   • une écriture applicative en `en_examen` aurait été rejetée par Postgres ;
+ *   • et une ligne écrite en `traite` — la seule possible — s'affichait au
+ *     pilote comme un état INCONNU, c'est-à-dire la chaîne brute « traite ».
+ *
+ * Le vocabulaire de la base fait foi : c'est elle qui arbitre, et le typage
+ * TypeScript ne voit pas les CHECK. Aucune ligne héritée n'est à reprendre,
+ * précisément parce que la contrainte n'en a jamais laissé passer.
+ */
+export type EtatSuivi = 'recu' | 'traite' | 'clos';
 
 export interface LibelleEtat {
   /** Ce que le pilote lit. */
@@ -48,7 +67,7 @@ export interface LibelleEtat {
 
 const CONNUS: Record<EtatSuivi, string> = {
   recu: 'Reçue',
-  en_examen: 'En cours d’examen',
+  traite: 'En cours de traitement',
   clos: 'Clôturée',
 };
 

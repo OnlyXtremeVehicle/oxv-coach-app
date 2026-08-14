@@ -90,6 +90,21 @@ const VIEWS: { href: string; label: string; description: string; famille: Famill
     description: 'Pointer les inscrits des sessions du jour (indicateurs site, avis J+1, médias).',
   },
   {
+    /**
+     * LES SIGNALEMENTS — famille « à faire », et c'est le point.
+     *
+     * `incident_followups` existe depuis le 02/08 et le pilote LIT déjà son
+     * suivi. Mesuré le 14/08 : zéro occurrence du mot « incident » dans les
+     * 31 fichiers de cet espace. Une déclaration entrait et n'en ressortait
+     * jamais — le pilote voyait un signalement sans suite, indéfiniment.
+     */
+    href: '/(admin)/incidents',
+    famille: 'a-faire' as FamilleAdmin,
+    label: 'Signalements',
+    description:
+      'Les incidents déclarés par les pilotes : reçu, traité, clos — chaque acte porte son auteur.',
+  },
+  {
     href: '/(admin)/qualite-data',
     famille: 'surveillance' as FamilleAdmin,
     label: 'Qualité data',
