@@ -28,6 +28,29 @@
  * Doctrine : sobre, vouvoyé, sans emoji, jamais prescriptif. TOURISME /
  * DÉCOUVERTE — la sinuosité est une préférence géométrique, jamais une note ni
  * un classement. Un seul accent rouge par zone ; l'or réservé à la certification.
+ *
+ * ---
+ *
+ * POURQUOI L'ONGLET ROUTES RESTE, MALGRÉ LA LIGNE DU PLAN — 14/08/2026
+ *
+ * Le plan écrit : *« Le Territoire garde le circuit et son entourage : les
+ * convois partent chez les amis, les belles routes ont leur écran. »* Un relevé
+ * a conclu qu'il fallait donc supprimer cet onglet, `club/routes` existant.
+ *
+ * **Mesuré : ce ne sont pas les mêmes routes.**
+ *
+ *   • ici          → `mergeRoutes(listMyRoutes(), listCertifiedRoutes())` ;
+ *   • `club/routes` → `listMyRoutes()` seul.
+ *
+ * Cet onglet est un SUR-ENSEMBLE : il est le seul endroit où les routes
+ * certifiées se découvrent en liste. Le supprimer n'aurait pas retiré un
+ * doublon, il aurait retiré la découverte — une régression déguisée en
+ * nettoyage.
+ *
+ * Le fond de la ligne reste juste, et demande un vrai déplacement : porter la
+ * découverte des routes certifiées DANS `club/routes`, puis retirer l'onglet.
+ * C'est un changement de produit, pas une correction de défaut ; il est posé
+ * ici pour arbitrage plutôt qu'exécuté à la volée.
  */
 
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
@@ -42,7 +65,8 @@ import Svg, { Path } from 'react-native-svg';
 
 import { isExpoGo } from '@/lib/runtime';
 import { useAuthStore } from '@/store/useAuthStore';
-import { fetchCircuits, type Circuit } from '@/services/circuitsService';
+import { cornersForCircuit } from '@/circuit/circuitCorners';
+import { fetchCircuitCenterline, fetchCircuits, type Circuit } from '@/services/circuitsService';
 import { listSocialPings, PING_KIND_LABELS, type SocialPing } from '@/services/socialPingsService';
 import {
   listCertifiedRoutes,
@@ -68,6 +92,7 @@ import {
   space,
   StateView,
   staggerEntering,
+  TraceCircuit,
   tabBarSpace,
   typo,
   useDoorTransition,
@@ -710,7 +735,67 @@ function DetailHead({ eyebrow, title }: { eyebrow: string; title: string }) {
   );
 }
 
+/**
+ * LA FICHE DE CIRCUIT — deux champs, puis sa GÉOMÉTRIE.
+ *
+ * ===========================================================================
+ * CE QU'ELLE MONTRAIT, ET CE QUE LA BASE PORTAIT
+ * ===========================================================================
+ *
+ * Elle montrait le nom et la longueur. La géométrie existe pourtant en base
+ * — `circuits.centerline_latlon` — et elle est déjà consommée : l'espace COACH
+ * s'en sert pour ses repères de virage depuis des semaines. Le Territoire,
+ * l'écran dont la ligne du plan dit qu'il *« devient l'objet circuit »*, ne la
+ * regardait pas.
+ *
+ * ===========================================================================
+ * CHARGÉE À L'OUVERTURE DE LA FICHE, PAS DANS LA LISTE
+ * ===========================================================================
+ *
+ * `fetchCircuits` est mise en cache et sert le rendu de la carte entière.
+ * Y ajouter `centerline_latlon` chargerait des milliers de points POUR CHAQUE
+ * circuit, à chaque ouverture de l'écran, pour une fiche qu'on n'ouvrira
+ * peut-être jamais — et gonflerait le cache d'autant.
+ *
+ * `cornersForCircuit` fait déjà exactement le bon geste : une lecture par
+ * circuit, à la demande. On s'appuie dessus.
+ *
+ * ===========================================================================
+ * ET SI LA GÉOMÉTRIE MANQUE
+ * ===========================================================================
+ *
+ * La section disparaît. Pas de silhouette générique sous le nom d'un circuit
+ * qui n'en a pas : ce serait montrer le tracé d'un AUTRE. Le motif générique
+ * de la carte reste un repère de position, ce qui est autre chose.
+ */
 function CircuitDetail({ circuit }: { circuit: Circuit }) {
+  const [centerline, setCenterline] = useState<LatLon[] | null>(null);
+  const [virages, setVirages] = useState<number | null>(null);
+
+  useEffect(() => {
+    let annule = false;
+    setCenterline(null);
+    setVirages(null);
+    Promise.all([fetchCircuitCenterline(circuit.id), cornersForCircuit(circuit)])
+      .then(([pts, corners]) => {
+        if (annule) return;
+        if (pts && pts.length > 2) setCenterline(pts);
+        if (corners.length > 0) setVirages(corners.length);
+      })
+      // Best-effort : la fiche garde son nom et sa longueur.
+      .catch(() => undefined);
+    return () => {
+      annule = true;
+    };
+  }, [circuit]);
+
+  /**
+   * Le nombre de virages, dans l'ordre de vérité : ce que la base DÉCLARE
+   * d'abord, ce que la géométrie donne ensuite. Une valeur saisie par
+   * l'exploitant vaut mieux qu'une valeur dérivée d'un seuil de courbure.
+   */
+  const nbVirages = circuit.turnsCount ?? virages;
+
   return (
     <View>
       <DetailHead eyebrow="CIRCUIT OXV" title={circuit.name} />
@@ -721,7 +806,13 @@ function CircuitDetail({ circuit }: { circuit: Circuit }) {
             circuit.lengthKm != null ? `${circuit.lengthKm.toFixed(1).replace('.', ',')} km` : '—'
           }
         />
+        <MetaCell label="virages" value={nbVirages != null ? String(nbVirages) : '—'} />
       </View>
+      {centerline ? (
+        <View style={styles.circuitTrace}>
+          <TraceCircuit centerline={centerline} height={160} color={colors.text.mid} />
+        </View>
+      ) : null}
     </View>
   );
 }
@@ -1319,6 +1410,7 @@ const styles = StyleSheet.create({
   // — Sheet détail —
   sheetScrollFlex: { flex: 1 },
   sheetScroll: { paddingBottom: space.xl },
+  circuitTrace: { marginTop: space.lg },
   detailHead: { gap: space.xs, marginBottom: space.md },
   detailEyebrow: {
     fontFamily: typo.mono,
