@@ -411,6 +411,22 @@ export default function SignatureScreen() {
                 icon="data"
                 label="Voir la saison complète"
                 onPress={() => router.navigate('/(app2)/data' as never)}
+              />
+              {/*
+                LA MÉTHODE, ATTEIGNABLE DEPUIS LA SIGNATURE.
+
+                C'est ici que le pilote lit ses cinq branches ; c'est donc ici
+                qu'il doit pouvoir demander d'où elles viennent. La question
+                « ce chiffre, il sort d'où ? » se pose devant le chiffre, pas
+                dans un menu de réglages.
+              */}
+              {/* Sans icône : le registre n'en a pas pour « information », et
+                  détourner « clé » (l'outil, dans un contexte garage) dirait
+                  autre chose. */}
+              <ListRow
+                label="D’où viennent ces chiffres"
+                sublabel="Mesuré, déduit, inféré — la méthode, grandeur par grandeur"
+                onPress={() => router.navigate('/(app2)/methode' as never)}
                 divider={false}
               />
             </View>
