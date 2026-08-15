@@ -49,7 +49,7 @@
  * CE QUE LA GARDE EXIGE, ET CE QU'ELLE N'EXIGE PAS
  * ===========================================================================
  *
- * Elle n'exige PAS que la liste soit vide. Trente-deux modules y figurent
+ * Elle n'exige PAS que la liste soit vide. Quarante modules y figurent
  * aujourd'hui ; les nettoyer est un travail à part, qui demande de décider au
  * cas par cas entre brancher et supprimer.
  *
@@ -105,35 +105,75 @@ function resoudre(depuis: string, spec: string): string | null {
 
 const SPEC = /from\s+'([^']+)'|require\(\s*'([^']+)'\s*\)/g;
 
-/** Les modules de `src/` qu'aucun fichier de production n'importe. */
-function orphelins(): string[] {
-  const compte = new Map<string, number>(TOUS.map((f) => [norm(f), 0]));
+const PAR_NORM = new Map(TOUS.map((f) => [norm(f), f]));
 
-  for (const f of TOUS) {
-    const src = readFileSync(f, 'utf8');
-    SPEC.lastIndex = 0;
-    let m: RegExpExecArray | null;
-    while ((m = SPEC.exec(src)) !== null) {
-      const cible = resoudre(f, m[1] ?? m[2]);
-      if (cible !== null && cible !== norm(f)) {
-        compte.set(cible, (compte.get(cible) ?? 0) + 1);
+/** Ce qu'un module importe, résolu en chemins réels. */
+function importsDe(fichierNorm: string): string[] {
+  const reel = PAR_NORM.get(fichierNorm);
+  if (reel === undefined) return [];
+  const src = readFileSync(reel, 'utf8');
+  const out: string[] = [];
+  SPEC.lastIndex = 0;
+  let m: RegExpExecArray | null;
+  while ((m = SPEC.exec(src)) !== null) {
+    const cible = resoudre(reel, m[1] ?? m[2]);
+    if (cible !== null && cible !== fichierNorm) out.push(cible);
+  }
+  return out;
+}
+
+/**
+ * Les modules de `src/` qu'on N'ATTEINT PAS depuis un écran.
+ *
+ * ===========================================================================
+ * LA MESURE EST DEVENUE TRANSITIVE — 15/08/2026
+ * ===========================================================================
+ *
+ * Elle comptait les importateurs : un module cité une fois sortait de la
+ * liste. Mais un module importé par un MORT est mort aussi, et il restait
+ * invisible. C'était le cas de cinq d'entre eux, dont deux qui méritent d'être
+ * nommés :
+ *
+ *   `debriefRenderGuard` — la ceinture doctrinale de dernier mètre, qui refuse
+ *   un texte prescriptif AU MOMENT DE L'AFFICHER. Son unique appelant est
+ *   `DebriefMirror`, monté nulle part. Le bilan, lui, tient sa propre garde
+ *   (`isDoctrineSafe` dans `bilanLogic`) : ce n'est donc pas un trou, c'est un
+ *   doublon dormant. Il fallait quand même le voir.
+ *
+ *   `coachConsoleLogic` — la logique de la console, sous un service lui-même
+ *   sans écran.
+ *
+ * On part donc des RACINES — `app/`, qu'expo-router charge par convention de
+ * nom — et on suit les imports. Ce qui reste hors de l'atteinte est mort, quel
+ * que soit le nombre de morts qui le citent.
+ */
+function orphelins(): string[] {
+  const racineApp = `${norm(join(RACINE, 'app'))}/`;
+  const racines = TOUS.map(norm).filter((f) => f.startsWith(racineApp));
+
+  const atteints = new Set<string>(racines);
+  const pile = [...racines];
+  while (pile.length > 0) {
+    for (const cible of importsDe(pile.pop() as string)) {
+      if (!atteints.has(cible)) {
+        atteints.add(cible);
+        pile.push(cible);
       }
     }
   }
 
-  // `app/` est fait d'écrans : expo-router les charge par convention de nom, ils
-  // n'ont pas à être importés. Seul `src/` est concerné.
-  const racineApp = `${norm(join(RACINE, 'app'))}/`;
   return TOUS.map(norm)
     .filter((f) => !f.startsWith(racineApp))
-    .filter((f) => compte.get(f) === 0)
+    .filter((f) => !atteints.has(f))
     .map((f) => f.replace(norm(RACINE), ''))
     .sort();
 }
 
 /**
- * L'état au 14/08/2026, mesuré. Ce n'est pas une cible : c'est un point de
- * départ, pour que ce qui s'ajoute se voie.
+ * L'état au 15/08/2026, mesuré en ATTEIGNABILITÉ depuis `app/`. Ce n'est pas
+ * une cible : c'est un point de départ, pour que ce qui s'ajoute se voie.
+ *
+ * Quarante modules, dont cinq que la mesure de 1ᵉʳ rang ne voyait pas.
  */
 const CONNUS: readonly string[] = [
   '/src/circuit/hautesaintonge.ts',
@@ -146,9 +186,13 @@ const CONNUS: readonly string[] = [
   '/src/hooks/detaillevellogic.ts',
   '/src/lib/queries/carteslogic.ts',
   '/src/media/thumbhash.ts',
+  // Morts de 2ᵉ RANG, visibles depuis le 15/08 (mesure transitive) : chacun
+  // n'était cité que par un module lui-même inatteignable.
+  '/src/media/thumbhashcodec.ts',
   '/src/perf/frametimes.ts',
   '/src/render/decimate.ts',
   '/src/render/gg.ts',
+  '/src/render/projection.ts',
   '/src/render/ribbon.ts',
   // Kit de grammaire livré le 15/08 : les quatre rôles de couleur et le type
   // `Mesure<T>`. Aucun écran ne le consomme ENCORE — l'adoption se fait écran
@@ -161,8 +205,12 @@ const CONNUS: readonly string[] = [
   '/src/test-utils/codeseul.ts',
   '/src/test-utils/entreesoptionnelles.ts',
   '/src/services/coachbusinessservice.ts',
+  '/src/services/coachconsolelogic.ts',
   '/src/services/coachconsoleservice.ts',
   '/src/services/datalablogic.ts',
+  // La ceinture doctrinale de dernier mètre, sous un composant jamais monté.
+  // Le bilan tient la sienne (`isDoctrineSafe`) : doublon dormant, pas trou.
+  '/src/services/debriefrenderguard.ts',
   '/src/services/eventcontextlogic.ts',
   '/src/services/focuscorner.ts',
   '/src/services/laptimelinelogic.ts',
@@ -170,6 +218,7 @@ const CONNUS: readonly string[] = [
   '/src/services/placesservice.ts',
   '/src/services/seasonstorylogic.ts',
   '/src/services/sessioninsightsengine.ts',
+  '/src/services/v2/videooverlaylogic.ts',
   '/src/services/v2/videooverlayservice.ts',
   '/src/telemetry/accel.ts',
   '/src/telemetry/gg.ts',
