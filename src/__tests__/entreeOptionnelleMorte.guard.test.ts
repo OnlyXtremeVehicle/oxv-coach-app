@@ -48,7 +48,12 @@
 import { entreesOptionnellesJamaisRenseignees } from '@/test-utils/entreesOptionnelles';
 
 /**
- * L'inventaire au 14/08/2026 — 83 entrées.
+ * L'inventaire au 15/08/2026 — 78 entrées (83 la veille).
+ *
+ * Cinq de moins : la consolidation des générateurs de tracé a donné de vrais
+ * appelants à `polylineToPathD` et `polylineLength`, et supprimé les deux
+ * relais d'`uiLogic`. C'est le sens de sortie qu'on veut — une entrée quitte
+ * la liste parce que quelqu'un la renseigne, pas parce qu'on l'a rayée.
  *
  * Trié par `fichier::signature`. Les `limit?`, `max?`, `now?`, `intervalMs?`
  * sont des réglages : leur défaut ne devient jamais un chiffre montré au
@@ -61,9 +66,6 @@ const INVENTAIRE = [
   '/src/circuit/circuitCorners.ts::cordesForCircuit(fetchCenterline?)',
   '/src/circuit/circuitCorners.ts::cornersForCircuit(fetchCenterline?)',
   '/src/circuit/circuitGenerator.ts::fetchOsmWay(fetchImpl?)',
-  '/src/components/motion/pathMath.ts::polylineLength(close?)',
-  '/src/components/motion/pathMath.ts::polylineToPathD(close?)',
-  '/src/components/motion/pathMath.ts::polylineToPathD(decimals?)',
   '/src/features/club/clubHubLogic.ts::messagePreview(max?)',
   '/src/features/data/horsLigneLogic.ts::messageHorsLigne(maintenantMs?)',
   '/src/features/data/saison/petitsMultiplesLogic.ts::dernieresSeances(max?)',
@@ -138,8 +140,6 @@ const INVENTAIRE = [
   '/src/ui/v2/motion/motionMath.ts::pullAngle(sweep?)',
   '/src/ui/v2/motion/useCondensingHeader.tsx::useCondensingHeader(CondensingHeaderOptions.band?)',
   '/src/ui/v2/motion/useCondensingHeader.tsx::useCondensingHeader(CondensingHeaderOptions.threshold?)',
-  '/src/ui/v2/uiLogic.ts::polylineLength(closed?)',
-  '/src/ui/v2/uiLogic.ts::polylinePath(closed?)',
   '/src/ui/v2/vizMath.ts::radarRingPath(count?)',
   '/src/utils/time.ts::timeAgoFr(now?)',
   '/supabase/functions/ritual_dispatcher/lib/resend.ts::sendEmail(SendEmailParams.replyTo?)',

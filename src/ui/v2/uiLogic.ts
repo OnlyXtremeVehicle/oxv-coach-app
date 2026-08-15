@@ -9,6 +9,7 @@
  * longueur calculée — jamais estimée à la main).
  */
 
+import { polylineLength, polylineToPathD, type Point2D } from '@/components/motion/pathMath';
 import { tailleChiffreRoi } from '@/theme/metriques';
 
 import { formatLapTimeMs } from '@/utils/format';
@@ -136,29 +137,37 @@ export function skeletonBlocksFor(shape: StateShape): readonly SkeletonBlock[] {
 
 export type Point = readonly [number, number];
 
-/** Chemin SVG d'une polyligne (M/L, Z si fermée). */
-export function polylinePath(points: readonly Point[], closed = true): string {
-  if (points.length === 0) return '';
-  const [head, ...rest] = points;
-  const parts = [`M${head[0]} ${head[1]}`, ...rest.map(([x, y]) => `L${x} ${y}`)];
-  if (closed && points.length > 1) parts.push('Z');
-  return parts.join(' ');
-}
-
-/** Longueur d'une polyligne (segment de fermeture compris si fermée). */
-export function polylineLength(points: readonly Point[], closed = true): number {
-  if (points.length < 2) return 0;
-  let total = 0;
-  for (let i = 1; i < points.length; i++) {
-    total += Math.hypot(points[i][0] - points[i - 1][0], points[i][1] - points[i - 1][1]);
-  }
-  if (closed) {
-    const first = points[0];
-    const last = points[points.length - 1];
-    total += Math.hypot(first[0] - last[0], first[1] - last[1]);
-  }
-  return total;
-}
+/**
+ * CINQ IMPLÉMENTATIONS D'UNE MÊME CHOSE — RAMENÉES À UNE, LE 15/08/2026.
+ *
+ * Le dépôt portait cinq façons de transformer une polyligne en chaîne `d` :
+ * ici, dans `components/motion/pathMath`, dans `lib/geoToSvg`, en local dans
+ * l'écran de séance, et en ligne dans `DebriefMirror`. Elles ne rendaient pas
+ * la même chose :
+ *
+ *   pathMath  `M 1.00 2.00`  · arrondi paramétrable · ne ferme PAS par défaut
+ *   geoToSvg  `M 1.00,2.00`  · arrondi fixe         · ne ferme jamais
+ *   ici       `M1 2`         · aucun arrondi        · **ferme par défaut**
+ *   écran     `M 1 2`        · aucun arrondi        · '' sous deux points
+ *
+ * Le vrai piège n'était pas la mise en forme — SVG traite l'espace et la
+ * virgule à l'identique — mais `polylineLength`, qui existait ici avec
+ * `closed = true` et là-bas avec `close = false`. **Deux fonctions de même nom
+ * aux valeurs par défaut opposées** : changer un import déplaçait la longueur
+ * d'un segment entier, en silence, et cette longueur pilote le
+ * `strokeDasharray` de toutes les animations de tracé.
+ *
+ * Les deux relais d'ici ont été SUPPRIMÉS, pas délégués : `EMPTY_CIRCUIT_PATH`
+ * et `EMPTY_CIRCUIT_LENGTH` appellent `pathMath` directement, en passant la
+ * fermeture EXPLICITEMENT. Un relais aurait gardé deux noms pour une fonction,
+ * et masqué l'appel réel au recensement des entrées optionnelles — qui compte
+ * par NOM d'appelé et ne suit pas les alias d'import.
+ *
+ * `geoToSvg` garde la sienne, et c'est délibéré : elle écrit dans la BASE
+ * (`user_circuits.svg_path`), pas à l'écran. Une chaîne persistée ne change pas
+ * de forme sans raison.
+ */
+const versXY = (points: readonly Point[]): Point2D[] => points.map(([x, y]) => ({ x, y }));
 
 /** Durée d'un tour de dessin de l'illustration vide (boucle lente). */
 export const EMPTY_LOOP_MS = 8000;
@@ -190,7 +199,10 @@ export const EMPTY_CIRCUIT_POINTS: readonly Point[] = [
   [20, 86],
 ];
 
-export const EMPTY_CIRCUIT_PATH = polylinePath(EMPTY_CIRCUIT_POINTS);
+// `decimals: 0` — ces points sont des entiers de grille dessinés à la main ;
+// `close: true` — le motif est une boucle, et la fermeture se dit EXPLICITEMENT
+// plutôt que de dépendre d'une valeur par défaut (c'est ce qui divergeait).
+export const EMPTY_CIRCUIT_PATH = polylineToPathD(versXY(EMPTY_CIRCUIT_POINTS), 0, true);
 
 /** Longueur réelle du tracé — sert au strokeDasharray, jamais estimée. */
-export const EMPTY_CIRCUIT_LENGTH = polylineLength(EMPTY_CIRCUIT_POINTS);
+export const EMPTY_CIRCUIT_LENGTH = polylineLength(versXY(EMPTY_CIRCUIT_POINTS), true);

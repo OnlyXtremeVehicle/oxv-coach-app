@@ -22,7 +22,17 @@ export interface Point2D {
  * @param close    Ferme le tracé (Z) — utile pour un circuit en boucle.
  */
 export function polylineToPathD(points: readonly Point2D[], decimals = 2, close = false): string {
-  if (points.length === 0) return '';
+  // SOUS DEUX POINTS, RIEN — aligné le 15/08/2026 sur l'écran de séance.
+  //
+  // Un point seul produisait `M x y` : un « déplace-toi ici » sans ordre de
+  // tracé, que SVG rend par du VIDE. La chaîne existait, le trait non.
+  // L'écran de séance s'appuyait explicitement sur le contraire (« polylinePath
+  // rend '' sous 2 points — le <Path> n'est peint que si non vide ») et
+  // portait pour cette seule raison sa propre copie de cette fonction.
+  //
+  // Rendre `''` ne change donc aucun pixel : ça dit la même chose, sans laisser
+  // croire qu'il y a un tracé.
+  if (points.length < 2) return '';
   const d = points
     .map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x.toFixed(decimals)} ${p.y.toFixed(decimals)}`)
     .join(' ');

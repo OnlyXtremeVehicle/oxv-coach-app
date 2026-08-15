@@ -91,6 +91,7 @@ import {
 import { couleurTexteSure } from '@/ui/v2/couleurTexte';
 import { raisonsResume } from '@/features/data/raisonAbsence';
 import { formatDeltaMs } from '@/features/data/comparerLogic';
+import { polylineToPathD } from '@/components/motion/pathMath';
 import { AnatomieViz } from '@/components/insights/AnatomieViz';
 import { DispersionViz } from '@/components/insights/DispersionViz';
 import { FlowViz } from '@/components/insights/FlowViz';
@@ -471,14 +472,6 @@ function fitTrajectory(
     y: height - pad - (p.lat - minLat) * scale,
     speed: p.speed,
   }));
-}
-
-/** Chemin SVG d'une polyligne de points (M…L…). */
-function polylinePath(points: readonly { x: number; y: number }[]): string {
-  if (points.length < 2) return '';
-  let d = `M ${points[0].x} ${points[0].y}`;
-  for (let i = 1; i < points.length; i++) d += ` L ${points[i].x} ${points[i].y}`;
-  return d;
 }
 
 /** Durée d'un tour en ms (les tours stockent des secondes). */
@@ -1666,7 +1659,7 @@ function CornerEvolutionCanvas({ evolution }: { evolution: CornerEvolution }) {
         x: PAD + p.x * (width - 2 * PAD),
         y: H - PAD - p.y * (H - 2 * PAD),
       }));
-      return { d: polylinePath(pts), isCurrent: pass.isCurrent };
+      return { d: polylineToPathD(pts), isCurrent: pass.isCurrent };
     });
   }, [evolution, width]);
 
@@ -1890,7 +1883,7 @@ function ChannelsChart({
   );
   // Dérivations LOURDES mémoïsées sur [speed, brake, width] : un re-render de
   // libellé (par frame, via setCursor) ne les recalcule PAS — sinon le scrubbing
-  // raboterait autant que l'ancien chemin. polylinePath rend '' sous 2 points
+  // raboterait autant que l'ancien chemin. polylineToPathD rend '' sous 2 points
   // (séance GPS-only → brake vide) : le <Path> n'est peint que si non vide.
   const { speedPath, brakePath } = useMemo(() => {
     const sp =
@@ -1908,7 +1901,7 @@ function ChannelsChart({
             y: CHAN_H / 2 - clamp(p.gLong / 1.5, -1, 1) * (CHAN_H / 2 - 4),
           }))
         : [];
-    return { speedPath: polylinePath(sp), brakePath: polylinePath(bp) };
+    return { speedPath: polylineToPathD(sp), brakePath: polylineToPathD(bp) };
   }, [speed, brake, width, maxSpeed]);
 
   // Geste : la ligne va sur le thread UI (cursorSV), les libellés suivent en JS
@@ -2145,7 +2138,7 @@ function ReplayTrace({ traj }: { traj: TrajectoryFramePoint[] }) {
   }
 
   const head = pts.length > 0 ? pts[Math.min(idx, pts.length - 1)] : null;
-  const tracePath = polylinePath(pts);
+  const tracePath = polylineToPathD(pts);
 
   return (
     <View>

@@ -16,8 +16,6 @@ import {
   STATE_SHAPES,
   chronoHeroFontSize,
   msToLapLabel,
-  polylineLength,
-  polylinePath,
   skeletonBlocksFor,
 } from '../uiLogic';
 
@@ -120,26 +118,20 @@ describe('skeletonBlocksFor — formes de squelette', () => {
   });
 });
 
-describe('polylinePath / polylineLength', () => {
-  const square = [
-    [0, 0],
-    [10, 0],
-    [10, 10],
-    [0, 10],
-  ] as const;
-
-  it('construit un chemin M/L, fermé par Z', () => {
-    expect(polylinePath(square)).toBe('M0 0 L10 0 L10 10 L0 10 Z');
-    expect(polylinePath(square, false)).toBe('M0 0 L10 0 L10 10 L0 10');
-    expect(polylinePath([])).toBe('');
-  });
-
-  it('mesure la longueur, segment de fermeture compris', () => {
-    expect(polylineLength(square)).toBeCloseTo(40);
-    expect(polylineLength(square, false)).toBeCloseTo(30);
-    expect(polylineLength([[3, 4]])).toBe(0);
-  });
-});
+/**
+ * `polylinePath` et `polylineLength` ONT ÉTÉ RETIRÉS D'ICI le 15/08/2026.
+ *
+ * C'étaient des doublons de `components/motion/pathMath`, avec une valeur par
+ * défaut OPPOSÉE sur la fermeture (`closed = true` ici, `close = false`
+ * là-bas). Deux fonctions de même nom qui ne mesurent pas la même longueur :
+ * changer un import déplaçait le `strokeDasharray` d'un segment entier.
+ *
+ * Les tests qui vivaient ici comparaient une CHAÎNE exacte — `'M0 0 L10 0 …'`.
+ * C'est le genre d'assertion qui tombe sur un espace et laisse passer une
+ * coordonnée inversée. Leur remplaçant, `polylineUnique.guard.test.ts`, relit
+ * le chemin produit et compare la GÉOMÉTRIE, point par point ; il fige aussi
+ * la longueur du motif générique mesurée avant la consolidation.
+ */
 
 describe('tracé de circuit de l’état vide', () => {
   it('tient dans le viewBox', () => {
@@ -159,7 +151,10 @@ describe('tracé de circuit de l’état vide', () => {
   });
 
   it('expose la longueur réelle du tracé (pour le strokeDasharray)', () => {
-    expect(EMPTY_CIRCUIT_LENGTH).toBeCloseTo(polylineLength(EMPTY_CIRCUIT_POINTS));
+    // La valeur exacte est figée par `polylineUnique.guard.test.ts`, qui la
+    // compare à la mesure prise AVANT la consolidation du 15/08. Ici on ne
+    // vérifie que l'ordre de grandeur : une longueur estimée ou nulle
+    // casserait l'animation sans casser ce fichier.
     expect(EMPTY_CIRCUIT_LENGTH).toBeGreaterThan(400);
   });
 
