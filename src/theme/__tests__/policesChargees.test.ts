@@ -123,12 +123,17 @@ describe('polices — nommées et chargées', () => {
   });
 
   /**
-   * Et le compte, écrit noir sur blanc. Douze graisses au 14/08 : Hanken
-   * Grotesk (7), JetBrains Mono (4), Michroma (1). Ce nombre n'est pas un
-   * détail de style — c'est du temps de démarrage à froid pris à tous les
-   * pilotes. Le faire bouger doit être un geste conscient, pas une dérive.
+   * Et le compte, écrit noir sur blanc.
+   *
+   *   18 au matin du 14/08 · 12 le soir (Syncopate et Inter sortis) · 11 le
+   *   15/08, Michroma sorti à son tour sur décision du fondateur.
+   *
+   * Ce nombre n'est pas un détail de style — c'est du temps de démarrage à
+   * froid pris à tous les pilotes. Le faire bouger doit être un geste
+   * conscient, pas une dérive : ce test a échoué au passage de 12 à 11, et
+   * c'est exactement ce qu'on lui demande.
    */
-  it('le chargeur monte douze graisses, pas dix-huit', () => {
+  it('le chargeur monte onze graisses, pas dix-huit', () => {
     expect([...CHARGEES].sort()).toEqual([
       'HankenGrotesk_300Light',
       'HankenGrotesk_400Regular',
@@ -141,7 +146,6 @@ describe('polices — nommées et chargées', () => {
       'JetBrainsMono_500Medium',
       'JetBrainsMono_600SemiBold',
       'JetBrainsMono_700Bold',
-      'Michroma_400Regular',
     ]);
   });
 });

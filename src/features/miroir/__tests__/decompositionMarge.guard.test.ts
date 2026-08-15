@@ -21,100 +21,68 @@
  * CE QUE LA GARDE TIENT
  * ===========================================================================
  *
- * La note vit HORS des actes du débrief, et elle est rendue dans les deux
- * branches. La fondre dans le récit aurait deux défauts : elle disparaîtrait
- * quand le débrief est généré (le texte vient alors d'ailleurs, et l'écran
- * l'étiquette comme tel), et elle mélangerait deux provenances sous une seule
- * étiquette — ce que la transparence IA interdit ici.
+ * Le chiffre et sa base vivent au MÊME endroit : la section MARGE de l'écran
+ * de bilan, qui porte le nombre, sa décomposition pondérée, et la ligne
+ * « Véhicule non caractérisé — exclu du calcul ».
+ *
+ * Une note équivalente a vécu sous le débrief du 14 au 15/08. Elle est
+ * retirée : deux fois la même précaution, à deux blocs de distance sur le même
+ * écran, ne rassure pas davantage — elle dilue, et elle se désynchronise. La
+ * garde vérifie donc aussi son ABSENCE là-bas.
+ *
+ * Côté coach, la même base commande le libellé d'un ÉCART, qui affirme plus
+ * fort qu'un chiffre : il pose que les deux valeurs sont commensurables.
  */
 
 import { readFileSync } from 'fs';
 
-import { codeExecutable } from '@/test-utils/codeSeul';
+import { codeExecutable, codeSansCommentaires } from '@/test-utils/codeSeul';
 import { join } from 'path';
 
-import { debriefModel } from '../bilanLogic';
-import { libelleBaseMarge, libelleLigneMarge } from '@/services/marginCalculator';
+import { libelleLigneMarge } from '@/services/marginCalculator';
 
 const RACINE = process.cwd();
 
 describe('la décomposition de la marge', () => {
-  it('« pilote seul » se dit, « complète » ne dit rien', () => {
-    const dit = libelleBaseMarge('pilote-seul');
-    expect(dit).not.toBeNull();
-    expect(dit).toMatch(/pilotage seul/);
-    // Rien à signaler quand la marge repose sur tout ce qu'elle devrait : une
-    // note qui ne dit rien use la confiance qu'on aura besoin d'avoir ailleurs.
-    expect(libelleBaseMarge('complete')).toBeNull();
-  });
-
-  it('elle ne prescrit rien et ne juge pas', () => {
-    for (const base of ['complete', 'pilote-seul', 'aucune'] as const) {
-      const t = libelleBaseMarge(base) ?? '';
-      expect(t).not.toMatch(/vous devriez|il faut|évitez|améliorez|meilleur|mauvais/i);
-    }
-  });
-
   /**
-   * LE CŒUR. Un récit GÉNÉRÉ ne doit pas faire disparaître la note : c'est
-   * précisément la séance la mieux racontée qui mérite le plus qu'on dise sur
-   * quoi son chiffre repose.
+   * LA SECTION MARGE PORTE LE CHIFFRE ET SA BASE — lot A3 du 15/08.
+   *
+   * Une note sous le débrief disait la même chose du 14 au 15/08. Deux
+   * précautions identiques à deux blocs de distance ne rassurent pas
+   * davantage : elles diluent. La section a gagné, parce qu'elle est CONTRE le
+   * nombre et qu'elle porte aussi sa décomposition.
    */
-  it('la note survit à un débrief généré', () => {
-    const genere = debriefModel(
-      {
-        debriefText: 'Un récit.\n---\nUne méta.\n---\nUne préparation.',
-        marginGlobal: 51,
-        marginBase: 'pilote-seul',
-      },
-      'Gabin'
-    );
-    expect(genere.kind).toBe('generated');
-    if (genere.kind === 'pending') throw new Error('inattendu');
-    expect(genere.baseNote).toMatch(/pilotage seul/);
+  it('l’écran rend la marge, sa décomposition, et l’exclusion du véhicule', () => {
+    const source = readFileSync(join(RACINE, 'app', '(app2)', 'bilan', '[sessionId].tsx'), 'utf8');
+
+    // STRUCTURE : lue sans les littéraux, pour qu'un commentaire ou un libellé
+    // ne puisse pas faire passer la garde au vert.
+    const structure = codeExecutable(source);
+    // Sans le littéral `'absente'` : `codeExecutable` l'efface aussi, et une
+    // garde qui cherche une chaîne dans un texte dont on a retiré les chaînes
+    // échoue toujours. Ici on veut l'ACCÈS au champ, pas sa comparaison.
+    expect(structure).toMatch(/data\.marge\.kind !==/);
+    expect(structure).toMatch(/data\.marge\.composantes\.map/);
+
+    // TEXTE : lu avec les littéraux — ces deux phrases SONT le contenu, et le
+    // texte JSX est précisément ce que `codeExecutable` efface. Employer le
+    // mauvais des deux lecteurs rend une garde qui ne voit pas ce qu'elle
+    // prétend vérifier ; c'est arrivé en écrivant celle-ci.
+    const texte = codeSansCommentaires(source);
+    expect(texte).toMatch(/data\.marge\.kind !== 'absente'/);
+    expect(texte).toContain('MARGE PILOTE');
+    expect(texte).toContain('Véhicule non caractérisé — exclu du calcul.');
+    // La décomposition nomme ses poids : un chiffre roi qui agrège deux
+    // grandeurs sans les montrer serait indéfendable.
+    expect(texte).toMatch(/poids \$\{c\.poids === 0\.6/);
   });
 
-  it('et elle est là aussi dans le repli', () => {
-    const repli = debriefModel(
-      { debriefText: null, marginGlobal: 51, marginBase: 'pilote-seul' },
-      'Gabin'
-    );
-    expect(repli.kind).toBe('fallback');
-    if (repli.kind === 'pending') throw new Error('inattendu');
-    expect(repli.baseNote).toMatch(/pilotage seul/);
-  });
-
-  /**
-   * Le contre-exemple, sans quoi la garde ne prouverait que « la note est
-   * toujours là ». Une ligne antérieure au 14/08 ne porte pas de base : on
-   * n'invente pas une phrase pour elle.
-   */
-  it('une ligne sans base ne se voit pas attribuer de note', () => {
-    const ancien = debriefModel({ debriefText: null, marginGlobal: 39.2 }, 'Gabin');
-    if (ancien.kind === 'pending') throw new Error('inattendu');
-    expect(ancien.baseNote).toBeNull();
-  });
-
-  it('la note ne se glisse pas dans les actes — provenance pure', () => {
-    const repli = debriefModel(
-      { debriefText: null, marginGlobal: 51, marginBase: 'pilote-seul' },
-      'Gabin'
-    );
-    if (repli.kind === 'pending') throw new Error('inattendu');
-    for (const acte of repli.acts) expect(acte.body).not.toMatch(/pilotage seul/);
-  });
-
-  /**
-   * ET L'ÉCRAN LA REND. Sans ce dernier maillon, tout ce qui précède serait
-   * une garde posée sur du code que personne n'affiche — le motif que ce
-   * dépôt a répété neuf fois.
-   */
-  it('l’écran de bilan affiche la note', () => {
+  /** Et la phrase ne subsiste PAS ailleurs sur le même écran. */
+  it('elle ne se répète pas sous le débrief', () => {
     const ecran = codeExecutable(
       readFileSync(join(RACINE, 'app', '(app2)', 'bilan', '[sessionId].tsx'), 'utf8')
     );
-    expect(ecran).toMatch(/debrief\.baseNote !== null/);
-    expect(ecran).toMatch(/\{data\.debrief\.baseNote\}/);
+    expect(ecran).not.toMatch(/baseNote/);
   });
 
   /**
@@ -174,6 +142,14 @@ describe('la décomposition de la marge', () => {
       readFileSync(join(RACINE, 'src', 'services', 'marginCalculator.ts'), 'utf8')
     );
     expect(calcul).toMatch(/base:\s*MarginBase|base,/);
+
+    // Et `margeLogic` décide de la publication sur la MESURE (`marginVehicle`),
+    // pas sur un drapeau : la globale revient d'elle-même le jour où le
+    // véhicule sera caractérisé.
+    const marge = codeExecutable(
+      readFileSync(join(RACINE, 'src', 'features', 'miroir', 'margeLogic.ts'), 'utf8')
+    );
+    expect(marge).toMatch(/marginVehicle !== null/);
 
     const service = codeExecutable(
       readFileSync(join(RACINE, 'src', 'services', 'analysesService.ts'), 'utf8')

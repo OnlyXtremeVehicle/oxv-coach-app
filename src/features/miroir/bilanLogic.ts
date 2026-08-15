@@ -13,7 +13,7 @@
 import { projectToMeters, type LatLon } from '@/circuit/circuitGenerator';
 import { getCorner } from '@/lib/circuitTopology';
 import { isDoctrineSafe } from '@/services/aiSafetyFilter';
-import { libelleBaseMarge, type MarginBase } from '@/services/marginCalculator';
+import type { MarginBase } from '@/services/marginCalculator';
 import { colors } from '@/ui/v2/tokens';
 
 // ---------------------------------------------------------------------------
@@ -281,7 +281,7 @@ export function centerlineRatioForLatLon(
   return toNearest / total;
 }
 
-export type BilanMarkerKind = 'engaged' | 'coach';
+export type BilanMarkerKind = 'engaged' | 'coach' | 'focus';
 
 export interface BilanTraceMarker {
   /** Abscisse curviligne 0..1 sur le tracé. */
@@ -483,19 +483,6 @@ export type BilanDebrief =
   | {
       kind: 'generated' | 'fallback';
       acts: DebriefAct[];
-      /**
-       * SUR QUOI LE CHIFFRE REPOSE — hors des actes, et dans les deux branches.
-       *
-       * Cette note ne peut pas vivre DANS le récit : quand le débrief est
-       * généré, mêler une phrase écrite ici à un texte produit ailleurs
-       * romprait la pureté de provenance que l'écran affiche (« RÉCIT GÉNÉRÉ
-       * AUTOMATIQUEMENT »). Elle vit donc à côté, et l'écran la rend sous les
-       * actes, quelle que soit l'origine du texte.
-       *
-       * `null` quand la marge repose sur tout ce qu'elle devrait — il n'y a
-       * alors rien à signaler, et une note qui ne dit rien use la confiance.
-       */
-      baseNote: string | null;
     }
   | { kind: 'pending' };
 
@@ -555,6 +542,18 @@ export const DEBRIEF_PENDING_TEXT = 'Le débrief littéraire personnalisé arriv
  * Fail-closed au dernier mètre : un texte prescriptif persisté est REFUSÉ
  * ici même si le serveur l'a laissé passer (même ceinture que #19 v1).
  */
+/**
+ * SUR QUOI LE CHIFFRE REPOSE — DIT PAR LA SECTION MARGE, PAS ICI.
+ *
+ * Une note de base a vécu ici du 14 au 15/08 : « cette marge porte sur votre
+ * pilotage seul ». Le lot A3 a ensuite posé une vraie section MARGE, avec le
+ * nombre, sa décomposition pondérée et la ligne « Véhicule non caractérisé —
+ * exclu du calcul ». La phrase du débrief en devenait le doublon, à deux blocs
+ * de distance sur le même écran.
+ *
+ * Le débrief raconte la séance ; la section MARGE répond de son chiffre. Deux
+ * fois la même précaution ne rassure pas davantage — elle dilue.
+ */
 export function debriefModel(
   analysis: {
     debriefText: string | null;
@@ -566,10 +565,6 @@ export function debriefModel(
 ): BilanDebrief {
   if (analysis === null) return { kind: 'pending' };
 
-  // La base est calculée AVANT de choisir la branche : elle vaut pour un récit
-  // généré comme pour le repli. C'est une propriété du CHIFFRE, pas du texte.
-  const baseNote = analysis.marginBase ? libelleBaseMarge(analysis.marginBase) : null;
-
   const raw = analysis.debriefText ?? '';
   const safe = raw && isDoctrineSafe(raw) ? raw : '';
   if (safe) {
@@ -580,7 +575,7 @@ export function debriefModel(
     if (parsed.preparation) acts.push({ title: 'Préparation', body: parsed.preparation });
     // Provenance pure : soit tout est généré, soit repli intégral — jamais
     // un mélange étiqueté « généré » (transparence RGPD/IA).
-    if (acts.length > 0) return { kind: 'generated', acts, baseNote };
+    if (acts.length > 0) return { kind: 'generated', acts };
   }
 
   return {
@@ -590,7 +585,6 @@ export function debriefModel(
       { title: 'Méta-analyse', body: fallbackMeta() },
       { title: 'Préparation', body: fallbackPreparation() },
     ],
-    baseNote,
   };
 }
 

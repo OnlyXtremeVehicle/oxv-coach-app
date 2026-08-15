@@ -101,9 +101,9 @@ export function cardioZoneColor(zone: CardioZone | null): string {
   // Pas de zone situable → couleur INERTE : elle ne signifie rien d'autre que
   // « pas situable », surtout pas une quatrième zone implicite.
   if (zone === null) return palette.faint;
-  if (zone === 'bas') return speedHeat[0]; // bleu — froid
-  if (zone === 'median') return speedHeat[2]; // vert — intermédiaire
-  return speedHeat[3]; // jaune — chaud
+  if (zone === 'bas') return speedHeat[0]; // pas sombre — intensité basse
+  if (zone === 'median') return speedHeat[2]; // pas clair — intermédiaire
+  return speedHeat[3]; // pas le plus clair — intensité haute
 }
 
 /**

@@ -60,11 +60,15 @@ export const dataColors = {
   regularity: '#A783F2', // Régularité — violet (barres inactives #3A2E52)
 } as const;
 
-// Rampe de chaleur VITESSE (froid → chaud) : bleu → cyan → vert → jaune. SANS or
-// ni rouge — la vitesse n'est ni un chrono/record (or) ni une alarme (rouge).
-// Source UNIQUE partagée par la carte (TrajectoryLayer), la heatmap (TrackStage)
-// et leurs légendes, pour qu'elles ne divergent jamais.
-export const speedHeat = ['#4F9DF7', '#3FD0D8', '#4FC98A', '#F2CE3B'] as const;
+// Rampe de chaleur VITESSE : UNE teinte (bleu instrument), sombre → clair,
+// clair = rapide. SANS or ni rouge — la vitesse n'est ni un chrono/record (or)
+// ni une alarme (rouge). L'ancienne rampe 4 teintes (bleu → cyan → vert →
+// jaune) s'INVERSAIT au milieu : luminosités 0,688 → 0,786 → 0,751 → 0,858,
+// le 3ᵉ pas plus sombre que le 2ᵉ — une zone à 85 km/h paraissait plus foncée
+// qu'une zone à 70. La monotonie est désormais CALCULÉE par
+// rampeMagnitude.guard.test.ts. Source UNIQUE partagée par la carte
+// (TrajectoryLayer), la heatmap (TrackStage) et leurs légendes.
+export const speedHeat = ['#1E5178', '#2C7CAE', '#4AA3D8', '#7FC4EE'] as const;
 
 // Polices — REFONTE V3. Hanken Grotesk = texte/titres/UI ; JetBrains Mono =
 // données/labels/axes ET le CHIFFRE ROI (mono, tabular-nums, letter-spacing

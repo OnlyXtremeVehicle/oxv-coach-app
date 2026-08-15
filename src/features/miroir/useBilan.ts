@@ -27,6 +27,8 @@ import { useCallback, useEffect, useState } from 'react';
 
 import type { LatLon } from '@/circuit/circuitGenerator';
 import { useCoachThread } from '@/hooks/useCoachThread';
+import { focusVirage, margeModel, type MargeBilan } from '@/features/miroir/margeLogic';
+import { colors } from '@/ui/v2/tokens';
 import { BELTOISE_CORNERS } from '@/lib/circuitTopology';
 import { nombresDeSeance } from '@/lib/numeriquesPostgrest';
 import { supabase } from '@/lib/supabase';
@@ -101,6 +103,10 @@ export interface BilanData {
   /** « 22 tours · 87 km », null si rien de mesuré. */
   metaLine: string | null;
   pillars: BilanPillar[];
+  /** Marge PUBLIABLE (décision 15/08 : pilote seule tant que le véhicule
+   *  n'est pas caractérisé — margeLogic dit pourquoi). */
+  marge: MargeBilan;
+
   keyMoments: KeyMoment[];
   /**
    * Centerline STRICTE du circuit RÉEL de la séance — null si la séance n'a
@@ -386,6 +392,13 @@ export function useBilan(sessionId: string | undefined): UseBilanResult {
         annotatedCornerIndexes: coachNotes.map((n) => n.cornerIndex),
         centerline,
       });
+      // Le virage à creuser — `next_focus_corner_index` était persisté à
+      // chaque analyse et lu par AUCUN écran (mesuré le 14/08) : la phrase
+      // sans le lieu. Bleu trajectoire : une DONNÉE, ni or ni rouge.
+      const focus = focusVirage(analysis?.nextFocusCornerIndex ?? null, segments);
+      if (focus) {
+        traceMarkers.push({ t: focus.t, color: colors.qdi.trajectoire, kind: 'focus' });
+      }
 
       // Fil du bilan = VOTRE coach : seuls les binômes où l'utilisateur
       // courant est le PILOTE comptent ici. Un coach qui roule (compte
@@ -408,6 +421,8 @@ export function useBilan(sessionId: string | undefined): UseBilanResult {
         // invalide dans qdiLogic) : si le recalcul paresseux n'a pas pu
         // produire la version courante, piliers « — », jamais la fausse mesure.
         pillars: mapPillars(qdi && qdi.algoVersion === QDI_ALGO_VERSION ? qdi : null),
+        marge: margeModel(analysis),
+
         keyMoments,
         centerline,
         traceMarkers,

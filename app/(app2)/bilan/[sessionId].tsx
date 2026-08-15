@@ -410,6 +410,36 @@ export default function BilanScreen() {
             </View>
           </View>
 
+          {/* Marge PILOTE — jamais la globale tant que le véhicule n'est pas
+              caractérisé (décision 15/08 ; margeLogic porte le pourquoi). */}
+          {data.marge.kind !== 'absente' ? (
+            <View style={styles.section}>
+              <SectionHeader eyebrow={data.marge.kind === 'pilote' ? 'MARGE PILOTE' : 'MARGE'} />
+              <View style={styles.margeCard}>
+                <Text style={styles.margeHero} accessibilityRole="header">
+                  {Math.round(
+                    data.marge.kind === 'pilote' ? data.marge.pilote : data.marge.globale
+                  )}
+                  <Text style={styles.margeUnit}> %</Text>
+                </Text>
+                {data.marge.kind === 'pilote' ? (
+                  <>
+                    {data.marge.composantes.map((c) => (
+                      <PillarBar
+                        key={c.cle}
+                        label={`${c.label} · poids ${c.poids === 0.6 ? '0,6' : '0,4'}`}
+                        value={c.valeur}
+                      />
+                    ))}
+                    <Text style={styles.margeVehicule}>
+                      Véhicule non caractérisé — exclu du calcul.
+                    </Text>
+                  </>
+                ) : null}
+              </View>
+            </View>
+          ) : null}
+
           {/* Quatre piliers — branches QDI, « — » si non mesuré */}
           <View style={styles.section}>
             <SectionHeader eyebrow="QUATRE PILIERS" />
@@ -484,13 +514,6 @@ export default function BilanScreen() {
                       <Text style={styles.debriefActBody}>{act.body}</Text>
                     </View>
                   ))}
-                  {/* SUR QUOI LE CHIFFRE REPOSE. Hors des actes : la note vaut
-                      pour un récit généré comme pour le repli, et l'y fondre
-                      romprait l'étiquette de provenance affichée plus haut.
-                      Rendue seulement quand il y a quelque chose à dire. */}
-                  {data.debrief.baseNote !== null ? (
-                    <Text style={styles.debriefBase}>{data.debrief.baseNote}</Text>
-                  ) : null}
                 </>
               )}
             </View>
@@ -1130,6 +1153,34 @@ const styles = StyleSheet.create({
     borderColor: colors.border.card,
     padding: space.md,
   },
+  margeCard: {
+    marginTop: space.lg,
+    backgroundColor: colors.bg.card,
+    borderRadius: radius.card,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: colors.border.card,
+    padding: space.lg,
+  },
+  margeHero: {
+    fontFamily: typo.mono,
+    fontSize: 44,
+    letterSpacing: -1,
+    color: colors.text.hi,
+    marginBottom: space.md,
+  },
+  margeUnit: {
+    fontFamily: typo.body,
+    fontSize: 16,
+    letterSpacing: 0,
+    color: colors.text.mid,
+  },
+  margeVehicule: {
+    fontFamily: typo.body,
+    fontSize: 12,
+    lineHeight: 17,
+    color: colors.text.low,
+    marginTop: space.md,
+  },
   debriefCard: {
     marginTop: space.lg,
     backgroundColor: colors.bg.card,
@@ -1163,20 +1214,6 @@ const styles = StyleSheet.create({
     fontSize: 14,
     lineHeight: 21,
     color: colors.text.hi,
-  },
-  /**
-   * La note de base : ton de METHODE, pas de récit. Texte atténué, filet au-
-   * dessus — elle dit d'où vient le chiffre, elle ne raconte pas la séance.
-   */
-  debriefBase: {
-    fontFamily: typo.body,
-    fontSize: 12,
-    lineHeight: 18,
-    color: colors.text.low,
-    marginTop: space.lg,
-    paddingTop: space.md,
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: colors.border.hairline,
   },
   threadEmpty: {
     fontFamily: typo.body,

@@ -128,9 +128,9 @@ describe('INVARIANT COULEUR — ni or (chrono/record) ni rouge (verdict)', () =>
   });
 
   it('rampe froid → chaud : bleu, vert, jaune', () => {
-    expect(cardioZoneColor('bas')).toBe('#4F9DF7');
-    expect(cardioZoneColor('median')).toBe('#4FC98A');
-    expect(cardioZoneColor('haut')).toBe('#F2CE3B');
+    expect(cardioZoneColor('bas')).toBe('#1E5178');
+    expect(cardioZoneColor('median')).toBe('#4AA3D8');
+    expect(cardioZoneColor('haut')).toBe('#7FC4EE');
   });
 
   it('les zones pointent sur la rampe partagée speedHeat (pas des littéraux isolés)', () => {

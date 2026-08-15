@@ -96,21 +96,15 @@ export const colors = {
  * retirer sans regarder — il fait exactement le travail de Hanken Grotesk ». Les
  * trois graisses de corps basculent, et 66 fichiers suivent sans être touchés.
  *
- * **Michroma reste, pour l'instant.** Le même arbitrage sépare les deux cas :
- * « Michroma et Syncopate sont des langages de TITRE — les retirer change
- * l'allure de PROFIL et des cartes. Faites-le, mais regardez ces deux écrans
- * avant de le figer, pas après. »
- *
- * `typo.display` est employé par **39 écrans**, dont tout le flux REC et tout
- * l'espace Club. Le remplacer sans l'avoir vu changerait l'identité visuelle de
- * l'application pilote entière — et le quota de builds iOS est épuisé jusqu'au
- * 1er septembre. On ne bascule pas une identité à l'aveugle.
- *
- * La ligne est prête : `display: 'HankenGrotesk_600SemiBold'`, la valeur que
- * `src/theme/v2.ts` emploie déjà.
+ * **Michroma est sorti le 15/08/2026** (décision fondateur, QCM — consolidation
+ * complète, au-delà de la recommandation « regarder d'abord »). `typo.display`
+ * est employé par 39 écrans : la bascule change l'identité visuelle de
+ * l'application pilote entière, et elle N'A PAS ÉTÉ VUE — le quota de builds
+ * iOS est épuisé jusqu'au 1er septembre. Premier geste du premier build :
+ * regarder PROFIL, les cartes et un écran du flux REC. Réversion : une ligne.
  */
 export const type = {
-  display: 'Michroma_400Regular',
+  display: 'HankenGrotesk_600SemiBold',
   body: 'HankenGrotesk_400Regular',
   bodyMedium: 'HankenGrotesk_500Medium',
   bodySemi: 'HankenGrotesk_600SemiBold',

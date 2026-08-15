@@ -4,9 +4,9 @@
  *
  * Source des points : un tableau de samples GPS (depuis telemetry_frames
  * ou parse UBX). Peut afficher une couleur uniforme ou une heatmap par
- * vitesse (rampe froid → chaud `theme.speedHeat` : bleu → cyan → vert → jaune).
+ * vitesse (rampe `theme.speedHeat` : une teinte, sombre → clair, clair = rapide).
  * SANS or (réservé au chrono) ni rouge (réservé alarme) : la vitesse est une
- * donnée, pas un verdict. Le plus chaud = jaune fluidité.
+ * donnée, pas un verdict.
  */
 
 import { Polyline } from 'react-native-svg';
@@ -76,8 +76,8 @@ export function TrajectoryLayer({
         const b = projectToScene(next);
         const avgSpeed = ((p.speed ?? 0) + (next.speed ?? 0)) / 2;
         const ratio = maxSpeed > 0 ? avgSpeed / maxSpeed : 0;
-        // Rampe froid → chaud partagée (theme.speedHeat) : bleu → cyan → vert →
-        // jaune. Aucun or (chrono) ni rouge (alarme) sur une donnée de vitesse.
+        // Rampe partagée (theme.speedHeat) : une teinte, sombre → clair,
+        // clair = rapide. Aucun or (chrono) ni rouge (alarme) sur une vitesse.
         const segColor =
           ratio < 0.25
             ? theme.speedHeat[0]

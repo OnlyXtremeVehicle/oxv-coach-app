@@ -150,6 +150,11 @@ const CONNUS: readonly string[] = [
   '/src/render/decimate.ts',
   '/src/render/gg.ts',
   '/src/render/ribbon.ts',
+  // Kit de grammaire livré le 15/08 : les quatre rôles de couleur et le type
+  // `Mesure<T>`. Aucun écran ne le consomme ENCORE — l'adoption se fait écran
+  // par écran (A1 § 3 : « la migration de type est le geste durable »). Inscrit
+  // ici sciemment, à retirer au premier écran migré.
+  '/src/ui/v2/grammaireviz.ts',
   // Outil des GARDES : seuls des tests l'importent, par construction. C'est la
   // même nuance que `hauteSaintonge` — « plus aucun code de production ne s'en
   // sert » est ici l'état voulu, pas une dette.

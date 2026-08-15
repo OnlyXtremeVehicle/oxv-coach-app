@@ -162,6 +162,7 @@ export async function analyzeAndPersistSession(
   // bilan ; inactif tant que l'edge function n'est pas déployée (l'invoke
   // échoue alors proprement). La logique de calcul est testée côté app dans
   // src/services/sessionInsightsEngine.ts (miroir de l'edge).
+
   if (segmentsPersisted > 0) {
     try {
       const { error: insightsError } = await supabase.functions.invoke('compute-session-insights', {
@@ -172,6 +173,18 @@ export async function analyzeAndPersistSession(
       );
     } catch (e) {
       notes.push(`Insights KO : ${errMsg(e)}`);
+    }
+    // v3 (modules rb-1 : gg_envelope, throttle_brake, flow_coherence,
+    // load_transfer) — les quatre visualisations de data/session/[id] la
+    // consomment et étaient VIDES depuis leur écriture faute d'invocateur
+    // (mesuré le 14/08/2026). Même contrat best-effort que v1.
+    try {
+      const { error: v3Error } = await supabase.functions.invoke('compute-session-insights-v3', {
+        body: { sessionId: input.telemetrySessionId },
+      });
+      notes.push(v3Error ? `Insights v3 KO : ${v3Error.message}` : 'Insights v3 calculés.');
+    } catch (e) {
+      notes.push(`Insights v3 KO : ${errMsg(e)}`);
     }
   }
 

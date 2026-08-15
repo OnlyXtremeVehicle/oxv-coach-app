@@ -232,8 +232,8 @@ function GlowSpine({
   );
 }
 
-/** Carte de chaleur vitesse : rampe froid → chaud partagée (theme.speedHeat),
- *  bleu → cyan → vert → jaune. Aucun or (chrono) ni rouge (alarme). */
+/** Carte de chaleur vitesse : rampe partagée (theme.speedHeat), une teinte,
+ *  sombre → clair, clair = rapide. Aucun or (chrono) ni rouge (alarme). */
 function HeatTrack({ points, u }: { points: TrackStageHeatPoint[]; u: number }) {
   if (points.length < 2) return null;
   const vals = points
@@ -247,7 +247,7 @@ function HeatTrack({ points, u }: { points: TrackStageHeatPoint[]; u: number }) 
         const a = projectToScene(p);
         const b = projectToScene(next);
         const r = max > 0 ? ((p.intensity ?? 0) + (next.intensity ?? 0)) / 2 / max : 0;
-        // Rampe vitesse froid → chaud (source unique speedHeat) : jamais d'or.
+        // Rampe vitesse sombre → clair (source unique speedHeat) : jamais d'or.
         const c =
           r < 0.25 ? speedHeat[0] : r < 0.5 ? speedHeat[1] : r < 0.75 ? speedHeat[2] : speedHeat[3];
         return (

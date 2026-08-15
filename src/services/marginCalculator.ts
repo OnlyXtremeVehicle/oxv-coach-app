@@ -189,21 +189,6 @@ export interface ComputeMarginInput {
 export type MarginBase = 'complete' | 'pilote-seul' | 'aucune';
 
 /**
- * CE QU'ON DIT AU PILOTE, SOUS LE CHIFFRE.
- *
- * `null` quand la base est complète : rien à préciser, la marge est ce qu'elle
- * annonce. Sinon la phrase dit sur quoi elle repose — parce qu'un chiffre dont
- * la nature a changé sans le dire est pire qu'un chiffre absent.
- */
-export function libelleBaseMarge(base: MarginBase): string | null {
-  if (base === 'complete') return null;
-  if (base === 'pilote-seul') {
-    return 'Cette marge porte sur votre pilotage seul : votre véhicule n’est pas caractérisé.';
-  }
-  return null;
-}
-
-/**
  * CE QU'ON DIT AU COACH, AU-DESSUS DE DEUX CHIFFRES CÔTE À CÔTE.
  *
  * Comparer suppose que les deux nombres mesurent la même chose. Tant que
