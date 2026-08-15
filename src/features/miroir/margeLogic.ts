@@ -115,3 +115,61 @@ export function focusVirage(
   if (!Number.isFinite(t) || t < 0 || t > 1) return null;
   return { t, index: nextFocusCornerIndex };
 }
+
+// ---------------------------------------------------------------------------
+// Le virage à creuser — CHOISI sur les segments réels
+// ---------------------------------------------------------------------------
+
+/**
+ * LA COLONNE ÉTAIT VIDE DEPUIS LE 24/05/2026. Mesuré le 15/08 : sur les
+ * quatorze lignes d'`app_session_analyses` en production, **zéro** portent
+ * `next_focus_corner_index`, zéro portent `next_focus_phrase`.
+ *
+ * Le champ était déclaré dans la migration `0009`, relu par trois requêtes,
+ * typé côté application, et lu par `DebriefMirror` — un composant monté nulle
+ * part. Écrit par PERSONNE. Le marqueur de trace posé le 15/08 au soir aurait
+ * donc été inerte lui aussi : la sélection existait, la lecture existait,
+ * l'affichage existait, et il manquait l'écriture au milieu.
+ *
+ * ---------------------------------------------------------------------------
+ * POURQUOI PAS `focusCorner.ts`, QUI EXISTE POURTANT
+ * ---------------------------------------------------------------------------
+ *
+ * Parce qu'il choisit parmi `BELTOISE_CORNERS` — une topologie de circuit
+ * codée en dur, que la politique multi-circuit a précisément retirée du reste
+ * de l'application. Le brancher tel quel nommerait un virage de Beltoise sur
+ * une séance roulée ailleurs. Un orphelin ne se branche pas parce qu'il est
+ * orphelin : il se branche s'il dit vrai.
+ *
+ * Ici on n'a besoin d'aucune topologie. Le marqueur veut un INDEX de segment,
+ * et les segments de la séance portent déjà leur marge et leur zone, mesurées.
+ *
+ * ---------------------------------------------------------------------------
+ * LA RÈGLE, ET SON SILENCE
+ * ---------------------------------------------------------------------------
+ *
+ * Doctrine : UNE seule zone à explorer, jamais une liste à hiérarchiser. On
+ * prend le rouge de plus faible marge ; à défaut le jaune de plus faible
+ * marge ; à défaut **rien** — tout est confortable, il n'y a rien à désigner,
+ * et désigner quand même serait fabriquer un souci.
+ */
+export interface SegmentMargeLite {
+  segmentIndex: number;
+  marginPercent: number | null;
+  marginZone: 'green' | 'yellow' | 'red' | null;
+}
+
+export function virageACreuser(segments: readonly SegmentMargeLite[]): number | null {
+  const parZone = (zone: 'red' | 'yellow'): SegmentMargeLite[] =>
+    segments.filter((s) => s.marginZone === zone && s.marginPercent !== null);
+
+  for (const zone of ['red', 'yellow'] as const) {
+    const candidats = parZone(zone);
+    if (candidats.length === 0) continue;
+    const pire = candidats.reduce((min, s) =>
+      (s.marginPercent as number) < (min.marginPercent as number) ? s : min
+    );
+    return pire.segmentIndex;
+  }
+  return null;
+}

@@ -33,6 +33,7 @@ import * as FileSystem from 'expo-file-system/legacy';
 import { supabase } from '@/lib/supabase';
 import { UbxFrameBuffer, parseRaceBoxDataMessage } from '@/ubx/parser';
 import { analyzeTrackVizSession } from '@/trackviz/analysis';
+import { virageACreuser } from '@/features/miroir/margeLogic';
 import type { TrackVizRecordingSample } from '@/trackviz/types';
 import type { Lap, RaceBoxData, TelemetrySession } from '@/types/telemetry';
 
@@ -137,11 +138,16 @@ export async function analyzeAndPersistSession(
   }
 
   let segmentsPersisted = 0;
+  // Le virage à creuser, choisi sur les segments RÉELS de cette séance. Hissé
+  // ici parce que `analysis.segments` n'existe que dans ce bloc, et que la
+  // marge se persiste beaucoup plus bas.
+  let nextFocusCornerIndex: number | null = null;
 
   // ── Analyse trackviz par segment ─────────────────────────────────────────
   if (samples.length >= 2) {
     try {
       const analysis = analyzeTrackVizSession(samples);
+      nextFocusCornerIndex = virageACreuser(analysis.segments);
       segmentsPersisted = await upsertSegmentAnalyses({
         telemetrySessionId: input.telemetrySessionId,
         userId: input.userId,
@@ -234,6 +240,7 @@ export async function analyzeAndPersistSession(
           telemetrySessionId: input.telemetrySessionId,
           userId: input.userId,
           result,
+          nextFocusCornerIndex,
         });
         notes.push(`Marge globale persistée : ${result.marginGlobal.toFixed(1)} %.`);
       } else {

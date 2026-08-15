@@ -137,6 +137,14 @@ export async function upsertAnalysis(input: {
   telemetrySessionId: string;
   userId: string;
   result: ComputeMarginOutput;
+  /**
+   * Index du segment à creuser, ou `null` si tout est confortable.
+   *
+   * La colonne existait depuis le 24/05/2026 et n'a JAMAIS été écrite : zéro
+   * ligne sur quatorze en production le 15/08. Elle était lue par trois
+   * requêtes et par un composant monté nulle part. On l'écrit enfin.
+   */
+  nextFocusCornerIndex?: number | null;
 }): Promise<SessionAnalysis | null> {
   const { data, error } = await supabase
     .from('app_session_analyses')
@@ -149,6 +157,7 @@ export async function upsertAnalysis(input: {
         margin_vehicle: input.result.marginVehicle,
         margin_pilot: input.result.marginPilot,
         margin_breakdown: input.result.breakdown as unknown as Json,
+        next_focus_corner_index: input.nextFocusCornerIndex ?? null,
         algo_version: 'v1.0',
         computed_at: new Date().toISOString(),
       },

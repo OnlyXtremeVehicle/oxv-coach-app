@@ -27,8 +27,8 @@
 |---|---|
 | Écrans (`app/`) | 150 fichiers `.tsx` |
 | Modules (`src/`, hors tests) | ~~519~~ → **523** (15/08 soir, +5 du paquet V4) |
-| Tests | ~~286 fichiers · 3 358 cas~~ → **292 fichiers · 3 436 cas** (tsc 0 · lint 0) |
-| Gardes `*.guard.test.ts` | ~~35, toutes lexicales, zéro AST~~ → **40**, dont **3 lisent un arbre syntaxique** et 14 s'appuient sur l'analyseur pour ne plus confondre code et commentaire |
+| Tests | ~~286 fichiers · 3 358 cas~~ → **293 fichiers · 3 447 cas** (tsc 0 · lint 0) |
+| Gardes `*.guard.test.ts` | ~~35, toutes lexicales, zéro AST~~ → **41**, dont **3 lisent un arbre syntaxique** et 14 s'appuient sur l'analyseur pour ne plus confondre code et commentaire |
 | Migrations appliquées | 256 (+ 6 `PROPOSITION_` en attente d'un mot) |
 | Fonctions Edge | 33 déployées |
 | TODO hors juridique | 8 (+ 3 `TODO_AVOCAT`/`ARBITRAGE`, bloqués tiers) |
@@ -52,7 +52,7 @@
 
 ### Santé — ce qui est solide
 
-Doctrine outillée (40 gardes, honnête-vide généralisé, rouge de marque
+Doctrine outillée (41 gardes, honnête-vide généralisé, rouge de marque
 testé) · autorisation unifiée sur `role` (base + app + site vérifiés, colonne
 `is_admin` supprimée) · garde pilote sur `registrations` (un pilote ne peut
 plus se pointer ni valider son paiement) · cron **`v3.0` DÉPLOYÉ** (v2.0 dans le dépôt au
@@ -120,6 +120,20 @@ rejoue sans danger (« déjà en place »). Vérifié le 15/08 sur copie du dép
 | V4-L4 | **moitié faite** | `cron-analyze-pending-sessions` déployé en **v3.0** et rejoué : 11 lignes reprises, 0 marge véhicule fabriquée, Bouteville 51,44 → **60,40** base `pilote-seul`. `ritual_dispatcher` : NON déployé, non tranché |
 | V4-L5 | **fait, et en AST** | `radarHorsSeance.guard` lit l'arbre JSX plutôt qu'un grep : un grep aurait accusé le commentaire qui explique pourquoi on ne monte pas le radar. Témoin inclus — la garde vérifie d'abord qu'elle SAIT voir un radar là où il est monté (`studio.tsx`) |
 
+**UNE COLONNE VIDE DEPUIS LE 24 MAI, remplie le 15/08 au soir.**
+`app_session_analyses.next_focus_corner_index` existe depuis la migration
+`0009`. En production : **14 lignes, 0 renseignée.** Elle était relue par trois
+requêtes, typée côté application, et lue par `DebriefMirror` — monté nulle
+part. Écrite par personne. Le marqueur de trace du lot A3, posé quelques heures
+plus tôt, aurait donc été inerte lui aussi : sélection, lecture et affichage
+présents, écriture absente au milieu.
+
+Le choix se fait désormais sur les segments RÉELS de la séance (rouge de plus
+faible marge, sinon jaune, sinon rien) — **pas** via `focusCorner.ts`, qui
+choisit parmi `BELTOISE_CORNERS`, une topologie codée en dur que la politique
+multi-circuit a retirée partout ailleurs. Garde `virageACreuser` : les quatre
+maillons — choisir, écrire, relire, rendre.
+
 **Trois défauts dans le paquet livré**, corrigés au passage : l'extracteur du
 script gardait le saut de ligne de tête des ancres (un `if` s'est retrouvé
 collé à la fin d'un commentaire, donc commenté) ; le bloc 1c réémettait `body:`
@@ -186,7 +200,20 @@ les TESTS parmi les appelants. Le reste du chantier AST demeure : 37 gardes
 lexicales · ~~garde orphelins transitive~~ **FAIT le 15/08** : la mesure part
 des racines `app/`, 35 → 40, cinq morts de 2ᵉ rang nommés · trancher les
 orphelins (brancher ou supprimer, jamais dormir) — **c'est devenu le point le
-plus mûr de cette liste : quarante modules attendent un verdict** ·
+plus mûr de cette liste : quarante modules attendent un verdict**. Premier
+passage fait le 15/08 au soir, et il change la consigne : **plusieurs de ces
+orphelins sont des DOUBLONS DORMANTS de protections vivantes ailleurs, et les
+brancher serait une régression** —
+
+  · `debriefRenderGuard` blanchit acte par acte ; le bilan, lui, refuse le
+    récit ENTIER au premier passage non conforme. L'armer assouplirait ;
+  · `insightTransparencyLogic` porte un seuil de fiabilité à 90 %, quand la
+    chaîne vivante (`computeDataConfidence` → `traceNarrativeService` →
+    `useMiroirHome`/`useBilan`) porte le sien. L'armer recréerait le désaccord
+    `qdi.regularite = 34` / `margin_breakdown.regularity = 0` du 13/08.
+
+Les deux sont annotés dans leur en-tête : **à supprimer ou à laisser dormir en
+le sachant, pas à armer.** Le verdict par défaut n'est donc pas « brancher » ·
 dédoublonnage viz vers `vizMath`+`grammaireViz` · purge RGPD familles 1 et 3
 (PROPOSITION_A14 prête) · `Mesure<T>` au fil des écrans.
 
