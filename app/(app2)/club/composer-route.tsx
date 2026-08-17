@@ -54,14 +54,9 @@ import {
 } from 'react-native';
 import * as Location from 'expo-location';
 import { router } from 'expo-router';
-import MapView, {
-  Marker,
-  Polyline,
-  PROVIDER_DEFAULT,
-  type LongPressEvent,
-  type MapPressEvent,
-} from 'react-native-maps';
 import Toast from 'react-native-toast-message';
+
+import { bornesDe, CarteOxv, PastilleCarte, TraceCarte } from '@/features/carte/CarteOxv';
 
 import { FadeInSection, useReduceMotion } from '@/components/motion';
 import { isExpoGo } from '@/lib/runtime';
@@ -221,7 +216,8 @@ export default function CreerRouteScreen() {
   const [route, setRoute] = useState<ScenicRoute | null>(null);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
-  const mapRef = useRef<MapView>(null);
+  // La référence de carte a disparu : son unique usage était `fitToCoordinates`,
+  // devenu l'état `bornes` passé en prop à `CarteOxv`.
   // Compteur de requêtes POI : seule la réponse de la DERNIÈRE requête compte
   // (un appui long pendant un chargement ne doit pas être écrasé par l'ancien).
   const poiRequest = useRef(0);
@@ -270,19 +266,25 @@ export default function CreerRouteScreen() {
     };
   }, [loadPois]);
 
-  // Recadre la carte sur le départ + les points (+ le tracé quand il existe).
+  /**
+   * Recadre la carte sur le départ + les points (+ le tracé quand il existe).
+   *
+   * `fitToCoordinates` sur une référence de carte est devenu un ÉTAT de bornes
+   * passé en prop : le recadrage ne dépend plus d'une poignée sur le moteur de
+   * rendu, qu'on vient de changer une fois et qu'on pourrait changer encore.
+   *
+   * Le garde-fou d'origine est conservé — sous deux points, on ne recadre pas.
+   * Englober un point unique donnerait des bornes de largeur nulle et un zoom
+   * qui ne veut rien dire.
+   */
+  const [bornes, setBornes] = useState<[number, number, number, number] | null>(null);
   useEffect(() => {
-    const coords = [
-      { latitude: start.lat, longitude: start.lon },
-      ...pois.map((p) => ({ latitude: p.point.lat, longitude: p.point.lon })),
-      ...(route ? route.coordinates.map((c) => ({ latitude: c.lat, longitude: c.lon })) : []),
+    const points = [
+      { lat: start.lat, lon: start.lon },
+      ...pois.map((p) => p.point),
+      ...(route ? route.coordinates.map((c) => ({ lat: c.lat, lon: c.lon })) : []),
     ];
-    if (coords.length > 1) {
-      mapRef.current?.fitToCoordinates(coords, {
-        edgePadding: { top: 60, right: 60, bottom: 80, left: 60 },
-        animated: true,
-      });
-    }
+    setBornes(points.length > 1 ? bornesDe(points) : null);
   }, [pois, route, start]);
 
   function toggleEtape(poi: ScenicPoi) {
@@ -301,18 +303,19 @@ export default function CreerRouteScreen() {
     resetResult();
   }
 
-  function onMapPress(e: MapPressEvent) {
-    // Android relaie aussi les taps de marqueurs ici — on ne pose pas d'arrivée dessus.
-    if (e.nativeEvent.action === 'marker-press') return;
-    const { latitude, longitude } = e.nativeEvent.coordinate;
-    const point: GeoPoint = { lat: latitude, lon: longitude };
+  /**
+   * Le garde-fou `action === 'marker-press'` a disparu : il compensait un défaut
+   * d'Android sous `react-native-maps`, où un appui sur un marqueur remontait
+   * AUSSI à la carte et posait une arrivée sous le repère qu'on venait de
+   * toucher. Les pastilles MapLibre sont de vraies vues : leur `Pressable`
+   * consomme l'appui, et la carte ne le reçoit pas.
+   */
+  function onMapPress(point: GeoPoint) {
     setArrival({ point, name: nearestPoiName(point, pois) });
     resetResult();
   }
 
-  function onMapLongPress(e: LongPressEvent) {
-    const { latitude, longitude } = e.nativeEvent.coordinate;
-    const point: GeoPoint = { lat: latitude, lon: longitude };
+  function onMapLongPress(point: GeoPoint) {
     setStart(point);
     setStartSource('carte');
     resetResult();
@@ -425,60 +428,57 @@ export default function CreerRouteScreen() {
 
       {/* Carte (cadre sombre v2). */}
       <View style={s.mapFrame}>
-        <MapView
-          ref={mapRef}
-          provider={PROVIDER_DEFAULT}
+        {/* Les infobulles `title`/`description` des marqueurs natifs
+            disparaissent : elles étaient rendues par la plateforme, dans SA
+            typographie et SES couleurs. Ce que chaque repère est se lit
+            désormais par son nom accessible et par la liste sous la carte —
+            au vocabulaire du dépôt, pas à celui d'Apple ou de Google. */}
+        <CarteOxv
           style={{ flex: 1 }}
-          initialRegion={{
+          regionInitiale={{
             latitude: start.lat,
             longitude: start.lon,
             latitudeDelta: 0.6,
             longitudeDelta: 0.6,
           }}
-          showsPointsOfInterests={false}
-          showsCompass={false}
-          toolbarEnabled={false}
-          onPress={onMapPress}
-          onLongPress={onMapLongPress}
+          bornes={bornes}
+          onAppui={onMapPress}
+          onAppuiLong={onMapLongPress}
         >
-          <Marker
-            coordinate={{ latitude: start.lat, longitude: start.lon }}
-            title="Départ"
-            description={START_LABEL[startSource]}
-            pinColor={palette.cream}
+          <PastilleCarte
+            point={start}
+            couleur={palette.cream}
+            label={`Départ, ${START_LABEL[startSource]}`}
           />
           {pois
             .filter((p) => !etapeIds.has(p.id))
             .map((p) => (
-              <Marker
+              <PastilleCarte
                 key={p.id}
-                coordinate={{ latitude: p.point.lat, longitude: p.point.lon }}
-                title={p.name ?? POI_LABEL[p.kind]}
-                description={POI_LABEL[p.kind]}
-                pinColor={POI_COLOR[p.kind]}
+                point={p.point}
+                couleur={POI_COLOR[p.kind]}
+                label={`${p.name ?? POI_LABEL[p.kind]}, ${POI_LABEL[p.kind]} — ajouter comme étape`}
                 onPress={() => toggleEtape(p)}
               />
             ))}
           {etapes.map((p) => (
-            <Marker
+            <PastilleCarte
               key={p.id}
-              coordinate={{ latitude: p.point.lat, longitude: p.point.lon }}
-              title={p.name ?? POI_LABEL[p.kind]}
-              description="Étape de votre route"
-              pinColor={palette.green}
+              point={p.point}
+              couleur={palette.green}
+              label={`${p.name ?? POI_LABEL[p.kind]}, étape de votre route — retirer`}
               onPress={() => toggleEtape(p)}
             />
           ))}
           {arrival ? (
-            <Marker
-              coordinate={{ latitude: arrival.point.lat, longitude: arrival.point.lon }}
-              title="Arrivée"
-              description={arrival.name ?? undefined}
-              pinColor={palette.creamSoft}
+            <PastilleCarte
+              point={arrival.point}
+              couleur={palette.creamSoft}
+              label={`Arrivée${arrival.name ? `, ${arrival.name}` : ''}`}
             />
           ) : null}
           {route ? <AnimatedRouteLine coordinates={route.coordinates} /> : null}
-        </MapView>
+        </CarteOxv>
 
         {loadingPois ? (
           <View style={s.loadingPill}>
@@ -633,13 +633,10 @@ function AnimatedRouteLine({ coordinates }: { coordinates: GeoPoint[] }) {
     };
   }, [coordinates, reduceMotion]);
 
-  return (
-    <Polyline
-      coordinates={coordinates.slice(0, count).map((c) => ({ latitude: c.lat, longitude: c.lon }))}
-      strokeColor={palette.cream}
-      strokeWidth={4}
-    />
-  );
+  // La révélation progressive est CONSERVÉE : elle découpe la liste de points,
+  // pas un style natif, et ne dépendait donc en rien de `Polyline`. Seul le
+  // rendu final change de moteur.
+  return <TraceCarte points={coordinates.slice(0, count)} couleur={palette.cream} />;
 }
 
 /** Puce de composition (départ / étape / arrivée) — retirable quand `onRemove`. */
