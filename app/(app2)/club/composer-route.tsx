@@ -50,6 +50,7 @@ import {
   Pressable,
   StyleSheet,
   Text,
+  TextInput,
   View,
 } from 'react-native';
 import * as Location from 'expo-location';
@@ -58,6 +59,12 @@ import Toast from 'react-native-toast-message';
 
 import { bornesDe, CarteOxv, PastilleCarte, TraceCarte } from '@/features/carte/CarteOxv';
 import { CARTE, TAILLE_PASTILLE } from '@/features/carte/paletteCarte';
+import {
+  adresseDuPoint,
+  chercherAdresse,
+  geocodageDisponible,
+} from '@/services/routing/geocodeService';
+import { validerRecherche, type AdresseTrouvee } from '@/services/routing/geocodeLogic';
 
 import { FadeInSection, useReduceMotion } from '@/components/motion';
 import { isExpoGo } from '@/lib/runtime';
@@ -125,6 +132,9 @@ const ARRIVAL_NAME_RADIUS_M = 250;
 
 // Sans clé, le moteur renvoie null d'office : on le DIT au lieu d'appeler dans le vide.
 const HAS_ROUTING_KEY = Boolean(process.env.EXPO_PUBLIC_GRAPHHOPPER_KEY);
+
+/** Le géocodage s'appuie sur la MÊME clé : sans elle, le champ ne s'affiche pas. */
+const GEOCODAGE_DISPO = geocodageDisponible();
 
 const CURVINESS_OPTIONS: { label: string; value: Curviness }[] = [
   { label: 'Douce', value: 'douce' },
@@ -227,6 +237,11 @@ export default function CreerRouteScreen() {
   const [route, setRoute] = useState<ScenicRoute | null>(null);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+  /** Adresse du départ, quand elle a pu être résolue. Sinon le libellé de repli. */
+  const [nomDepart, setNomDepart] = useState<string | null>(null);
+  const [recherche, setRecherche] = useState('');
+  const [resultats, setResultats] = useState<AdresseTrouvee[] | null>(null);
+  const [cherche, setCherche] = useState(false);
   // La référence de carte a disparu : son unique usage était `fitToCoordinates`,
   // devenu l'état `bornes` passé en prop à `CarteOxv`.
   // Compteur de requêtes POI : seule la réponse de la DERNIÈRE requête compte
@@ -326,7 +341,43 @@ export default function CreerRouteScreen() {
     resetResult();
   }
 
+  /**
+   * Nomme le point choisi, en tâche de fond.
+   *
+   * Le départ est posé IMMÉDIATEMENT, avant l'appel : la composition ne dépend
+   * pas du réseau, et le nom arrive après s'il arrive. Un échec laisse « point
+   * choisi » — nommer est un confort, jamais une condition.
+   */
+  async function lancerRecherche() {
+    const refus = validerRecherche(recherche);
+    if (refus) {
+      Toast.show({ type: 'error', text1: refus });
+      return;
+    }
+    setCherche(true);
+    // `pres: start` biaise sans borner — voir `chercherAdresse`.
+    const r = await chercherAdresse(recherche, start);
+    setCherche(false);
+    setResultats(r);
+  }
+
+  function choisirArrivee(a: AdresseTrouvee) {
+    setArrival({ point: a.point, name: a.nom });
+    resetResult();
+    // La liste se ferme d'elle-même : la garder ouverte sur un choix fait
+    // laisserait croire qu'il reste quelque chose à décider.
+    setResultats(null);
+    setRecherche('');
+  }
+
+  const nommerDepart = useCallback(async (point: GeoPoint) => {
+    const a = await adresseDuPoint(point);
+    if (a) setNomDepart(a.libelle);
+  }, []);
+
   function onMapLongPress(point: GeoPoint) {
+    setNomDepart(null);
+    void nommerDepart(point);
     setStart(point);
     setStartSource('carte');
     resetResult();
@@ -437,6 +488,47 @@ export default function CreerRouteScreen() {
         </Text>
       </View>
 
+      {/* ── Recherche d'adresse ──────────────────────────────────────────
+          Une route ne se compose plus seulement au doigt. Le résultat choisi
+          devient l'ARRIVÉE : le départ, lui, vient de la position ou d'un appui
+          long, et n'a donc pas besoin d'être cherché.
+          La recherche est biaisée autour du départ — « la poste » veut dire
+          celle d'à côté, pas la première de France. */}
+      {GEOCODAGE_DISPO ? (
+        <View style={s.blocRecherche}>
+          <TextInput
+            value={recherche}
+            onChangeText={setRecherche}
+            onSubmitEditing={lancerRecherche}
+            placeholder="Une adresse, un lieu…"
+            placeholderTextColor={palette.eyebrow}
+            returnKeyType="search"
+            accessibilityLabel="Chercher une adresse ou un lieu pour l’arrivée"
+            style={s.champRecherche}
+          />
+          {cherche ? <Text style={s.noteRecherche}>Recherche…</Text> : null}
+          {/* Liste VIDE et échec ne disent pas la même chose : l'un est une
+              réponse, l'autre une panne. On les formule différemment. */}
+          {!cherche && resultats !== null && resultats.length === 0 ? (
+            <Text style={s.noteRecherche}>Aucun lieu ne correspond.</Text>
+          ) : null}
+          {!cherche && resultats === null && recherche.trim().length > 0 ? (
+            <Text style={s.noteRecherche}>La recherche n’a pas abouti. Réessayez.</Text>
+          ) : null}
+          {(resultats ?? []).map((a) => (
+            <Pressable
+              key={`${a.point.lat},${a.point.lon}`}
+              onPress={() => choisirArrivee(a)}
+              accessibilityRole="button"
+              accessibilityLabel={`Choisir ${a.libelle} comme arrivée`}
+              style={s.ligneResultat}
+            >
+              <Text style={s.texteResultat}>{a.libelle}</Text>
+            </Pressable>
+          ))}
+        </View>
+      ) : null}
+
       {/* Carte (cadre sombre v2). */}
       <View style={s.mapFrame}>
         {/* Les infobulles `title`/`description` des marqueurs natifs
@@ -459,7 +551,9 @@ export default function CreerRouteScreen() {
           <PastilleCarte
             point={start}
             couleur={palette.cream}
-            label={`Départ, ${START_LABEL[startSource]}`}
+            // Le nom résolu prend la place du libellé de repli quand il arrive :
+            // « point choisi » ne dit rien que le pilote puisse vérifier.
+            label={`Départ, ${nomDepart ?? START_LABEL[startSource]}`}
           />
           {pois
             .filter((p) => !etapeIds.has(p.id))
@@ -715,6 +809,32 @@ function LegendItem({ color, label }: { color: string; label: string }) {
 /* ------------------------------------------------------------------ */
 
 const s = StyleSheet.create({
+  // — Recherche d'adresse (géocodage GraphHopper) —
+  blocRecherche: { marginHorizontal: spacing.lg, marginBottom: spacing.md },
+  champRecherche: {
+    fontFamily: fonts.body,
+    fontSize: fontSize.bodyLg,
+    color: palette.cream,
+    backgroundColor: palette.card,
+    borderWidth: 1,
+    borderColor: palette.line,
+    borderRadius: radius.sm,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+  },
+  noteRecherche: {
+    fontFamily: fonts.body,
+    fontSize: fontSize.small,
+    color: palette.creamMute,
+    marginTop: spacing.sm,
+  },
+  ligneResultat: {
+    paddingVertical: spacing.md,
+    borderBottomWidth: 1,
+    borderBottomColor: palette.separator,
+  },
+  texteResultat: { fontFamily: fonts.body, fontSize: fontSize.bodyLg, color: palette.cream },
+
   // — Coquille (portée depuis Screen + AppbBar du kit V1) —
   root: { flex: 1, backgroundColor: colors.bg.base },
   entete: {
