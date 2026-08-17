@@ -53,10 +53,12 @@
  * ici pour arbitrage plutôt qu'exécuté à la volée.
  */
 
-import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
-import { Linking, Platform, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
+import { Linking, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { router } from 'expo-router';
-import MapView, { Marker, PROVIDER_DEFAULT } from 'react-native-maps';
+import { Marker } from '@maplibre/maplibre-react-native';
+
+import { CarteOxv } from '@/features/carte/CarteOxv';
 import { FlashList } from '@shopify/flash-list';
 import { Canvas } from '@shopify/react-native-skia';
 import Animated from 'react-native-reanimated';
@@ -281,8 +283,13 @@ function CarteTab({
   onRetry: () => void;
   onSelect: (item: MapItem) => void;
 }) {
-  const mapRef = useRef<MapView>(null);
+  // La référence de carte a disparu avec la migration : elle n'était utilisée
+  // par rien. `CarteOxv` n'en expose pas, et le jour où un recadrage
+  // programmatique sera nécessaire, il passera par une prop — pas par une
+  // poignée sur le moteur de rendu, qu'on vient précisément de changer.
   const [region, setRegion] = useState<MapRegion>(DEFAULT_REGION);
+  /** Recadrage demandé par un appui sur une ligne. `null` = la carte au doigt. */
+  const [cible, setCible] = useState<MapRegion | null>(null);
 
   const certifiedRoutes = useMemo(() => routes.filter(isCertified), [routes]);
 
@@ -322,10 +329,12 @@ function CarteTab({
 
   const onRowPress = useCallback(
     (item: MapItem) => {
-      mapRef.current?.animateToRegion(
-        { latitude: item.lat, longitude: item.lon, latitudeDelta: 0.15, longitudeDelta: 0.15 },
-        350
-      );
+      setCible({
+        latitude: item.lat,
+        longitude: item.lon,
+        latitudeDelta: 0.15,
+        longitudeDelta: 0.15,
+      });
       onSelect(item);
     },
     [onSelect]
@@ -348,20 +357,11 @@ function CarteTab({
 
   return (
     <View style={styles.carte}>
-      <MapView
-        ref={mapRef}
-        provider={PROVIDER_DEFAULT}
-        style={StyleSheet.absoluteFill}
-        initialRegion={DEFAULT_REGION}
-        onRegionChangeComplete={(r) => setRegion(r)}
-        showsPointsOfInterests={false}
-        showsCompass={false}
-        toolbarEnabled={false}
-        // Style sombre demandé au provider (Apple Maps iOS l'honore ;
-        // repli défaut ailleurs — jamais un plan clair forcé).
-        userInterfaceStyle="dark"
-        onPress={() => undefined}
-      >
+      {/* Le fond n'est plus celui d'Apple ni de Google : il vient de `styleOxv`,
+          écrit à la charte. Plus de `userInterfaceStyle="dark"` demandé poliment
+          au provider et honoré par une plateforme sur deux — le sombre est
+          désormais le nôtre, et il est le même partout. */}
+      <CarteOxv regionInitiale={DEFAULT_REGION} onRegion={setRegion} cible={cible}>
         {allItems.map((item) => (
           <SettledMarker
             key={item.id}
@@ -372,7 +372,7 @@ function CarteTab({
             <MarkerGlyph kind={item.kind} />
           </SettledMarker>
         ))}
-      </MapView>
+      </CarteOxv>
 
       {phase === 'loading' ? (
         <View style={styles.mapLoading}>
@@ -1033,6 +1033,18 @@ function LinkButton({ label, url, primary }: { label: string; url: string; prima
  * Marqueur qui coupe `tracksViewChanges` une fois rasterisé (patron carte-oxv) :
  * le rendu custom apparaît, puis on fige pour la performance.
  */
+/**
+ * Un repère posé sur la carte.
+ *
+ * `tracksViewChanges` a DISPARU avec la migration, et c'est un gain : c'était un
+ * contournement propre à `react-native-maps`, où un marqueur à contenu React se
+ * re-capturait en image à chaque frame tant qu'on ne l'arrêtait pas — d'où ce
+ * délai de 600 ms qui figeait le rendu. MapLibre pose une vraie vue native, il
+ * n'y a plus rien à figer.
+ *
+ * Le nom accessible reste porté par une vue enveloppante : le marqueur est
+ * tappable, et resterait sinon muet pour un lecteur d'écran.
+ */
 function SettledMarker({
   coordinate,
   label,
@@ -1040,25 +1052,15 @@ function SettledMarker({
   children,
 }: {
   coordinate: { latitude: number; longitude: number };
-  /** Nom du repère : le marqueur est tappable et resterait sinon sans nom. */
   label: string;
   onPress: () => void;
   children: ReactNode;
 }) {
-  const [settled, setSettled] = useState(false);
-  useEffect(() => {
-    const t = setTimeout(() => setSettled(true), 600);
-    return () => clearTimeout(t);
-  }, []);
   return (
-    <Marker
-      coordinate={coordinate}
-      anchor={{ x: 0.5, y: 0.5 }}
-      tracksViewChanges={!settled}
-      onPress={onPress}
-      accessibilityLabel={label}
-    >
-      {children}
+    <Marker lngLat={[coordinate.longitude, coordinate.latitude]}>
+      <Pressable onPress={onPress} accessibilityRole="button" accessibilityLabel={label}>
+        {children}
+      </Pressable>
     </Marker>
   );
 }
