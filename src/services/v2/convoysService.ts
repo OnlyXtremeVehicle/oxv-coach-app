@@ -318,6 +318,41 @@ export async function repondre(
   return { ok: true };
 }
 
+/** L'inscription du lecteur sur une journée, et son règlement éventuel par pack. */
+export interface MonInscription {
+  id: string;
+  /** Non nul = cette inscription a DÉJÀ été réglée avec une séance de pack. */
+  heritagePackId: string | null;
+}
+
+/**
+ * L'inscription du lecteur pour une journée, ou `null` s'il n'est pas inscrit.
+ *
+ * La RLS de `registrations` borne déjà la lecture au propriétaire : le filtre
+ * `user_id` n'est pas une sécurité, il évite un aller-retour qui rendrait de
+ * toute façon une liste vide.
+ *
+ * Les inscriptions ANNULÉES sont écartées. Régler une place qu'on a annulée
+ * consommerait un crédit pour rien, et la fonction serveur ne le verrait pas —
+ * elle vérifie l'invitation et le pack, pas le statut de l'inscription.
+ */
+export async function monInscription(sessionId: string): Promise<MonInscription | null> {
+  const { data: auth } = await supabase.auth.getUser();
+  const uid = auth?.user?.id;
+  if (!uid) return null;
+
+  const { data } = await supabase
+    .from('registrations')
+    .select('id, heritage_pack_id, status, cancelled_at')
+    .eq('session_id', sessionId)
+    .eq('user_id', uid)
+    .is('cancelled_at', null)
+    .maybeSingle();
+
+  if (!data) return null;
+  return { id: data.id, heritagePackId: data.heritage_pack_id ?? null };
+}
+
 /**
  * Règle une inscription avec une séance du pack Heritage.
  *

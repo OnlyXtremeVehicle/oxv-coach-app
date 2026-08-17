@@ -43,6 +43,7 @@ import {
   aConvier,
   doitRepondre,
   membresAvecStatut,
+  monStatut,
   peutOrganiser,
   resumeSortie,
   type MembreInvitable,
@@ -63,9 +64,12 @@ import {
   getForSession,
   inviter,
   majSortie,
+  monInscription,
   repondre,
+  utiliserSeanceHeritage,
   type CircuitJournee,
   type Convoy,
+  type MonInscription,
 } from '@/services/v2/convoysService';
 import {
   colors,
@@ -97,6 +101,8 @@ export default function SortieScreen() {
   const [rdvLieu, setRdvLieu] = useState<LieuSortie | null>(null);
   const [propositions, setPropositions] = useState<AdresseTrouvee[] | null>(null);
   const [chercheRdv, setChercheRdv] = useState(false);
+  /** L'inscription du lecteur sur cette journée — le pack s'y adosse. */
+  const [inscription, setInscription] = useState<MonInscription | null>(null);
 
   const recharger = useCallback(() => setCle((k) => k + 1), []);
 
@@ -200,6 +206,25 @@ export default function SortieScreen() {
     };
   }, [sessionId]);
 
+  /**
+   * L'inscription se relit à chaque rechargement — c'est elle qui dit si le
+   * pack a déjà été employé, et cette réponse change juste après le geste.
+   */
+  useEffect(() => {
+    if (!sessionId) return;
+    let annule = false;
+    monInscription(sessionId)
+      .then((i) => {
+        if (!annule) setInscription(i);
+      })
+      .catch(() => {
+        if (!annule) setInscription(null);
+      });
+    return () => {
+      annule = true;
+    };
+  }, [sessionId, cle]);
+
   useEffect(() => {
     if (!capitaine || convoi === null) return;
     let annule = false;
@@ -231,6 +256,36 @@ export default function SortieScreen() {
       : null,
     circuit: circuit ? { nom: circuit.nom, point: { lat: circuit.lat, lon: circuit.lon } } : null,
   });
+
+  /**
+   * Règle sa place avec une séance du pack.
+   *
+   * TOUT est revérifié côté serveur — appartenance de l'inscription, invitation
+   * par l'écurie, validité du pack, crédit restant, double consommation. Ce
+   * bouton ne fait que proposer le geste à qui a des chances de le voir aboutir :
+   * un pilote convié, inscrit, et dont la place n'est pas déjà réglée.
+   */
+  async function reglerAvecPack() {
+    if (!inscription || occupe) return;
+    setOccupe(true);
+    const res = await utiliserSeanceHeritage(inscription.id);
+    setOccupe(false);
+    if (!res.ok) {
+      Toast.show({ type: 'error', text1: res.error ?? 'La séance n’a pas pu être décomptée.' });
+      return;
+    }
+    Toast.show({
+      type: 'success',
+      text1: 'Séance décomptée',
+      // Le solde vient du SERVEUR, jamais d'un calcul local : lui seul connaît
+      // l'état du pack après les appels concurrents qu'il vient de sérialiser.
+      text2:
+        typeof res.seancesRestantes === 'number'
+          ? `Il vous reste ${res.seancesRestantes} séance${res.seancesRestantes > 1 ? 's' : ''} sur votre pack.`
+          : undefined,
+    });
+    recharger();
+  }
 
   async function chercherRdv() {
     const refus = validerRecherche(rdvTexte);
@@ -388,6 +443,43 @@ export default function SortieScreen() {
                   >
                     <Text style={s.boutonTexteSobre}>Je ne viens pas</Text>
                   </Pressable>
+                </View>
+              ) : null}
+
+              {/* ── LE PACK HERITAGE ─────────────────────────────────────
+                  Proposé, jamais imposé — et seulement à qui a des chances de
+                  le voir aboutir : convié par son écurie, inscrit, et pas déjà
+                  réglé. Le serveur revérifie tout, ce bloc n'est qu'une porte.
+
+                  Une place DÉJÀ réglée le dit plutôt que de disparaître : le
+                  bouton qui s'évapore laisse croire à un raté. */}
+              {monStatut(convoi, userId) === 'present' && inscription !== null ? (
+                <View style={s.bloc}>
+                  <SectionHeader eyebrow="VOTRE PLACE" />
+                  {inscription.heritagePackId !== null ? (
+                    <Text style={s.corps}>
+                      Cette journée est réglée avec une séance de votre pack Heritage.
+                    </Text>
+                  ) : (
+                    <>
+                      <Text style={s.corps}>
+                        Votre écurie vous a convié : vous pouvez régler cette journée avec une
+                        séance de votre pack Heritage.
+                      </Text>
+                      <Pressable
+                        onPress={reglerAvecPack}
+                        disabled={occupe}
+                        accessibilityRole="button"
+                        accessibilityState={{ disabled: occupe }}
+                        accessibilityLabel="Régler cette journée avec une séance de votre pack Heritage"
+                        style={s.bouton}
+                      >
+                        <Text style={s.boutonTexte}>
+                          {occupe ? 'Un instant…' : 'Utiliser une séance du pack'}
+                        </Text>
+                      </Pressable>
+                    </>
+                  )}
                 </View>
               ) : null}
 
