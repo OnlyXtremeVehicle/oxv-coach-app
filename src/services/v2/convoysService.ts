@@ -13,9 +13,19 @@
 
 import { supabase } from '@/lib/supabase';
 
+/**
+ * `invite` = convié par le capitaine, pas encore répondu. `present` = a rejoint,
+ * de lui-même ou après invitation. `decline` = a décliné.
+ *
+ * Le défaut en base est `present` et NON `invite` : une ligne créée par
+ * `join()` est un pilote qui a rejoint de son propre chef.
+ */
+export type StatutParticipant = 'invite' | 'present' | 'decline';
+
 export interface ConvoyParticipant {
   userId: string;
   joinedAt: string;
+  statut: StatutParticipant;
 }
 
 export interface Convoy {
@@ -23,6 +33,10 @@ export interface Convoy {
   sessionId: string;
   routeId: string | null;
   createdBy: string;
+  /** Écurie qui sort. `null` = convoi libre — le cas qui existait avant. */
+  crewId: string | null;
+  /** Restaurant choisi par le capitaine. Devient une étape du tracé. */
+  restaurantId: string | null;
   meetingPoint: string | null;
   rdvAt: string | null;
   createdAt: string;
@@ -32,6 +46,12 @@ export interface Convoy {
 export interface CreateConvoyInput {
   sessionId: string;
   routeId?: string | null;
+  /**
+   * Rattache la sortie à une écurie. La RLS n'accepte que le CAPITAINE de cette
+   * écurie — et par une politique RESTRICTIVE, donc réellement contraignante.
+   */
+  crewId?: string | null;
+  restaurantId?: string | null;
   meetingPoint?: string | null;
   rdvAt?: string | null;
 }
@@ -59,7 +79,7 @@ export async function getForSession(sessionId: string): Promise<Convoy[]> {
   const { data, error } = await supabase
     .from('convoys')
     .select(
-      'id, session_id, route_id, created_by, meeting_point, rdv_at, created_at, convoy_participants(user_id, joined_at)'
+      'id, session_id, route_id, crew_id, restaurant_id, created_by, meeting_point, rdv_at, created_at, convoy_participants(user_id, joined_at, status)'
     )
     .eq('session_id', sessionId)
     .order('created_at', { ascending: true });
@@ -71,11 +91,17 @@ export async function getForSession(sessionId: string): Promise<Convoy[]> {
       id: r.id,
       sessionId: r.session_id,
       routeId: r.route_id ?? null,
+      crewId: r.crew_id ?? null,
+      restaurantId: r.restaurant_id ?? null,
       createdBy: r.created_by,
       meetingPoint: r.meeting_point ?? null,
       rdvAt: r.rdv_at ?? null,
       createdAt: r.created_at,
-      participants: participants.map((p) => ({ userId: p.user_id, joinedAt: p.joined_at })),
+      participants: participants.map((p) => ({
+        userId: p.user_id,
+        joinedAt: p.joined_at,
+        statut: p.status,
+      })),
     };
   });
 }
@@ -97,6 +123,8 @@ export async function create(
       session_id: input.sessionId,
       created_by: uid,
       route_id: input.routeId ?? null,
+      crew_id: input.crewId ?? null,
+      restaurant_id: input.restaurantId ?? null,
       meeting_point: input.meetingPoint?.trim() ? input.meetingPoint.trim() : null,
       rdv_at: input.rdvAt ?? null,
     })
@@ -145,4 +173,112 @@ export async function leave(convoyId: string): Promise<{ ok: boolean; error?: st
   if (error)
     return { ok: false, error: isRlsDenial(error.message) ? ACCESS_DENIED_FR : error.message };
   return { ok: true };
+}
+
+const INVITE_REFUSE_FR = 'Seul le capitaine peut inviter, et seulement les membres de son écurie.';
+
+/**
+ * Invite des membres de l'écurie sur une sortie.
+ *
+ * La RLS fait tout le travail (`convoy_participants_invite_capitaine`) : le
+ * convoi doit porter une écurie, l'appelant doit en être le capitaine, et chaque
+ * invité doit en être membre. Rien de tout cela n'est revérifié ici — dupliquer
+ * une règle de sécurité, c'est se donner deux vérités qui divergeront.
+ *
+ * `ignoreDuplicates` rend l'appel IDEMPOTENT, et le choix n'est pas anodin : un
+ * `upsert` ordinaire écraserait le `status` d'un pilote qui a déjà répondu.
+ * Réinviter quelqu'un qui a décliné ne doit pas effacer sa réponse.
+ */
+export async function inviter(
+  convoyId: string,
+  userIds: readonly string[]
+): Promise<{ ok: boolean; error?: string; invites?: number }> {
+  const { data: auth } = await supabase.auth.getUser();
+  const uid = auth?.user?.id;
+  if (!uid) return { ok: false, error: 'Vous devez être connecté.' };
+  if (userIds.length === 0) return { ok: true, invites: 0 };
+
+  const { data, error } = await supabase
+    .from('convoy_participants')
+    .upsert(
+      userIds.map((userId) => ({
+        convoy_id: convoyId,
+        user_id: userId,
+        status: 'invite' as const,
+        invited_by: uid,
+      })),
+      { onConflict: 'convoy_id,user_id', ignoreDuplicates: true }
+    )
+    .select('user_id');
+  if (error)
+    return { ok: false, error: isRlsDenial(error.message) ? INVITE_REFUSE_FR : error.message };
+  return { ok: true, invites: (data ?? []).length };
+}
+
+/**
+ * Répond à une invitation — pour soi, et pour personne d'autre
+ * (`convoy_participants_repond_pour_soi`).
+ *
+ * `responded_at` est posé ici plutôt que par un déclencheur : la date de réponse
+ * n'a de sens que pour ce geste, et un déclencheur l'écrirait aussi lors d'une
+ * mise à jour technique.
+ */
+export async function repondre(
+  convoyId: string,
+  statut: Extract<StatutParticipant, 'present' | 'decline'>
+): Promise<{ ok: boolean; error?: string }> {
+  const { data: auth } = await supabase.auth.getUser();
+  const uid = auth?.user?.id;
+  if (!uid) return { ok: false, error: 'Vous devez être connecté.' };
+
+  const { error } = await supabase
+    .from('convoy_participants')
+    .update({ status: statut, responded_at: new Date().toISOString() })
+    .eq('convoy_id', convoyId)
+    .eq('user_id', uid);
+  if (error)
+    return { ok: false, error: isRlsDenial(error.message) ? ACCESS_DENIED_FR : error.message };
+  return { ok: true };
+}
+
+/**
+ * Règle une inscription avec une séance du pack Heritage.
+ *
+ * TOUT SE DÉCIDE CÔTÉ SERVEUR. `oxv_use_heritage_session` vérifie que
+ * l'inscription est bien celle de l'appelant, qu'il a été invité par son écurie
+ * sur cette journée, que le pack est actif et dans sa fenêtre de validité, qu'il
+ * lui reste un crédit, et que cette inscription n'en a pas déjà consommé un —
+ * puis verrouille la ligne du pack le temps de décrémenter.
+ *
+ * Ce service ne fait que traduire les codes en français. Recalculer le solde ici
+ * pour « éviter un aller-retour » rouvrirait exactement la course que le verrou
+ * serveur ferme : deux inscriptions simultanées sur le dernier crédit.
+ */
+const MOTIFS_PACK: Record<string, string> = {
+  inscription_introuvable: 'Cette inscription est introuvable.',
+  non_autorise: 'Cette inscription n’est pas la vôtre.',
+  pas_invite_par_ecurie:
+    'Une séance du pack se règle sur une sortie d’écurie à laquelle vous avez été invité.',
+  aucun_pack_utilisable: 'Vous n’avez aucune séance disponible sur un pack en cours de validité.',
+  deja_consomme: 'Cette inscription a déjà été réglée avec une séance de votre pack.',
+};
+
+export async function utiliserSeanceHeritage(
+  registrationId: string
+): Promise<{ ok: boolean; error?: string; seancesRestantes?: number }> {
+  const { data, error } = await supabase.rpc('oxv_use_heritage_session', {
+    p_registration_id: registrationId,
+  });
+  if (error) return { ok: false, error: error.message };
+
+  const obj = (data ?? {}) as { ok?: unknown; error?: unknown; sessions_restantes?: unknown };
+  if (obj.ok === true) {
+    return {
+      ok: true,
+      seancesRestantes:
+        typeof obj.sessions_restantes === 'number' ? obj.sessions_restantes : undefined,
+    };
+  }
+  const code = typeof obj.error === 'string' ? obj.error : '';
+  return { ok: false, error: MOTIFS_PACK[code] ?? 'Cette séance n’a pas pu être décomptée.' };
 }
