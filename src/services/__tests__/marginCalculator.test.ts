@@ -7,6 +7,7 @@
  */
 
 import { computeMargin, isMarginResolved } from '../marginCalculator';
+import type { Lap, TelemetrySession } from '@/types/telemetry';
 
 /**
  * UN VÉHICULE CARACTÉRISÉ, EXPLICITE.
@@ -17,7 +18,6 @@ import { computeMargin, isMarginResolved } from '../marginCalculator';
  * s'appliquait aux vraies séances sans qu'aucune donnée le soutienne.
  */
 const VEHICULE = { maxGLateral: 1.0 } as const;
-import type { Lap, TelemetrySession } from '@/types/telemetry';
 
 function lap(overrides: Partial<Lap> = {}): Lap {
   return {
@@ -184,9 +184,7 @@ describe('computeMargin', () => {
     });
     expect(out.marginVehicle).toBe(50);
     expect(out.base).toBe('complete');
-    expect(out.marginGlobal).toBe(
-      Math.round(0.4 * 50 + 0.6 * (out.marginPilot as number))
-    );
+    expect(out.marginGlobal).toBe(Math.round(0.4 * 50 + 0.6 * (out.marginPilot as number)));
   });
 });
 

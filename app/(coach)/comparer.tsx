@@ -55,7 +55,7 @@ const { palette, dataColors, spacing } = theme;
 // Étiquettes de série (convention verrouillée « A or / B bleu ; aucun gagnant »).
 const SERIES_A = palette.gold; // #FFB703 — étiquette de la colonne A (pas un record)
 const SERIES_B = dataColors.trajectory; // #4F9DF7 — étiquette de la colonne B
-const REGUL = dataColors.regularity; // #A783F2 — couleur QDI fixe de la régularité
+const REGUL = dataColors.regularity; // #66E4F3 — couleur QDI fixe de la régularité
 
 export default function CoachComparerScreen() {
   const params = useLocalSearchParams<{

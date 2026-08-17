@@ -17,6 +17,8 @@
  *   (patron Airbnb) — seule exception autorisée à la règle anti-dégradé.
  */
 
+import { dataColors } from '../../theme/v2';
+
 export const colors = {
   /**
    * `card2` VALAIT `#232630` JUSQU'AU 13/08/2026 — et il tenait le plancher de
@@ -62,12 +64,42 @@ export const colors = {
    */
   text: { hi: '#E8E9ED', mid: '#A9ADBB', low: '#9195A3', dim: '#787C8A' },
   heritage: { gold: '#C4A459', text: '#E8DCB8', glow: 'rgba(196,164,89,0.30)' },
+  /**
+   * LES CINQ BRANCHES AVAIENT DEUX JEUX DE COULEURS, ET LES DEUX ÉTAIENT VIVANTS.
+   *
+   * Jusqu'au 17/08/2026, ce baril définissait ses propres hex — différents de
+   * `dataColors` dans `src/theme/v2.ts`, qui est le système V3 adopté (125
+   * fichiers contre 10). La même branche portait donc deux teintes selon
+   * l'écran qui l'affichait :
+   *
+   *   Trajectoire   #60A5FA ici / #4F9DF7 là
+   *   Freinage      #E63946 ici / #F65B5B là
+   *   Accélération  #4ADE80 ici / #4FC98A là
+   *   Régularité    #C084FC ici / #A783F2 là
+   *   Fluidité      #FFB703 ici / #F2CE3B là   ← le plus grave
+   *
+   * `#FFB703` EST L'OR DU CHRONO. `palette.gold`, dans `theme/v2.ts`, le
+   * réserve explicitement au CHRONO / RECORD / RYTHME et lui interdit d'être
+   * une donnée QDI. Sur les écrans Miroir et Saison, la Fluidité portait donc
+   * la couleur du chrono : la règle était écrite dans le dépôt et violée par
+   * le dépôt.
+   *
+   * La migration « jusqu'à la bascule V2-L6 » annoncée en tête de ce fichier
+   * n'a jamais eu lieu. Elle a lieu ici, pour la couleur des données : une
+   * seule source, `dataColors`. Les clés françaises sont conservées — dix
+   * fichiers les emploient, et les renommer serait un second chantier.
+   *
+   * Conséquence à connaître : le freinage passe de `#E63946` (3,78 sur le pire
+   * fond — sous AA) à `#F65B5B` (4,92 — au-dessus). `couleurTexteSure` cesse
+   * donc de le remplacer par le gris fort, et le rouge de donnée s'affiche
+   * désormais en toutes lettres là où un gris tenait sa place.
+   */
   qdi: {
-    trajectoire: '#60A5FA',
-    fluidite: '#FFB703',
-    freinage: '#E63946',
-    acceleration: '#4ADE80',
-    regularite: '#C084FC',
+    trajectoire: dataColors.trajectory,
+    fluidite: dataColors.flow,
+    freinage: dataColors.brake,
+    acceleration: dataColors.accel,
+    regularite: dataColors.regularity,
   },
 } as const;
 

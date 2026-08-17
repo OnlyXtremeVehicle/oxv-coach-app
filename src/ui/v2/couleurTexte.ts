@@ -6,18 +6,27 @@
  * ===========================================================================
  *
  * Les cinq teintes QDI sont faites pour des remplissages et des traits. Sur du
- * texte, elles doivent tenir un contraste — et une seule échoue :
+ * texte, elles doivent tenir un contraste — et depuis le 17/08/2026, toutes le
+ * tiennent :
  *
  * | branche      | bg.base | bg.card | bg.card2 |
  * |--------------|--------:|--------:|---------:|
- * | trajectoire  |    7,17 |    6,62 |     6,19 |
- * | fluidité     |   10,44 |    9,64 |     9,02 |
- * | **freinage** | **4,37**| **4,04**| **3,78** |
- * | accélération |   10,46 |    9,66 |     9,04 |
- * | régularité   |    6,90 |    6,37 |     5,96 |
+ * | trajectoire  |    6,51 |    6,01 |     5,62 |
+ * | freinage     |    5,70 |    5,26 |     4,92 |
+ * | accélération |    8,73 |    8,06 |     7,54 |
+ * | fluidité     |   11,86 |   10,95 |    10,25 |
+ * | régularité   |   12,12 |   11,18 |    10,46 |
  *
- * `#E63946` passe sous 4,5:1 sur les TROIS fonds, et sous 4:1 sur deux d'entre
- * eux. Mesuré le 14/08/2026, et déjà relevé dans l'état des lieux du 26/07.
+ * LE TABLEAU PRÉCÉDENT MESURAIT UNE AUTRE PALETTE. Jusqu'au 17/08, ce baril
+ * portait ses propres hex, distincts de `dataColors` : le freinage y valait
+ * `#E63946` et tombait à **3,78** sur `bg.card2` — sous 4,5:1 sur les trois
+ * fonds, sous 4:1 sur deux d'entre eux. L'unification des paliers QDI sur
+ * `src/theme/v2.ts` lui donne `#F65B5B`, et la régularité passe du violet
+ * `#A783F2` au cyan `#66E4F3` (elle était indiscernable du bleu trajectoire
+ * pour un daltonien : ΔE 4,9).
+ *
+ * Aucune branche n'échoue donc plus. Ce module n'en devient pas inutile — voir
+ * la section suivante, qui est la raison pour laquelle il a été écrit ainsi.
  *
  * ===========================================================================
  * POURQUOI UNE FONCTION PLUTÔT QU'UNE EXCEPTION ÉCRITE À LA MAIN
@@ -34,9 +43,15 @@
  * CE QUI EST PERDU, ET CE QUI NE L'EST PAS
  * ===========================================================================
  *
- * Le chiffre du freinage cesse d'être rouge. L'association à sa branche n'est
- * pas perdue pour autant : elle vit sur la barre, le point ou le trait juste à
- * côté — c'est-à-dire là où la doctrine la voulait depuis le début.
+ * Cette section décrivait ce que coûtait le repli du freinage : son chiffre
+ * cessait d'être rouge, et l'association à sa branche ne survivait que sur la
+ * barre ou le trait d'à côté. Ce coût n'est plus payé — `#F65B5B` passe, donc
+ * le chiffre du freinage est rouge à nouveau.
+ *
+ * Ce qui reste vrai, et qui est la seule raison de garder ce module : le
+ * verdict est CALCULÉ. Le jour où une teinte ou un fond bougera — et les deux
+ * ont bougé, le 13/08 puis le 17/08 —, le repli reviendra de lui-même sur la
+ * branche concernée, sans qu'aucune liste n'ait à être tenue à jour.
  */
 
 import { colors } from './tokens';

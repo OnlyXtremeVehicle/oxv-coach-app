@@ -63,14 +63,21 @@ describe('rampe des seaux d’écart', () => {
 
   /**
    * Une rampe qui change de teinte se lit comme deux catégories. On tient donc
-   * la famille violette d'un bout à l'autre : bleu au-dessus du rouge,
-   * lui-même au-dessus du vert.
+   * la famille CYAN d'un bout à l'autre : bleu au moins à hauteur du vert,
+   * l'un comme l'autre au-dessus du rouge.
+   *
+   * CE TEST DISAIT « FAMILLE VIOLETTE » JUSQU'AU 17/08/2026, et il avait raison
+   * de le dire : `qdi.regularite` valait alors `#A783F2`. La régularité est
+   * passée au cyan parce qu'à ΔE 4,9 sous deutéranopie, ce violet et le bleu
+   * trajectoire étaient la même couleur. La borne lointaine a suivi — un gris
+   * violet sous un proche cyan aurait fait basculer la teinte en cours de
+   * rampe, ce que l'assertion ci-dessous interdit précisément.
    */
-  it('la teinte reste dans la famille violette sur toute la rampe', () => {
+  it('la teinte reste dans la famille cyan sur toute la rampe', () => {
     for (const hex of CINQ) {
       const [r, v, b] = canaux(hex);
-      expect(b).toBeGreaterThan(r);
-      expect(r).toBeGreaterThan(v);
+      expect(b).toBeGreaterThanOrEqual(v);
+      expect(v).toBeGreaterThan(r);
     }
   });
 

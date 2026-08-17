@@ -32,6 +32,7 @@ import { fetchSessionCircuitCenterline } from '@/services/circuitsService';
 import { getQdiForSession } from '@/services/qdiService';
 import { listSessionMedia, type SessionMediaItem } from '@/services/sessionMediaService';
 import { supabase } from '@/lib/supabase';
+import { dataColors } from '@/theme/v2';
 import { formatDateLong, formatLapTimeMs } from '@/utils/format';
 
 export { planHeritageBook } from '@/features/club/heritageBookLogic';
@@ -62,12 +63,24 @@ const INK = '#EDEBE4';
 const INK_MUTE = 'rgba(237,235,228,0.55)';
 const INK_DIM = 'rgba(237,235,228,0.32)';
 
+/**
+ * TROISIÈME COPIE DE LA PALETTE QDI, ÉLIMINÉE LE 17/08/2026.
+ *
+ * Ces cinq hex étaient figés à la main, avec le motif « pas d'import RN dans un
+ * service ». Le motif ne tient pas : `src/theme/v2.ts` ne dépend de rien — ni
+ * `react-native`, ni hook, ni contexte —, c'est écrit en tête du module et
+ * vérifié par `themeSansRuntime.test.ts`. Rien n'empêchait de l'importer.
+ *
+ * Le livret Heritage peignait donc la Fluidité en `#FFB703`, l'or réservé au
+ * chrono, et la Régularité en `#C084FC` quand l'app affichait `#A783F2`. Un
+ * export PDF remis au pilote ne montrait pas les couleurs de son application.
+ */
 const PILLAR_COLORS: Record<string, string> = {
-  trajectoire: '#60A5FA',
-  freinage: '#E63946',
-  acceleration: '#4ADE80',
-  fluidite: '#FFB703',
-  regularite: '#C084FC',
+  trajectoire: dataColors.trajectory,
+  freinage: dataColors.brake,
+  acceleration: dataColors.accel,
+  fluidite: dataColors.flow,
+  regularite: dataColors.regularity,
 };
 
 interface SeasonSessionRow {

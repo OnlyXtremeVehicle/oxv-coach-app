@@ -31,7 +31,7 @@
  * LA COULEUR LOINTAINE N'EST PAS CHOISIE À L'ŒIL
  * ===========================================================================
  *
- * Elle tient dans la famille violette (B > R > G) : la rampe fait descendre le
+ * Elle tient dans la famille cyan (B ≥ V > R) : la rampe fait descendre le
  * chroma et la luminance, jamais la teinte. Une rampe qui change de teinte se
  * lit comme deux catégories, pas comme un continuum.
  *
@@ -51,8 +51,21 @@ import { colors } from '@/ui/v2/tokens';
 /** Seau le plus proche du tour de référence — teinte QDI pleine. */
 export const ECART_PROCHE = colors.qdi.regularite;
 
-/** Seau le plus lointain — même famille, chroma et luminance retirés. */
-export const ECART_LOINTAIN = '#7A7488';
+/**
+ * Seau le plus lointain — même famille, chroma et luminance retirés.
+ *
+ * VALAIT `#7A7488` JUSQU'AU 17/08/2026, un gris VIOLET — la famille du proche
+ * quand `qdi.regularite` était `#A783F2`. La régularité étant passée au cyan
+ * `#66E4F3` (elle était indiscernable du bleu trajectoire pour un daltonien),
+ * ce gris violet aurait fait de la rampe un dégradé cyan → violet : exactement
+ * le changement de teinte que ce module s'interdit deux paragraphes plus haut,
+ * et qui se lit comme deux catégories au lieu d'un continuum.
+ *
+ * `#73898C` est le même retrait, dans la nouvelle famille : teinte 187°
+ * conservée, chroma tombé de 141 à 25 d'étendue, et 4,56:1 contre `bg.card` —
+ * au-dessus du plancher de 3:1, qui reste mesuré par le test voisin.
+ */
+export const ECART_LOINTAIN = '#73898C';
 
 /**
  * La rampe elle-même. `null` est impossible avec deux littéraux valides — et

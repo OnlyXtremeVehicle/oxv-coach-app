@@ -57,7 +57,38 @@ export const dataColors = {
   brake: '#F65B5B', // Freinage — rouge
   accel: '#4FC98A', // Accélération — vert
   flow: '#F2CE3B', // Fluidité — jaune (texte sur fond clair : goldText/#B58F00)
-  regularity: '#A783F2', // Régularité — violet (barres inactives #3A2E52)
+  /**
+   * LE VIOLET ET LE BLEU ÉTAIENT LA MÊME COULEUR POUR UN PILOTE SUR DOUZE.
+   *
+   * `regularity` VALAIT `#A783F2` JUSQU'AU 17/08/2026. Simulation Machado 2009
+   * (sévérité 1,0) puis écart perçu ΔE CIE76 entre les cinq branches, deux à
+   * deux, sous deutéranopie et protanopie :
+   *
+   *   Trajectoire / Régularité   ΔE = 4,9 (deuter.) — 6,4 (protan.)
+   *
+   * Sous 12, deux teintes catégorielles ne se distinguent plus. À 4,9, le bleu
+   * trajectoire et le violet régularité sont LA MÊME COULEUR — sur le radar QDI,
+   * les barres, les points de piste, partout où les deux branches coexistent.
+   * Environ 8 % des hommes sont concernés.
+   *
+   * Contrôle fait au passage : Freinage / Accélération, la paire rouge/vert
+   * qu'on soupçonne d'instinct, mesure ΔE 21,4 et 25,6 — elle tient. Le problème
+   * n'était pas là, et la convention métier (freinage rouge, accélération verte,
+   * comme MoTeC et la F1) est conservée.
+   *
+   * `#66E4F3` a été retenu par balayage de l'espace HSL sous contrainte : écart
+   * mini vs les quatre autres branches ≥ 5,0:1 de contraste sur le pire des
+   * trois fonds, et ≥ 25 de ΔE vs les couleurs réservées (rouge de marque,
+   * or chrono, or Heritage). Il mesure **ΔE mini 40,4** toutes visions
+   * confondues — normale, deutéranope, protanope — contre 4,9 auparavant, et
+   * 10,50 de contraste (contre 5,38).
+   *
+   * Le violet n'a pas disparu du produit : il reste la teinte de NAVIGATION
+   * (`app/(coach)/index.tsx`, catégorie « hôtels » de `carteIdentity`). Ces
+   * emplois ne sont pas QDI, et le fait qu'ils ne partagent plus la teinte
+   * d'une branche de donnée est un gain, pas une perte.
+   */
+  regularity: '#66E4F3', // Régularité — cyan
 } as const;
 
 // Rampe de chaleur VITESSE : UNE teinte (bleu instrument), sombre → clair,
