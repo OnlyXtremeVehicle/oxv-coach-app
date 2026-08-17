@@ -32,7 +32,7 @@
  */
 
 import { useCallback, useEffect, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import Toast from 'react-native-toast-message';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -49,10 +49,22 @@ import {
 } from '@/features/club/sortieLogic';
 import { useEcurie } from '@/features/club/useEcurie';
 import {
+  messageRefus,
+  planifierTrajet,
+  resumeTrajet,
+  type LieuSortie,
+} from '@/features/club/sortieTrajetLogic';
+import { chercherAdresse } from '@/services/routing/geocodeService';
+import { validerRecherche, type AdresseTrouvee } from '@/services/routing/geocodeLogic';
+import { fetchRestaurantsSortie, type RestaurantSortie } from '@/services/placesService';
+import {
+  circuitDeLaSession,
   create,
   getForSession,
   inviter,
+  majSortie,
   repondre,
+  type CircuitJournee,
   type Convoy,
 } from '@/services/v2/convoysService';
 import {
@@ -77,6 +89,14 @@ export default function SortieScreen() {
   const [erreur, setErreur] = useState(false);
   const [occupe, setOccupe] = useState(false);
   const [cle, setCle] = useState(0);
+
+  // ── Le trajet : rendez-vous, étape restaurant, circuit ───────────────────
+  const [circuit, setCircuit] = useState<CircuitJournee | null>(null);
+  const [restaurants, setRestaurants] = useState<RestaurantSortie[]>([]);
+  const [rdvTexte, setRdvTexte] = useState('');
+  const [rdvLieu, setRdvLieu] = useState<LieuSortie | null>(null);
+  const [propositions, setPropositions] = useState<AdresseTrouvee[] | null>(null);
+  const [chercheRdv, setChercheRdv] = useState(false);
 
   const recharger = useCallback(() => setCle((k) => k + 1), []);
 
@@ -156,6 +176,102 @@ export default function SortieScreen() {
   }
 
   const restants = aConvier(membres).length;
+
+  /**
+   * Le circuit et les restaurants se chargent une fois la sortie connue.
+   *
+   * Ces deux lectures ne peuvent pas faire échouer l'écran : sans circuit, le
+   * trajet DIT ce qui manque ; sans restaurant, la sortie se tient très bien.
+   * Un `catch` qui remet une valeur neutre vaut mieux qu'une page en erreur
+   * pour une commodité.
+   */
+  useEffect(() => {
+    if (!sessionId) return;
+    let annule = false;
+    circuitDeLaSession(sessionId)
+      .then((c) => {
+        if (!annule) setCircuit(c);
+      })
+      .catch(() => {
+        if (!annule) setCircuit(null);
+      });
+    return () => {
+      annule = true;
+    };
+  }, [sessionId]);
+
+  useEffect(() => {
+    if (!capitaine || convoi === null) return;
+    let annule = false;
+    fetchRestaurantsSortie(circuit?.id ?? null)
+      .then((r) => {
+        if (!annule) setRestaurants(r);
+      })
+      .catch(() => {
+        if (!annule) setRestaurants([]);
+      });
+    return () => {
+      annule = true;
+    };
+  }, [capitaine, convoi, circuit?.id]);
+
+  /**
+   * Le trajet se recompose à chaque changement — il n'est jamais stocké tel
+   * quel. Le stocker obligerait à l'invalider quand le rendez-vous bouge, et
+   * c'est exactement le genre d'oubli qui affiche un trajet périmé.
+   */
+  const restaurantChoisi = restaurants.find((r) => r.id === convoi?.restaurantId) ?? null;
+  const plan = planifierTrajet({
+    rendezVous: rdvLieu,
+    restaurant: restaurantChoisi
+      ? {
+          nom: restaurantChoisi.name,
+          point: { lat: restaurantChoisi.lat, lon: restaurantChoisi.lon },
+        }
+      : null,
+    circuit: circuit ? { nom: circuit.nom, point: { lat: circuit.lat, lon: circuit.lon } } : null,
+  });
+
+  async function chercherRdv() {
+    const refus = validerRecherche(rdvTexte);
+    if (refus) {
+      Toast.show({ type: 'error', text1: refus });
+      return;
+    }
+    setChercheRdv(true);
+    // Biaisé autour du circuit : un rendez-vous d'écurie est près de la piste.
+    const r = await chercherAdresse(
+      rdvTexte,
+      circuit ? { lat: circuit.lat, lon: circuit.lon } : undefined
+    );
+    setChercheRdv(false);
+    setPropositions(r);
+  }
+
+  async function poserRdv(a: AdresseTrouvee) {
+    if (!convoi) return;
+    setPropositions(null);
+    setRdvTexte('');
+    setRdvLieu({ nom: a.nom, point: a.point });
+    // Le libellé COMPLET part en base, pas le nom seul : un invité doit pouvoir
+    // retrouver le lieu sans connaître la région.
+    const res = await majSortie(convoi.id, { meetingPoint: a.libelle });
+    if (!res.ok)
+      Toast.show({ type: 'error', text1: res.error ?? 'Le rendez-vous n’a pas été posé.' });
+    else recharger();
+  }
+
+  async function choisirRestaurant(r: RestaurantSortie) {
+    if (!convoi) return;
+    setOccupe(true);
+    // Retoucher le restaurant retenu le retire — même geste, deux sens.
+    const suivant = convoi.restaurantId === r.id ? null : r.id;
+    const res = await majSortie(convoi.id, { restaurantId: suivant });
+    setOccupe(false);
+    if (!res.ok)
+      Toast.show({ type: 'error', text1: res.error ?? 'L’étape n’a pas été enregistrée.' });
+    else recharger();
+  }
 
   return (
     <Animated.View style={[s.root, door]}>
@@ -275,6 +391,88 @@ export default function SortieScreen() {
                 </View>
               ) : null}
 
+              {/* ── LE TRAJET ────────────────────────────────────────────
+                  Rendez-vous → étape à table → circuit. Aucune durée, aucune
+                  distance : l'écurie lit un chemin, pas une performance. */}
+              {convoi !== null ? (
+                <View style={s.bloc}>
+                  <SectionHeader eyebrow="LE TRAJET" />
+
+                  {plan.ok ? (
+                    <Text style={s.trajet}>{resumeTrajet(plan.etapes)}</Text>
+                  ) : (
+                    <Text style={s.corps}>{messageRefus(plan.refus)}</Text>
+                  )}
+
+                  {convoi.meetingPoint ? (
+                    <Text style={s.sousTitre}>Rendez-vous : {convoi.meetingPoint}</Text>
+                  ) : null}
+
+                  {/* Le rendez-vous par ADRESSE — capitaine seul. `meeting_point`
+                      était un texte libre ; il devient un lieu réel. */}
+                  {capitaine ? (
+                    <>
+                      <TextInput
+                        value={rdvTexte}
+                        onChangeText={setRdvTexte}
+                        onSubmitEditing={chercherRdv}
+                        placeholder="Point de rendez-vous — une adresse, un lieu…"
+                        placeholderTextColor={colors.text.dim}
+                        returnKeyType="search"
+                        accessibilityLabel="Chercher le point de rendez-vous de votre écurie"
+                        style={s.champ}
+                      />
+                      {chercheRdv ? <Text style={s.note}>Recherche…</Text> : null}
+                      {!chercheRdv && propositions !== null && propositions.length === 0 ? (
+                        <Text style={s.note}>Aucun lieu ne correspond.</Text>
+                      ) : null}
+                      {(propositions ?? []).map((a) => (
+                        <Pressable
+                          key={`${a.point.lat},${a.point.lon}`}
+                          onPress={() => poserRdv(a)}
+                          accessibilityRole="button"
+                          accessibilityLabel={`Poser le rendez-vous à ${a.libelle}`}
+                          style={s.ligne}
+                        >
+                          <Text style={s.ligneNom}>{a.libelle}</Text>
+                        </Pressable>
+                      ))}
+                    </>
+                  ) : null}
+
+                  {/* L'étape à table. Les restaurants sans coordonnées ne sont
+                      pas proposés : ils ne changeraient rien au tracé. */}
+                  {capitaine && restaurants.length > 0 ? (
+                    <>
+                      <Text style={s.note}>Une étape à table, en chemin</Text>
+                      {restaurants.map((r) => (
+                        <Pressable
+                          key={r.id}
+                          onPress={() => choisirRestaurant(r)}
+                          disabled={occupe}
+                          accessibilityRole="button"
+                          accessibilityState={{
+                            selected: convoi.restaurantId === r.id,
+                            disabled: occupe,
+                          }}
+                          accessibilityLabel={
+                            convoi.restaurantId === r.id
+                              ? `${r.name} — étape retenue, appuyez pour la retirer`
+                              : `${r.name}${r.city ? `, ${r.city}` : ''} — retenir comme étape`
+                          }
+                          style={s.ligne}
+                        >
+                          <Text style={s.ligneNom}>{r.name}</Text>
+                          <Text style={s.ligneEtat}>
+                            {convoi.restaurantId === r.id ? 'retenue' : (r.city ?? '')}
+                          </Text>
+                        </Pressable>
+                      ))}
+                    </>
+                  ) : null}
+                </View>
+              ) : null}
+
               {convoi !== null ? (
                 <View style={s.bloc}>
                   <SectionHeader eyebrow="LES PILOTES" />
@@ -368,6 +566,33 @@ const s = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: colors.border.hairline,
   },
-  ligneNom: { fontFamily: typo.body, fontSize: 14, color: colors.text.hi },
+  ligneNom: { fontFamily: typo.body, fontSize: 14, color: colors.text.hi, flexShrink: 1 },
+  /** Le trajet se lit d'un coup — c'est la phrase que le capitaine partage. */
+  trajet: {
+    fontFamily: typo.bodySemi,
+    fontSize: 15,
+    color: colors.text.hi,
+    lineHeight: 22,
+    marginTop: space.sm,
+  },
+  champ: {
+    fontFamily: typo.body,
+    fontSize: 14,
+    color: colors.text.hi,
+    backgroundColor: colors.bg.card,
+    borderWidth: 1,
+    borderColor: colors.border.card,
+    borderRadius: radius.cell,
+    paddingHorizontal: space.md,
+    paddingVertical: space.sm,
+    marginTop: space.md,
+  },
+  note: {
+    fontFamily: typo.mono,
+    fontSize: 10,
+    letterSpacing: 0.6,
+    color: colors.text.dim,
+    marginTop: space.md,
+  },
   ligneEtat: { fontFamily: typo.mono, fontSize: 10, letterSpacing: 0.6, color: colors.text.dim },
 });

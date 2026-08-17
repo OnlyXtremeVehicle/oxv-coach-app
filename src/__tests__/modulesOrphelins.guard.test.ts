@@ -215,7 +215,10 @@ const CONNUS: readonly string[] = [
   '/src/services/focuscorner.ts',
   '/src/services/laptimelinelogic.ts',
   '/src/services/maplayerslogic.ts',
-  '/src/services/placesservice.ts',
+  // `placesservice.ts` EST SORTI DE CETTE LISTE le 17/08/2026 : la sortie
+  // d'écurie consomme `fetchRestaurantsSortie` pour composer son trajet. Le
+  // module n'est donc plus orphelin — même si le reste de son contenu demeure
+  // déprécié, ce que dit son en-tête.
   '/src/services/seasonstorylogic.ts',
   '/src/services/sessioninsightsengine.ts',
   '/src/services/v2/videooverlaylogic.ts',

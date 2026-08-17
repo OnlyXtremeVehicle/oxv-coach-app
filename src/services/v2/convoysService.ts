@@ -175,6 +175,83 @@ export async function leave(convoyId: string): Promise<{ ok: boolean; error?: st
   return { ok: true };
 }
 
+/** Le circuit d'une journée, avec ses coordonnées — destination du trajet. */
+export interface CircuitJournee {
+  id: string;
+  nom: string;
+  lat: number;
+  lon: number;
+}
+
+/**
+ * Résout le circuit d'une journée, ou `null`.
+ *
+ * Deux lectures plutôt qu'une jointure : `sessions` porte `circuit_id`, et les
+ * coordonnées vivent dans `circuits`. La jointure imbriquée de PostgREST
+ * dépendrait d'une clé étrangère nommée, et une RLS différente sur les deux
+ * tables la ferait échouer d'un bloc — là où deux lectures dégradent
+ * proprement.
+ *
+ * `null` est un état NORMAL : une journée sans circuit renseigné existe, et le
+ * trajet doit alors le dire plutôt que de viser un point inventé.
+ */
+export async function circuitDeLaSession(sessionId: string): Promise<CircuitJournee | null> {
+  const { data: session } = await supabase
+    .from('sessions')
+    .select('circuit_id')
+    .eq('id', sessionId)
+    .maybeSingle();
+
+  const circuitId = session?.circuit_id;
+  if (!circuitId) return null;
+
+  const { data: circuit } = await supabase
+    .from('circuits')
+    .select('id, name, finish_line_lat, finish_line_lon')
+    .eq('id', circuitId)
+    .maybeSingle();
+
+  const lat = circuit?.finish_line_lat;
+  const lon = circuit?.finish_line_lon;
+  if (!circuit || !Number.isFinite(lat) || !Number.isFinite(lon)) return null;
+
+  return { id: circuit.id, nom: circuit.name, lat: lat as number, lon: lon as number };
+}
+
+/**
+ * Met à jour le rendez-vous et l'étape restaurant d'une sortie.
+ *
+ * Deux politiques se combinent, et c'est voulu : `convoys_owner_manage`
+ * (permissive) exige d'être le créateur, `convoys_crew_update_capitaine`
+ * (RESTRICTIVE) exige d'être capitaine de l'écurie attachée. Le service ne
+ * revérifie ni l'une ni l'autre.
+ *
+ * Les champs ABSENTS ne sont pas touchés — poser `undefined` et poser `null`
+ * ne veulent pas dire la même chose. `null` retire explicitement l'étape ou le
+ * rendez-vous ; ne rien passer le laisse tel quel. Sans cette distinction,
+ * enregistrer un rendez-vous effacerait le restaurant.
+ */
+export async function majSortie(
+  convoyId: string,
+  champs: { meetingPoint?: string | null; restaurantId?: string | null }
+): Promise<{ ok: boolean; error?: string }> {
+  // Typé sur les colonnes RÉELLES et non `Record<string, …>` : le client
+  // Supabase refuse un index signature, et il a raison — une clé mal orthographiée
+  // partirait sinon en base sans que rien ne l'arrête.
+  const patch: { meeting_point?: string | null; restaurant_id?: string | null } = {};
+  if ('meetingPoint' in champs) {
+    const v = champs.meetingPoint;
+    patch.meeting_point = typeof v === 'string' && v.trim().length > 0 ? v.trim() : null;
+  }
+  if ('restaurantId' in champs) patch.restaurant_id = champs.restaurantId ?? null;
+  if (Object.keys(patch).length === 0) return { ok: true };
+
+  const { error } = await supabase.from('convoys').update(patch).eq('id', convoyId);
+  if (error)
+    return { ok: false, error: isRlsDenial(error.message) ? ACCESS_DENIED_FR : error.message };
+  return { ok: true };
+}
+
 const INVITE_REFUSE_FR = 'Seul le capitaine peut inviter, et seulement les membres de son écurie.';
 
 /**
