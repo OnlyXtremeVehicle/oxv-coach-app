@@ -52,8 +52,9 @@
  * le défaut que ce lot corrige.
  */
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Image } from 'expo-image';
 import { router } from 'expo-router';
 import Svg, { Path } from 'react-native-svg';
 import Toast from 'react-native-toast-message';
@@ -74,6 +75,7 @@ import {
   messageAbsence,
   type InsigneAffichable,
 } from '@/features/club/insigneLogic';
+import { televerserInsigne, urlInsigne } from '@/features/club/insigneService';
 import { useEcurie } from '@/features/club/useEcurie';
 import {
   colors,
@@ -152,7 +154,13 @@ export default function EcurieScreen() {
 
               {/* L'insigne. Même règle que le baptême : le choix appartient au
                   capitaine, les autres membres le voient sans pouvoir y toucher. */}
-              <Insigne insigne={ecurie.insigne} capitaine={capitaine} onChoisir={definirInsigne} />
+              <Insigne
+                insigne={ecurie.insigne}
+                crewId={ecurie.crewId}
+                capitaine={capitaine}
+                onChoisir={definirInsigne}
+                onRecharger={recharger}
+              />
 
               <View style={s.bloc}>
                 <SectionHeader eyebrow="LES PILOTES" />
@@ -275,15 +283,59 @@ const FORMES: Record<string, string> = {
 
 function Insigne({
   insigne,
+  crewId,
   capitaine,
   onChoisir,
+  onRecharger,
 }: {
   insigne: InsigneAffichable;
+  crewId: string;
   capitaine: boolean;
   onChoisir: (key: string | null) => Promise<{ ok: boolean; error?: string }>;
+  onRecharger: () => void;
 }) {
   const [envoi, setEnvoi] = useState(false);
+  const [url, setUrl] = useState<string | null>(null);
   const choisi = insigne.type === 'catalogue' ? insigne.key : null;
+  const chemin = insigne.type === 'image' ? insigne.chemin : null;
+
+  // Le bucket n'est pas public : chaque affichage demande une URL signée, et la
+  // politique Storage décide à ce moment-là. Un `null` est donc une absence
+  // légitime, pas une panne — on n'affiche aucune erreur pour ça.
+  useEffect(() => {
+    let annule = false;
+    if (chemin === null) {
+      setUrl(null);
+      return;
+    }
+    urlInsigne(chemin).then((u) => {
+      if (!annule) setUrl(u);
+    });
+    return () => {
+      annule = true;
+    };
+  }, [chemin]);
+
+  async function televerser() {
+    if (envoi) return;
+    setEnvoi(true);
+    const res = await televerserInsigne(crewId);
+    setEnvoi(false);
+    // Fermer le sélecteur n'est pas un échec : aucun message rouge pour ça.
+    if ('annule' in res) return;
+    if (!res.ok) {
+      Toast.show({ type: 'error', text1: res.error });
+      return;
+    }
+    if (res.moderationRequise) {
+      Toast.show({
+        type: 'success',
+        text1: 'Insigne envoyé',
+        text2: 'Il sera visible des autres écuries après validation.',
+      });
+    }
+    onRecharger();
+  }
 
   async function poser(key: string) {
     if (envoi) return;
@@ -303,6 +355,15 @@ function Insigne({
 
       {insigne.type === 'aucun' ? (
         <Text style={s.corps}>{messageAbsence(insigne.raison)}</Text>
+      ) : null}
+
+      {url !== null ? (
+        <Image
+          source={{ uri: url }}
+          style={s.insigneImage}
+          contentFit="contain"
+          accessibilityLabel="L’insigne de votre écurie"
+        />
       ) : null}
 
       {/* Un membre ordinaire voit l'insigne, pas la grille : lui montrer un
@@ -335,6 +396,24 @@ function Insigne({
             );
           })}
         </View>
+      ) : null}
+
+      {/* La seconde voie. Elle est proposée SOUS le catalogue, et non à sa
+          place : choisir une forme est le geste de trois secondes, téléverser
+          celui de deux minutes. L'ordre dit lequel est le chemin court. */}
+      {capitaine ? (
+        <Pressable
+          onPress={televerser}
+          disabled={envoi}
+          accessibilityRole="button"
+          accessibilityState={{ disabled: envoi }}
+          accessibilityLabel="Téléverser votre propre insigne"
+          style={s.lienTeleverser}
+        >
+          <Text style={s.lienTeleverserTexte}>
+            {envoi ? 'Envoi en cours…' : 'Ou téléverser votre propre insigne'}
+          </Text>
+        </Pressable>
       ) : null}
     </View>
   );
@@ -406,6 +485,22 @@ const s = StyleSheet.create({
   caseInsigneActive: {
     borderColor: colors.heritage.gold,
     borderWidth: 2,
+  },
+  insigneImage: {
+    width: 88,
+    height: 88,
+    marginTop: space.md,
+    borderRadius: radius.cell,
+  },
+  lienTeleverser: {
+    marginTop: space.md,
+    paddingVertical: space.sm,
+  },
+  lienTeleverserTexte: {
+    fontFamily: typo.body,
+    fontSize: 13,
+    color: colors.text.mid,
+    textDecorationLine: 'underline',
   },
   root: { flex: 1, backgroundColor: colors.bg.base },
   header: {
