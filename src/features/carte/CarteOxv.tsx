@@ -37,6 +37,7 @@ import {
 } from '@maplibre/maplibre-react-native';
 
 import { palette } from '@/theme/v2';
+import { TAILLE_PASTILLE } from './paletteCarte';
 import { styleOxv } from './styleOxv';
 
 /** La région telle que le reste du dépôt la connaît (héritage react-native-maps). */
@@ -213,11 +214,15 @@ export function PastilleCarte({
   point,
   couleur,
   label,
+  taille = TAILLE_PASTILLE.normale,
   onPress,
 }: {
   readonly point: { lat: number; lon: number };
+  /** Une teinte de `paletteCarte`. JAMAIS une couleur de donnée — cf. la garde. */
   readonly couleur: string;
   readonly label: string;
+  /** Second canal de lecture, pour ne pas faire reposer un état sur la seule teinte. */
+  readonly taille?: number;
   readonly onPress?: () => void;
 }) {
   return (
@@ -227,7 +232,10 @@ export function PastilleCarte({
         accessibilityRole="button"
         accessibilityLabel={label}
         hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-        style={[stylesCarte.pastille, { backgroundColor: couleur }]}
+        style={[
+          stylesCarte.pastille,
+          { width: taille, height: taille, borderRadius: taille / 2, backgroundColor: couleur },
+        ]}
       />
     </Marker>
   );
@@ -279,9 +287,6 @@ export function TraceCarte({
 
 const stylesCarte = StyleSheet.create({
   pastille: {
-    width: 14,
-    height: 14,
-    borderRadius: 7,
     borderWidth: 2,
     // Le liseré sombre détache la pastille du fond de carte quelle que soit la
     // teinte dessous — sans lui, une pastille claire disparaît sur une route.

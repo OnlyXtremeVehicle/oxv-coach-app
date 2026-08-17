@@ -57,6 +57,7 @@ import { router } from 'expo-router';
 import Toast from 'react-native-toast-message';
 
 import { bornesDe, CarteOxv, PastilleCarte, TraceCarte } from '@/features/carte/CarteOxv';
+import { CARTE, TAILLE_PASTILLE } from '@/features/carte/paletteCarte';
 
 import { FadeInSection, useReduceMotion } from '@/components/motion';
 import { isExpoGo } from '@/lib/runtime';
@@ -93,8 +94,11 @@ const palette = {
   creamSoft: colors.text.hi,
   creamMute: colors.text.low,
   eyebrow: colors.text.dim,
-  // Vert d'ÉTAT (« validé »), pas de donnée de conduite — l'étape retenue.
-  green: colors.qdi.acceleration,
+  // `green` A ÉTÉ RETIRÉ le 17/08/2026. Il valait `colors.qdi.acceleration` —
+  // l'hex exact d'une branche de donnée, posé sur une carte. Le rôle d'état
+  // invoqué était défendable dans la grammaire ; la teinte, non. L'étape passe à
+  // `CARTE.etape`, épaulée par une pastille plus grande. Le jeton n'est pas
+  // remplacé mais SUPPRIMÉ : le laisser inemployé invitait à le reprendre.
   line: colors.border.card,
   separator: colors.border.hairline,
 } as const;
@@ -128,14 +132,21 @@ const CURVINESS_OPTIONS: { label: string; value: Curviness }[] = [
   { label: 'Très sinueuse', value: 'tres_sinueuse' },
 ];
 
-// Couleurs de CATÉGORIE POI (identité de lieu, jamais de la donnée de conduite) :
-// l'or reste au chrono/record ; le vert (palette.green = « validé ») marque
-// l'étape sélectionnée, conformément au rôle d'état de cette couleur.
+/**
+ * Couleurs de CATÉGORIE POI — désormais tirées de `paletteCarte`, qui garantit
+ * par la mesure qu'aucune n'approche une couleur réservée (ΔE ≥ 25).
+ *
+ * Ce commentaire disait déjà « jamais de la donnée de conduite » au-dessus d'une
+ * table qui empruntait `colors.qdi.regularite` pour les cols et
+ * `colors.qdi.acceleration` pour les étapes. Le `#60A5FA` de l'eau était par
+ * ailleurs l'ancien bleu trajectoire du baril V2 — un orphelin à un cheveu de la
+ * teinte qu'il prétendait éviter.
+ */
 const POI_COLOR: Record<ScenicPoi['kind'], string> = {
-  viewpoint: palette.cream,
-  water: '#60A5FA', // bleu « eau » (catégorie POI, distinct du bleu trajectoire QDI)
-  pass: colors.qdi.regularite, // violet non-or (choix V1 conservé, catégorie POI)
-  peak: palette.creamSoft,
+  viewpoint: CARTE.pointDeVue,
+  water: CARTE.eau,
+  pass: CARTE.col,
+  peak: CARTE.sommet,
 };
 const POI_LABEL: Record<ScenicPoi['kind'], string> = {
   viewpoint: 'Point de vue',
@@ -465,7 +476,8 @@ export default function CreerRouteScreen() {
             <PastilleCarte
               key={p.id}
               point={p.point}
-              couleur={palette.green}
+              couleur={CARTE.etape}
+              taille={TAILLE_PASTILLE.etape}
               label={`${p.name ?? POI_LABEL[p.kind]}, étape de votre route — retirer`}
               onPress={() => toggleEtape(p)}
             />
@@ -496,7 +508,7 @@ export default function CreerRouteScreen() {
           {(['viewpoint', 'water', 'pass', 'peak'] as ScenicPoi['kind'][]).map((k) => (
             <LegendItem key={k} color={POI_COLOR[k]} label={POI_LABEL[k]} />
           ))}
-          <LegendItem color={palette.green} label="Étape" />
+          <LegendItem color={CARTE.etape} label="Étape" />
         </View>
 
         {/* Attribution (exigence de licence GraphHopper + OpenStreetMap). */}
@@ -521,7 +533,7 @@ export default function CreerRouteScreen() {
             <CompositionChip
               key={p.id}
               label={p.name ?? POI_LABEL[p.kind]}
-              dotColor={palette.green}
+              dotColor={CARTE.etape}
               onRemove={() => toggleEtape(p)}
               removeLabel={`Retirer l'étape ${p.name ?? POI_LABEL[p.kind]}`}
             />
