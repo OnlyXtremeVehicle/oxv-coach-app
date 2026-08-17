@@ -162,6 +162,19 @@ export default function EcurieScreen() {
                 onRecharger={recharger}
               />
 
+              {/* La porte vers la sortie. Elle est ouverte à TOUS les membres,
+                  pas au seul capitaine : un pilote convié doit pouvoir aller
+                  répondre, et c'est l'écran d'arrivée qui n'affiche que les
+                  gestes permis à chacun. */}
+              <Pressable
+                onPress={() => router.push('/(app2)/club/sortie')}
+                accessibilityRole="button"
+                accessibilityLabel="Voir la sortie de votre écurie"
+                style={s.lienSortie}
+              >
+                <Text style={s.lienSortieTexte}>La sortie de votre écurie</Text>
+              </Pressable>
+
               <View style={s.bloc}>
                 <SectionHeader eyebrow="LES PILOTES" />
                 {ecurie.membres.map((m) => (
@@ -491,6 +504,19 @@ const s = StyleSheet.create({
     height: 88,
     marginTop: space.md,
     borderRadius: radius.cell,
+  },
+  lienSortie: {
+    marginTop: space.xl,
+    paddingVertical: space.md,
+    paddingHorizontal: space.lg,
+    borderRadius: radius.cell,
+    borderWidth: 1,
+    borderColor: colors.border.strong,
+  },
+  lienSortieTexte: {
+    fontFamily: typo.bodySemi,
+    fontSize: 14,
+    color: colors.text.hi,
   },
   lienTeleverser: {
     marginTop: space.md,
