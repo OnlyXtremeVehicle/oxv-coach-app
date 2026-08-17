@@ -135,7 +135,78 @@ Si le site affiche la même carte, il doit faire de même.
 
 ---
 
-## 2 · AVIS — une fonction serveur écrit dans `registrations`
+## 2 · LA DEMANDE — une carte de partage pour le trajet d'écurie
+
+### Ce qui existe côté application
+
+Depuis le 17/08/2026, une sortie d'écurie porte un trajet composé :
+
+```
+Place de Pons → La Table du Cognac → Circuit de Haute Saintonge
+```
+
+Rendez-vous posé par recherche d'adresse, étape restaurant optionnelle,
+circuit en destination. Le capitaine veut pouvoir l'envoyer à son écurie — dans
+un message, sur un réseau — et que le lien s'ouvre sur une **vignette**, pas sur
+une URL nue.
+
+### Ce qui est demandé
+
+Une page publique par sortie, portant ses métadonnées Open Graph :
+
+```
+GET https://<votre-domaine>/sortie/<id>
+```
+
+```html
+<meta property="og:title"       content="Sortie de l'écurie <nom>" />
+<meta property="og:description" content="Place de Pons → La Table du Cognac → Circuit de Haute Saintonge" />
+<meta property="og:image"       content="https://<votre-domaine>/sortie/<id>/og.png" />
+<meta property="og:type"        content="website" />
+```
+
+L'image est générée à la volée — 1200 × 630 — et montre le tracé sur fond OXV.
+
+### Trois règles, et elles ne sont pas négociables
+
+**La vignette ne porte aucune donnée de conduite.** C'est une décision fondateur
+et elle vaut pour vous aussi : ni chrono, ni vitesse, ni « meilleur tour », ni
+aucune des cinq couleurs QDI. La carte OXV sert l'identité et le territoire — la
+restitution a son propre moteur, et il ne sort pas de l'application.
+
+Le tracé se peint donc en **crème `#E8E9ED`** sur le fond titane `#14151A`, et
+les repères dans la palette de carte (`src/features/carte/paletteCarte.ts` :
+point de vue `#E8E9ED`, eau `#8FA6C4`, col `#A783F2`, sommet `#E091B8`). L'or est
+réservé au chrono : il n'apparaît pas.
+
+**Aucune donnée personnelle dans la page publique.** Le nom de l'écurie et les
+étapes du trajet, rien d'autre. Ni la liste des pilotes, ni qui a répondu quoi,
+ni l'adresse exacte du rendez-vous si elle est un domicile — le libellé de ville
+suffit à une vignette.
+
+**La page est publique, la sortie ne l'est pas.** Un identifiant de sortie ne doit
+pas permettre de lire la table `convoys` : servez la page depuis un **jeton de
+partage** distinct de l'identifiant, ou depuis une projection figée au moment du
+partage. Le dépôt a déjà ce motif — `app_progression_shares` et le correctif L31
+(« le jeton de partage vient de la base, plus de `Math.random` »).
+
+### Ce que l'application vous fournira
+
+Rien pour l'instant, et c'est le point à trancher ensemble. Deux voies :
+
+- **l'application appelle une fonction** au moment du partage, en passant nom
+  d'écurie, étapes et polyligne, et reçoit une URL — la sortie n'a alors pas
+  besoin d'être lisible depuis le site ;
+- **le site lit `convoys`** par un jeton — moins d'aller-retour, mais il vous
+  faut alors un accès en lecture à une table applicative, ce que le cadre de la
+  base partagée invite à éviter.
+
+Je recommande la première : elle garde la frontière nette et ne demande aucune
+politique RLS nouvelle.
+
+---
+
+## 3 · AVIS — une fonction serveur écrit dans `registrations`
 
 **Aucune action attendue.** Signalé parce que vous lisez cette table pour
 l'espace client.
@@ -163,7 +234,7 @@ est refusée (`deja_consomme`).
 
 ---
 
-## 3 · AVIS — nouvelles colonnes, aucune rupture
+## 4 · AVIS — nouvelles colonnes, aucune rupture
 
 **Aucune action attendue.** Toutes les colonnes ajoutées sont **nullables** ou
 portent un défaut ; aucune colonne n'a été renommée ni supprimée.
@@ -194,17 +265,22 @@ comportement fail-closed voulu — mais c'est un travail à ouvrir.
 
 ---
 
-## 4 · Récapitulatif
+## 5 · Récapitulatif
 
 | # | Sujet | Pour vous | Bloquant |
 |---|---|---|---|
 | 1 | Service de tuiles | **à construire** | **oui** — pas de fond de carte sans lui |
-| 2 | `oxv_use_heritage_session` | information | non |
-| 3 | Colonnes écurie / convoi | information | non |
+| 2 | Page + vignette Open Graph de la sortie | **à construire** | non — confort de partage |
+| 3 | `oxv_use_heritage_session` | information | non |
+| 4 | Colonnes écurie / convoi | information | non |
 
 **Le chemin critique est le point 1**, et il dépend d'abord d'une décision OXV :
 produire le `.pmtiles` et choisir son hébergement. Le service ne peut pas être
 écrit avant.
+
+Le point 2 est indépendant du 1 — la vignette se dessine côté serveur, sans
+tuiles — et peut donc avancer en parallèle. Il demande une décision : l'app
+pousse le trajet, ou le site le lit par jeton. Je recommande la première.
 
 Côté application, tout est prêt : les deux écrans sont sur MapLibre,
 `react-native-maps` est retiré, et il ne manque que `EXPO_PUBLIC_TILES_URL`.
