@@ -40,7 +40,13 @@ import { useCallback, useEffect, useState } from 'react';
 import { crewCardTitle, crewOwnerName, type CrewMemberProfile } from './clubHubLogic';
 import { resolveCrewProfiles } from './crewProfilesService';
 import { trierAnnuaire, type LigneAnnuaire } from './ecurieLogic';
-import { getMyCrew, listPublicCrews, nameMyCrew } from '@/services/v2/referralService';
+import {
+  getMyCrew,
+  listPublicCrews,
+  nameMyCrew,
+  setCrewInsigne,
+} from '@/services/v2/referralService';
+import { insigneAffichable, type InsigneAffichable } from '@/features/club/insigneLogic';
 import { useAuthStore } from '@/store/useAuthStore';
 
 export interface EcurieData {
@@ -50,6 +56,12 @@ export interface EcurieData {
   /** Titre affichable (nom, sinon « Le groupe de X », sinon « Votre écurie »). */
   titre: string;
   membres: CrewMemberProfile[];
+  /**
+   * Ce qu'il y a à peindre à la place de l'insigne — déjà résolu par
+   * `insigneAffichable`, donc déjà fail-closed. L'écran n'a aucune règle de
+   * visibilité à réappliquer, et ne peut pas se tromper en l'oubliant.
+   */
+  insigne: InsigneAffichable;
 }
 
 export interface UseEcurieResult {
@@ -64,6 +76,14 @@ export interface UseEcurieResult {
   userId: string | null;
   /** Baptise l'écurie et recharge. Refus serveur remonté tel quel. */
   baptiser: (nom: string) => Promise<{ ok: boolean; error?: string }>;
+  /**
+   * Pose un insigne du catalogue, ou le retire (`null`), puis recharge.
+   * Le téléversement d'image passera par le même service mais demande d'abord
+   * l'envoi du fichier dans le bucket : il n'est pas encore câblé ici.
+   */
+  definirInsigne: (
+    catalogueKey: string | null
+  ) => Promise<{ ok: boolean; error?: string; moderationRequise?: boolean }>;
   recharger: () => void;
 }
 
@@ -130,6 +150,18 @@ export function useEcurie(): UseEcurieResult {
         nom: crew.name,
         titre: crewCardTitle(crew.name, crewOwnerName(membres)),
         membres,
+        // `getMyCrew` ne rend QUE l'écurie du lecteur : `estMien` vaut donc
+        // toujours vrai ici, et le capitaine voit son image même en attente.
+        // L'annuaire, lui, ne porte aucun identifiant d'écurie — la question ne
+        // s'y pose pas.
+        insigne: insigneAffichable(
+          {
+            insigneCatalogueKey: crew.insigneCatalogueKey,
+            insigneImagePath: crew.insigneImagePath,
+            insigneStatus: crew.insigneStatus,
+          },
+          true
+        ),
       });
       setLoading(false);
     })();
@@ -148,6 +180,14 @@ export function useEcurie(): UseEcurieResult {
     return res;
   }, []);
 
+  const definirInsigne = useCallback(async (catalogueKey: string | null) => {
+    const res = await setCrewInsigne(catalogueKey, null);
+    // Même motif que le baptême : on relit plutôt que de croire la valeur
+    // envoyée. Le serveur seul sait s'il a ouvert une modération.
+    if (res.ok) setCle((k) => k + 1);
+    return res;
+  }, []);
+
   return {
     loading,
     ecurie,
@@ -156,6 +196,7 @@ export function useEcurie(): UseEcurieResult {
     annuaireErreur,
     userId,
     baptiser,
+    definirInsigne,
     recharger,
   };
 }

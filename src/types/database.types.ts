@@ -12,6 +12,31 @@ export type Database = {
   __InternalSupabase: {
     PostgrestVersion: "14.5"
   }
+  graphql_public: {
+    Tables: {
+      [_ in never]: never
+    }
+    Views: {
+      [_ in never]: never
+    }
+    Functions: {
+      graphql: {
+        Args: {
+          extensions?: Json
+          operationName?: string
+          query?: string
+          variables?: Json
+        }
+        Returns: Json
+      }
+    }
+    Enums: {
+      [_ in never]: never
+    }
+    CompositeTypes: {
+      [_ in never]: never
+    }
+  }
   public: {
     Tables: {
       _backup_payments_20260719: {
@@ -2961,17 +2986,26 @@ export type Database = {
       convoy_participants: {
         Row: {
           convoy_id: string
+          invited_by: string | null
           joined_at: string
+          responded_at: string | null
+          status: Database["public"]["Enums"]["convoy_participant_status_enum"]
           user_id: string
         }
         Insert: {
           convoy_id: string
+          invited_by?: string | null
           joined_at?: string
+          responded_at?: string | null
+          status?: Database["public"]["Enums"]["convoy_participant_status_enum"]
           user_id: string
         }
         Update: {
           convoy_id?: string
+          invited_by?: string | null
           joined_at?: string
+          responded_at?: string | null
+          status?: Database["public"]["Enums"]["convoy_participant_status_enum"]
           user_id?: string
         }
         Relationships: [
@@ -2980,6 +3014,27 @@ export type Database = {
             columns: ["convoy_id"]
             isOneToOne: false
             referencedRelation: "convoys"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "convoy_participants_invited_by_fkey"
+            columns: ["invited_by"]
+            isOneToOne: false
+            referencedRelation: "admin_ritual_dispatches_view"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "convoy_participants_invited_by_fkey"
+            columns: ["invited_by"]
+            isOneToOne: false
+            referencedRelation: "coach_pilots_view"
+            referencedColumns: ["pilot_id"]
+          },
+          {
+            foreignKeyName: "convoy_participants_invited_by_fkey"
+            columns: ["invited_by"]
+            isOneToOne: false
+            referencedRelation: "users"
             referencedColumns: ["id"]
           },
           {
@@ -3009,27 +3064,33 @@ export type Database = {
         Row: {
           created_at: string
           created_by: string
+          crew_id: string | null
           id: string
           meeting_point: string | null
           rdv_at: string | null
+          restaurant_id: string | null
           route_id: string | null
           session_id: string
         }
         Insert: {
           created_at?: string
           created_by: string
+          crew_id?: string | null
           id?: string
           meeting_point?: string | null
           rdv_at?: string | null
+          restaurant_id?: string | null
           route_id?: string | null
           session_id: string
         }
         Update: {
           created_at?: string
           created_by?: string
+          crew_id?: string | null
           id?: string
           meeting_point?: string | null
           rdv_at?: string | null
+          restaurant_id?: string | null
           route_id?: string | null
           session_id?: string
         }
@@ -3053,6 +3114,20 @@ export type Database = {
             columns: ["created_by"]
             isOneToOne: false
             referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "convoys_crew_id_fkey"
+            columns: ["crew_id"]
+            isOneToOne: false
+            referencedRelation: "crews"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "convoys_restaurant_id_fkey"
+            columns: ["restaurant_id"]
+            isOneToOne: false
+            referencedRelation: "restaurants"
             referencedColumns: ["id"]
           },
           {
@@ -3208,6 +3283,14 @@ export type Database = {
           captain_id: string
           created_at: string
           id: string
+          insigne_catalogue_key: string | null
+          insigne_image_path: string | null
+          insigne_reviewed_at: string | null
+          insigne_reviewed_by: string | null
+          insigne_status:
+            | Database["public"]["Enums"]["crew_insigne_status_enum"]
+            | null
+          insigne_updated_at: string | null
           name: string | null
           named_at: string | null
         }
@@ -3215,6 +3298,14 @@ export type Database = {
           captain_id: string
           created_at?: string
           id?: string
+          insigne_catalogue_key?: string | null
+          insigne_image_path?: string | null
+          insigne_reviewed_at?: string | null
+          insigne_reviewed_by?: string | null
+          insigne_status?:
+            | Database["public"]["Enums"]["crew_insigne_status_enum"]
+            | null
+          insigne_updated_at?: string | null
           name?: string | null
           named_at?: string | null
         }
@@ -3222,6 +3313,14 @@ export type Database = {
           captain_id?: string
           created_at?: string
           id?: string
+          insigne_catalogue_key?: string | null
+          insigne_image_path?: string | null
+          insigne_reviewed_at?: string | null
+          insigne_reviewed_by?: string | null
+          insigne_status?:
+            | Database["public"]["Enums"]["crew_insigne_status_enum"]
+            | null
+          insigne_updated_at?: string | null
           name?: string | null
           named_at?: string | null
         }
@@ -3244,6 +3343,27 @@ export type Database = {
             foreignKeyName: "crews_captain_id_fkey"
             columns: ["captain_id"]
             isOneToOne: true
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "crews_insigne_reviewed_by_fkey"
+            columns: ["insigne_reviewed_by"]
+            isOneToOne: false
+            referencedRelation: "admin_ritual_dispatches_view"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "crews_insigne_reviewed_by_fkey"
+            columns: ["insigne_reviewed_by"]
+            isOneToOne: false
+            referencedRelation: "coach_pilots_view"
+            referencedColumns: ["pilot_id"]
+          },
+          {
+            foreignKeyName: "crews_insigne_reviewed_by_fkey"
+            columns: ["insigne_reviewed_by"]
+            isOneToOne: false
             referencedRelation: "users"
             referencedColumns: ["id"]
           },
@@ -8944,9 +9064,17 @@ export type Database = {
         Args: { p_registration_id: string }
         Returns: undefined
       }
+      oxv_set_crew_insigne: {
+        Args: { p_catalogue_key?: string; p_image_path?: string }
+        Returns: Json
+      }
       oxv_sync_eligibility_docs: {
         Args: { p_registration_id: string }
         Returns: undefined
+      }
+      oxv_use_heritage_session: {
+        Args: { p_registration_id: string }
+        Returns: Json
       }
       pavillon_meteo_rows: {
         Args: never
@@ -9132,6 +9260,8 @@ export type Database = {
       b2b_report_status: "draft" | "shared"
       coach_access_level: "lecture_simple" | "lecture_detaillee" | "programme"
       community_visibility: "private" | "anonymous_only" | "nominative"
+      convoy_participant_status_enum: "invite" | "present" | "decline"
+      crew_insigne_status_enum: "en_attente" | "valide" | "refuse"
       document_status_enum: "pending" | "validated" | "rejected" | "expired"
       document_type_enum:
         | "driving_license"
@@ -9342,6 +9472,9 @@ export type CompositeTypes<
     : never
 
 export const Constants = {
+  graphql_public: {
+    Enums: {},
+  },
   public: {
     Enums: {
       affiliation_initiator: ["coach", "pilot"],
@@ -9349,6 +9482,8 @@ export const Constants = {
       b2b_report_status: ["draft", "shared"],
       coach_access_level: ["lecture_simple", "lecture_detaillee", "programme"],
       community_visibility: ["private", "anonymous_only", "nominative"],
+      convoy_participant_status_enum: ["invite", "present", "decline"],
+      crew_insigne_status_enum: ["en_attente", "valide", "refuse"],
       document_status_enum: ["pending", "validated", "rejected", "expired"],
       document_type_enum: [
         "driving_license",

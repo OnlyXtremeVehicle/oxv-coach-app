@@ -35,14 +35,21 @@
  * CE QUE CET ÉCRAN NE PORTE PAS, ET POURQUOI
  * ===========================================================================
  *
- * Le plan prévoit aussi le logo téléversé par le capitaine, l'exclusion par le
- * capitaine et l'invitation par tous. **Les fonctions serveur n'existent pas** :
- * `crews` n'expose que le code, le rattachement, l'appartenance, le baptême et
- * l'annuaire. Aucun bucket de logo n'est déclaré.
+ * Ce paragraphe disait, le 14/08 : « le logo téléversé par le capitaine — les
+ * fonctions serveur n'existent pas, aucun bucket de logo n'est déclaré ». Il
+ * avait raison, et il ne l'a plus.
  *
- * Les poser ici supposerait d'écrire dans `crew_members` en direct — ce que la
- * RLS refuse, à juste titre : c'est au serveur d'arbitrer qui exclut qui. Un
- * bouton qui échouerait serait exactement le défaut que ce lot corrige.
+ * La migration `20260817021552` a posé les six colonnes `insigne_*` sur `crews`,
+ * la fonction `oxv_set_crew_insigne` et le bucket `crew-insignes`. L'INSIGNE DE
+ * CATALOGUE est donc câblé ici. Le TÉLÉVERSEMENT ne l'est pas encore : le
+ * service et la politique Storage l'attendent, il manque le choix du fichier
+ * (`expo-image-picker`) et l'envoi dans le bucket.
+ *
+ * Restent hors de portée, et pour la même raison qu'avant : l'exclusion par le
+ * capitaine et l'invitation par tous. Les poser supposerait d'écrire dans
+ * `crew_members` en direct — ce que la RLS refuse, à juste titre : c'est au
+ * serveur d'arbitrer qui exclut qui. Un bouton qui échouerait serait exactement
+ * le défaut que ce lot corrige.
  */
 
 import { useState } from 'react';
@@ -62,6 +69,11 @@ import {
   validerNomEcurie,
   type LigneAnnuaire,
 } from '@/features/club/ecurieLogic';
+import {
+  INSIGNES_CATALOGUE,
+  messageAbsence,
+  type InsigneAffichable,
+} from '@/features/club/insigneLogic';
 import { useEcurie } from '@/features/club/useEcurie';
 import {
   colors,
@@ -77,8 +89,17 @@ import {
 export default function EcurieScreen() {
   const insets = useSafeAreaInsets();
   const door = useDoorTransition();
-  const { loading, ecurie, erreur, annuaire, annuaireErreur, userId, baptiser, recharger } =
-    useEcurie();
+  const {
+    loading,
+    ecurie,
+    erreur,
+    annuaire,
+    annuaireErreur,
+    userId,
+    baptiser,
+    definirInsigne,
+    recharger,
+  } = useEcurie();
 
   const capitaine = ecurie ? estCapitaine(ecurie.membres, userId) : false;
 
@@ -128,6 +149,10 @@ export default function EcurieScreen() {
               {/* Le baptême — capitaine seul, comme le serveur l'impose. Un
                   membre ordinaire ne voit pas un champ qu'on lui refuserait. */}
               {capitaine ? <Bapteme nomActuel={ecurie.nom} onBaptiser={baptiser} /> : null}
+
+              {/* L'insigne. Même règle que le baptême : le choix appartient au
+                  capitaine, les autres membres le voient sans pouvoir y toucher. */}
+              <Insigne insigne={ecurie.insigne} capitaine={capitaine} onChoisir={definirInsigne} />
 
               <View style={s.bloc}>
                 <SectionHeader eyebrow="LES PILOTES" />
@@ -227,6 +252,94 @@ function Bapteme({
 }
 
 /** Un membre : son nom d'affichage et son rôle. Aucune mesure, jamais. */
+/**
+ * L'INSIGNE. Ce que l'en-tête de ce fichier disait impossible.
+ *
+ * Le catalogue est peint ici, en formes SVG — `insigneLogic` ne connaît que les
+ * clés, pour rester testable hors React Native. Les six formes se dessinent au
+ * TRAIT, dans l'or Heritage : un insigne d'écurie n'est pas une donnée, il n'a
+ * donc rien à faire dans les couleurs QDI.
+ *
+ * L'image téléversée n'est pas encore posée ici — le choix du fichier demande
+ * `expo-image-picker` puis un envoi vers le bucket `crew-insignes`. Le service
+ * (`setCrewInsigne`) et la politique Storage l'attendent déjà.
+ */
+const FORMES: Record<string, string> = {
+  ecusson: 'M12 3h20v14c0 8-10 13-10 13S12 25 12 17V3z',
+  chevron: 'M6 26L22 8l16 18-5 0-11-12-11 12z',
+  losange: 'M22 4l14 14-14 14L8 18z',
+  bouclier: 'M22 3l15 5v11c0 8-7 13-15 15-8-2-15-7-15-15V8z',
+  couronne: 'M7 28V12l7 6 8-11 8 11 7-6v16z',
+  fanion: 'M9 4v28M9 6h24l-6 7 6 7H9',
+};
+
+function Insigne({
+  insigne,
+  capitaine,
+  onChoisir,
+}: {
+  insigne: InsigneAffichable;
+  capitaine: boolean;
+  onChoisir: (key: string | null) => Promise<{ ok: boolean; error?: string }>;
+}) {
+  const [envoi, setEnvoi] = useState(false);
+  const choisi = insigne.type === 'catalogue' ? insigne.key : null;
+
+  async function poser(key: string) {
+    if (envoi) return;
+    setEnvoi(true);
+    // Retoucher la même forme la retire : le geste d'annulation est le geste
+    // de choix, répété. Un second bouton « retirer » alourdirait pour rien.
+    const res = await onChoisir(choisi === key ? null : key);
+    setEnvoi(false);
+    if (!res.ok) {
+      Toast.show({ type: 'error', text1: res.error ?? "L'insigne n'a pas pu être posé." });
+    }
+  }
+
+  return (
+    <View style={s.bloc}>
+      <SectionHeader eyebrow="L'INSIGNE" />
+
+      {insigne.type === 'aucun' ? (
+        <Text style={s.corps}>{messageAbsence(insigne.raison)}</Text>
+      ) : null}
+
+      {/* Un membre ordinaire voit l'insigne, pas la grille : lui montrer un
+          choix que le serveur lui refuserait serait le défaut que ce lot corrige. */}
+      {capitaine ? (
+        <View style={s.grilleInsignes}>
+          {INSIGNES_CATALOGUE.map((i) => {
+            const actif = choisi === i.key;
+            return (
+              <Pressable
+                key={i.key}
+                onPress={() => poser(i.key)}
+                disabled={envoi}
+                accessibilityRole="button"
+                accessibilityState={{ selected: actif, disabled: envoi }}
+                accessibilityLabel={
+                  actif ? `${i.libelle}, insigne actuel — appuyez pour le retirer` : i.libelle
+                }
+                style={[s.caseInsigne, actif && s.caseInsigneActive]}
+              >
+                <Svg width={44} height={36} viewBox="0 0 44 36">
+                  <Path
+                    d={FORMES[i.key]}
+                    stroke={actif ? colors.heritage.gold : colors.text.low}
+                    strokeWidth={2}
+                    fill="none"
+                  />
+                </Svg>
+              </Pressable>
+            );
+          })}
+        </View>
+      ) : null}
+    </View>
+  );
+}
+
 function Membre({ membre, moi }: { membre: CrewMemberProfile; moi: boolean }) {
   return (
     <View style={s.ligne}>
@@ -270,6 +383,30 @@ function BackGlyph() {
 }
 
 const s = StyleSheet.create({
+  grilleInsignes: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: space.sm,
+    marginTop: space.md,
+  },
+  caseInsigne: {
+    width: 64,
+    height: 56,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: radius.cell,
+    borderWidth: 1,
+    borderColor: colors.border.card,
+  },
+  /**
+   * L'or Heritage marque la sélection — c'est le seul emploi de cette teinte
+   * hors du tier, et il se tient : un insigne d'écurie est un objet
+   * d'appartenance, pas une donnée. Aucune couleur QDI n'entre ici.
+   */
+  caseInsigneActive: {
+    borderColor: colors.heritage.gold,
+    borderWidth: 2,
+  },
   root: { flex: 1, backgroundColor: colors.bg.base },
   header: {
     flexDirection: 'row',

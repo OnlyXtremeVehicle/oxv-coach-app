@@ -30,6 +30,11 @@ export interface RedeemOutcome {
 export interface MyCrew {
   crewId: string;
   name: string | null;
+  /** Voie catalogue. Exclusive de `insigneImagePath` (contrainte en base). */
+  insigneCatalogueKey: string | null;
+  /** Voie téléversement. `insigneStatus` dit si les autres écuries la voient. */
+  insigneImagePath: string | null;
+  insigneStatus: 'en_attente' | 'valide' | 'refuse' | null;
   members: { userId: string; role: string }[];
 }
 
@@ -89,7 +94,9 @@ export async function getMyCrew(): Promise<MyCrew | null> {
 
   const { data: crew, error: crewErr } = await supabase
     .from('crews')
-    .select('id, name')
+    // Les trois colonnes d'insigne voyagent avec le nom : elles s'affichent au
+    // même endroit, et un second aller-retour ferait clignoter l'en-tête.
+    .select('id, name, insigne_catalogue_key, insigne_image_path, insigne_status')
     .eq('id', crewId)
     .maybeSingle();
   if (crewErr) throw new Error(crewErr.message);
@@ -105,6 +112,9 @@ export async function getMyCrew(): Promise<MyCrew | null> {
   return {
     crewId,
     name: crew.name ?? null,
+    insigneCatalogueKey: crew.insigne_catalogue_key ?? null,
+    insigneImagePath: crew.insigne_image_path ?? null,
+    insigneStatus: crew.insigne_status ?? null,
     members: (members ?? []).map((m) => ({ userId: m.user_id, role: m.role })),
   };
 }
@@ -123,6 +133,46 @@ export async function nameMyCrew(name: string): Promise<{ ok: boolean; error?: s
   const raw: unknown = data;
   const obj = (raw ?? {}) as { ok?: unknown; error?: unknown };
   if (obj.ok === true) return { ok: true };
+  const code = typeof obj.error === 'string' && obj.error ? obj.error : REDEEM_UNKNOWN_ERROR;
+  return { ok: false, error: code };
+}
+
+/**
+ * Pose l'insigne de l'écurie — catalogue OU image, jamais les deux.
+ *
+ * Passe par `oxv_set_crew_insigne` et non par un `update` : `crews` n'a AUCUNE
+ * politique UPDATE, et lui en donner une ouvrirait `captain_id` et `name` par la
+ * même porte. La fonction n'expose que l'insigne, et n'accepte que le capitaine.
+ *
+ * Appeler avec les deux arguments à `null` RETIRE l'insigne — c'est le geste
+ * « je n'en veux plus », et il n'a pas besoin d'une seconde fonction.
+ *
+ * `moderationRequise` est rendu au lieu d'être déduit côté app : c'est le
+ * serveur qui décide si une modération s'ouvre, et le capitaine doit savoir que
+ * son image n'est pas encore visible des autres.
+ */
+export async function setCrewInsigne(
+  catalogueKey: string | null,
+  imagePath: string | null
+): Promise<{ ok: boolean; error?: string; moderationRequise?: boolean }> {
+  if (catalogueKey !== null && imagePath !== null) {
+    return { ok: false, error: 'Choisissez un insigne du catalogue ou une image, pas les deux.' };
+  }
+
+  // Les deux paramètres portent un DÉFAUT SQL à `null` : Supabase les type donc
+  // `string | undefined`, pas `string | null`. Omettre un argument et l'envoyer
+  // à `null` produisent ici le même effet — et c'est ce qui fait du double
+  // `null` le geste « je retire mon insigne », sans seconde fonction.
+  const { data, error } = await supabase.rpc('oxv_set_crew_insigne', {
+    p_catalogue_key: catalogueKey ?? undefined,
+    p_image_path: imagePath ?? undefined,
+  });
+  if (error) return { ok: false, error: error.message };
+
+  const obj = (data ?? {}) as { ok?: unknown; error?: unknown; moderation_requise?: unknown };
+  if (obj.ok === true) {
+    return { ok: true, moderationRequise: obj.moderation_requise === true };
+  }
   const code = typeof obj.error === 'string' && obj.error ? obj.error : REDEEM_UNKNOWN_ERROR;
   return { ok: false, error: code };
 }
