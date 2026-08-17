@@ -2,37 +2,26 @@
 // app.config.js — configuration Expo dynamique
 // ============================================================================
 //
-// Ce fichier complète `app.json` (chargé automatiquement par Expo et passé
-// ici via `config`). Son unique rôle : injecter la clé Google Maps Android
-// SANS jamais la commiter.
+// Ce fichier complète `app.json` (chargé automatiquement par Expo et passé ici
+// via `config`).
 //
-// iOS utilise Apple Maps (PROVIDER_DEFAULT) → aucune clé requise.
-// Android requiert une clé "Maps SDK for Android", restreinte à l'app
-// (package fr.oxvehicle.app + empreinte SHA-1 du keystore EAS).
+// ----------------------------------------------------------------------------
+// IL N'A PLUS RIEN À INJECTER — 17/08/2026
+// ----------------------------------------------------------------------------
 //
-// La clé est fournie au moment du build par la variable d'environnement
-// GOOGLE_MAPS_ANDROID_KEY :
-//   - en CI / build EAS : via un EAS secret
-//       eas secret:create --scope project --name GOOGLE_MAPS_ANDROID_KEY \
-//         --value <clé> --type string
-//   - en local (prebuild) : via .env (gitignored)
+// Son unique rôle était d'injecter `GOOGLE_MAPS_ANDROID_KEY` dans la config
+// Android sans jamais la commiter. La migration vers MapLibre a retiré
+// `react-native-maps` : il n'y a plus de carte Google dans l'application, donc
+// plus de clé à injecter. La variable n'avait d'ailleurs jamais été renseignée —
+// les cartes Android étaient grises.
 //
-// Si la variable est absente (ex. dev local sans carte), aucune clé n'est
-// injectée — le reste de l'app fonctionne, seules les cartes Android
-// resteront grises (fallback liste prévu en Expo Go de toute façon).
+// Le fichier est CONSERVÉ plutôt que supprimé : Expo le prend en compte dès
+// qu'il existe, et le rétablir plus tard demanderait de se souvenir qu'il a
+// existé. Il documente ici pourquoi il ne fait rien.
+//
+// Le fond de carte se configure désormais par `EXPO_PUBLIC_TILES_URL`, une
+// variable `EXPO_PUBLIC_*` lue directement à l'exécution : elle n'a pas besoin
+// de passer par la configuration native, et donc pas besoin de ce fichier.
 // ============================================================================
 
-module.exports = ({ config }) => {
-  const googleMapsKey = process.env.GOOGLE_MAPS_ANDROID_KEY;
-
-  return {
-    ...config,
-    android: {
-      ...config.android,
-      config: {
-        ...(config.android && config.android.config),
-        ...(googleMapsKey ? { googleMaps: { apiKey: googleMapsKey } } : {}),
-      },
-    },
-  };
-};
+module.exports = ({ config }) => config;
