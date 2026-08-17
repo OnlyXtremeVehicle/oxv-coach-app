@@ -89,6 +89,7 @@ import {
   useReduceMotion,
 } from '@/ui/v2';
 import { couleurTexteSure } from '@/ui/v2/couleurTexte';
+import { domaineGradue, domaineSymetrique, graduations } from '@/ui/v2/courbeCanalLogic';
 import { raisonsResume } from '@/features/data/raisonAbsence';
 import { formatDeltaMs } from '@/features/data/comparerLogic';
 import { polylineToPathD } from '@/components/motion/pathMath';
@@ -1851,6 +1852,36 @@ function GGScatter({
 
 const CHAN_H = 96;
 
+/**
+ * Ordonnée en pixels d'une vitesse, dans un canal de hauteur `CHAN_H`.
+ *
+ * UNE SEULE FORMULE, deux appelants : le tracé de la courbe et le placement des
+ * étiquettes de graduation. Les écrire séparément est le moyen sûr de voir
+ * « 150 » se poser en face de 140 le jour où l'une des deux bouge.
+ *
+ * Les 3 pt de garde en haut et en bas laissent respirer le trait de 2 pt sans
+ * qu'il soit rogné par le bord du canal.
+ */
+function ordonneeVitesse(vitesse: number, haut: number): number {
+  return CHAN_H - (vitesse / Math.max(1, haut)) * (CHAN_H - 6) - 3;
+}
+
+/**
+ * Ordonnée en pixels d'un G longitudinal, zéro au milieu du canal.
+ *
+ * AUCUN ÉCRÊTAGE ICI, et c'est le point. La formule précédente bornait le
+ * rapport à ±1 sur une pleine échelle figée à 1,5 g : un freinage à 1,8 g était
+ * tracé à 1,5 g, et rien ne le disait. `haut` vient désormais de la mesure elle-
+ * même (`domaineSymetrique` puis `domaineGradue`), donc il la contient par
+ * construction — le rapport reste dans [−1, 1] sans qu'on ait à le forcer.
+ *
+ * Même rôle que `ordonneeVitesse` : une seule formule pour la courbe ET pour
+ * les étiquettes de graduation.
+ */
+function ordonneeG(gLong: number, haut: number): number {
+  return CHAN_H / 2 - (gLong / Math.max(0.01, haut)) * (CHAN_H / 2 - 4);
+}
+
 // A-SCRUB — Port scrubbing 60 fps : le curseur des canaux est piloté par une
 // SharedValue Reanimated sur le THREAD UI (Skia la consomme directement, cf.
 // GlowStroke), sans re-render React par frame pour la ligne. C'est une HYPOTHÈSE
@@ -1877,10 +1908,44 @@ function ChannelsChart({
   // GlowStroke : `end={progress}` accepte number | SharedValue).
   const cursorXSV = useDerivedValue(() => cursorSV.value * width - 0.5);
 
-  const maxSpeed = useMemo(
-    () => (speed.length > 0 ? Math.max(...speed.map((p) => p.speedKmh)) : 1),
-    [speed]
-  );
+  /**
+   * L'ÉCHELLE DU CANAL VITESSE — elle valait le maximum OBSERVÉ, et c'était le
+   * défaut de ce graphe.
+   *
+   * Normaliser sur `max(speedKmh)` fait toucher le haut du cadre à TOUTES les
+   * séances : une sortie à 90 km/h et une sortie à 210 km/h dessinaient la même
+   * silhouette, et rien à l'écran ne les départageait. La forme était lisible,
+   * le chiffre ne l'était pas.
+   *
+   * L'axe tombe désormais sur des repères ronds (`graduations`, pas 1-2-5), et
+   * la courbe se normalise sur CES repères (`domaineGradue`) — les deux
+   * partagent un dénominateur, faute de quoi l'étiquette « 150 » se poserait en
+   * face de 140. Conséquence assumée : la courbe ne touche plus le haut du
+   * cadre, et c'est précisément ce qui rend deux séances comparables.
+   */
+  const echelleVitesse = useMemo(() => {
+    const observe = speed.length > 0 ? Math.max(...speed.map((p) => p.speedKmh)) : 1;
+    const brut = { min: 0, max: Math.max(1, observe) };
+    return { haut: domaineGradue(brut, 3).max, reperes: graduations(brut, 3) };
+  }, [speed]);
+
+  /**
+   * L'ÉCHELLE DES APPUIS — elle était FIGÉE à ±1,5 g, et bornait ce qui dépassait.
+   *
+   * Sur piste, un freinage franchit 1,5 g sans difficulté. La courbe collait
+   * alors au bord du canal et y restait : le pilote voyait un plateau là où il
+   * avait sa meilleure décélération. Une mesure écrêtée se lit comme une limite
+   * du véhicule, ce qu'elle n'est pas.
+   *
+   * L'échelle se déduit maintenant de la séance, et reste symétrique pour que le
+   * zéro tienne le milieu du canal — c'est lui qui fait lire le signe (bas =
+   * freinage, haut = accélération).
+   */
+  const echelleG = useMemo(() => {
+    const brut = domaineSymetrique(brake.map((p) => p.gLong));
+    if (brut === null) return { haut: 1, reperes: [] as number[] };
+    return { haut: domaineGradue(brut, 4).max, reperes: graduations(brut, 4) };
+  }, [brake]);
   // Dérivations LOURDES mémoïsées sur [speed, brake, width] : un re-render de
   // libellé (par frame, via setCursor) ne les recalcule PAS — sinon le scrubbing
   // raboterait autant que l'ancien chemin. polylineToPathD rend '' sous 2 points
@@ -1890,19 +1955,19 @@ function ChannelsChart({
       width > 0
         ? speed.map((p) => ({
             x: p.progress * width,
-            y: CHAN_H - (p.speedKmh / Math.max(1, maxSpeed)) * (CHAN_H - 6) - 3,
+            y: ordonneeVitesse(p.speedKmh, echelleVitesse.haut),
           }))
         : [];
     const bp =
       width > 0
         ? brake.map((p) => ({
-            // gLong ∈ [-1.5, 1.5] ; 0 au centre.
+            // 0 au centre ; l'échelle vient de la mesure, donc rien n'est borné.
             x: p.progress * width,
-            y: CHAN_H / 2 - clamp(p.gLong / 1.5, -1, 1) * (CHAN_H / 2 - 4),
+            y: ordonneeG(p.gLong, echelleG.haut),
           }))
         : [];
     return { speedPath: polylineToPathD(sp), brakePath: polylineToPathD(bp) };
-  }, [speed, brake, width, maxSpeed]);
+  }, [speed, brake, width, echelleVitesse, echelleG]);
 
   // Geste : la ligne va sur le thread UI (cursorSV), les libellés suivent en JS
   // (runOnJS). Math.min/max inlinés (worklet-safe). A-SCRUB : port 60 fps.
@@ -1991,49 +2056,85 @@ function ChannelsChart({
           {/* Canal vitesse */}
           <View style={{ height: CHAN_H }}>
             {width > 0 ? (
-              <Canvas style={{ width, height: CHAN_H }}>
-                {speedPath ? (
-                  <Path
-                    path={speedPath}
-                    style="stroke"
-                    strokeWidth={2}
-                    strokeCap="round"
-                    strokeJoin="round"
-                    color={colors.qdi.trajectoire}
-                  />
-                ) : null}
-                <Rect x={cursorXProp} y={0} width={1} height={CHAN_H} color={colors.text.mid} />
-              </Canvas>
+              <>
+                <Canvas style={{ width, height: CHAN_H }}>
+                  {speedPath ? (
+                    <Path
+                      path={speedPath}
+                      style="stroke"
+                      strokeWidth={2}
+                      strokeCap="round"
+                      strokeJoin="round"
+                      color={colors.qdi.trajectoire}
+                    />
+                  ) : null}
+                  <Rect x={cursorXProp} y={0} width={1} height={CHAN_H} color={colors.text.mid} />
+                </Canvas>
+                {/* Les repères, posés PAR-DESSUS le canal. Ils passent par
+                    `ordonneeVitesse`, la MÊME fonction que la courbe : c'est ce
+                    qui garantit que « 150 » se pose sur la hauteur de 150.
+                    Inertes au toucher — le geste appartient au curseur. */}
+                <View style={styles.chanTicks}>
+                  {echelleVitesse.reperes.map((v) => (
+                    <Text
+                      key={v}
+                      style={[
+                        styles.chanTick,
+                        { top: ordonneeVitesse(v, echelleVitesse.haut) - 5 },
+                      ]}
+                    >
+                      {v}
+                    </Text>
+                  ))}
+                </View>
+              </>
             ) : null}
           </View>
-          <Text style={styles.chanLabel}>VITESSE</Text>
+          <Text style={styles.chanLabel}>VITESSE (km/h)</Text>
           {/* Canal G longitudinal */}
           <View style={{ height: CHAN_H, marginTop: space.sm }}>
             {width > 0 ? (
-              <Canvas style={{ width, height: CHAN_H }}>
-                <Rect
-                  x={0}
-                  y={CHAN_H / 2 - 0.5}
-                  width={width}
-                  height={1}
-                  color={colors.border.card}
-                />
-                {brakePath ? (
-                  <Path
-                    path={brakePath}
-                    style="stroke"
-                    strokeWidth={2}
-                    strokeCap="round"
-                    strokeJoin="round"
-                    color={colors.qdi.freinage}
+              <>
+                <Canvas style={{ width, height: CHAN_H }}>
+                  <Rect
+                    x={0}
+                    y={CHAN_H / 2 - 0.5}
+                    width={width}
+                    height={1}
+                    color={colors.border.card}
                   />
-                ) : null}
-                <Rect x={cursorXProp} y={0} width={1} height={CHAN_H} color={colors.text.mid} />
-              </Canvas>
+                  {brakePath ? (
+                    <Path
+                      path={brakePath}
+                      style="stroke"
+                      strokeWidth={2}
+                      strokeCap="round"
+                      strokeJoin="round"
+                      color={colors.qdi.freinage}
+                    />
+                  ) : null}
+                  <Rect x={cursorXProp} y={0} width={1} height={CHAN_H} color={colors.text.mid} />
+                </Canvas>
+                {/* Mêmes repères que la vitesse, par la même mécanique — et le
+                    zéro est déjà tracé par le filet central, on ne le double pas
+                    d'une étiquette « 0 » qui n'apprendrait rien. */}
+                <View style={styles.chanTicks}>
+                  {echelleG.reperes
+                    .filter((v) => v !== 0)
+                    .map((v) => (
+                      <Text
+                        key={v}
+                        style={[styles.chanTick, { top: ordonneeG(v, echelleG.haut) - 5 }]}
+                      >
+                        {v > 0 ? `+${v}` : String(v)}
+                      </Text>
+                    ))}
+                </View>
+              </>
             ) : null}
           </View>
           <Text style={styles.chanLabel}>
-            G LONGITUDINAL — bas : freinage · haut : accélération
+            G LONGITUDINAL (g) — bas : freinage · haut : accélération
           </Text>
         </View>
       </GestureDetector>
@@ -2708,6 +2809,27 @@ const styles = StyleSheet.create({
     letterSpacing: 1,
     color: colors.text.low,
     marginTop: space.xs,
+  },
+  /**
+   * Calque des graduations. `pointerEvents: 'none'` n'est pas cosmétique : sans
+   * lui, une étiquette intercepterait le `Gesture.Pan()` du curseur, et le
+   * scrubbing se bloquerait pile aux hauteurs graduées.
+   */
+  chanTicks: {
+    ...StyleSheet.absoluteFillObject,
+    pointerEvents: 'none',
+  },
+  /**
+   * `text.dim` (3,63:1) est ici à sa place : la doctrine le réserve au texte
+   * secondaire, et un repère d'axe en est la définition — il accompagne une
+   * courbe qui porte l'information, il ne la remplace pas.
+   */
+  chanTick: {
+    position: 'absolute',
+    right: 0,
+    fontFamily: typo.mono,
+    fontSize: 9,
+    color: colors.text.dim,
   },
   heatLegend: {
     flexDirection: 'row',
