@@ -1812,11 +1812,31 @@ function GGScatter({
   const spRange = Math.max(1, maxSp - minSp);
 
   const R = GG_SIZE / 2;
-  const GMAX = 1.5; // g pleine échelle
+
+  /**
+   * L'ÉCHELLE DU DIAGRAMME — elle valait 1,5 g EN DUR, et bornait le reste.
+   *
+   * `clamp(g / 1.5, -1, 1)` plaquait sur le cercle tout appui au-delà de 1,5 g.
+   * Sur piste, un freinage franchit ce seuil sans difficulté : le nuage se
+   * tassait alors en arc le long du bord, et cet arc se lisait comme une limite
+   * d'adhérence — la forme même que le pilote vient chercher dans un G-G. Une
+   * mesure écrêtée y ment plus qu'ailleurs.
+   *
+   * C'est le même défaut que celui corrigé sur le canal des appuis le 17/08 ;
+   * il vivait ici depuis le même jour, signalé et non traité.
+   *
+   * L'échelle se déduit désormais des DEUX axes à la fois : un diagramme G-G est
+   * circulaire, ses deux dimensions partagent forcément un rayon. Les prendre
+   * séparément ovaliserait le nuage et fausserait la lecture d'un appui combiné.
+   */
+  const ampleurG = domaineSymetrique(sampled.flatMap((p) => [p.gLat, p.gLong]));
+  const GMAX = ampleurG ? Math.max(0.5, domaineGradue(ampleurG, 2).max) : 1.5;
+
   const toPx = (gx: number, gy: number) => ({
     // gLat → droite (x), gLong positif (accél) → haut (y écran inversé).
-    x: R + clamp(gx / GMAX, -1, 1) * (R - 8),
-    y: R - clamp(gy / GMAX, -1, 1) * (R - 8),
+    // Aucun `clamp` : `GMAX` contient la mesure par construction.
+    x: R + (gx / GMAX) * (R - 8),
+    y: R - (gy / GMAX) * (R - 8),
   });
 
   return (
@@ -1843,8 +1863,10 @@ function GGScatter({
           return <Circle key={i} cx={at.x} cy={at.y} r={2} color={speedColor(t)} opacity={0.6} />;
         })}
       </Canvas>
+      {/* Le cercle portait un rayon sans valeur : on voyait une frontière sans
+          savoir laquelle. Il est nommé, comme les graduations des canaux. */}
       <Text style={styles.legendMono}>
-        Horizontal : appui latéral. Vertical : freinage (bas) / accélération (haut).
+        {`Horizontal : appui latéral. Vertical : freinage (bas) / accélération (haut). Cercle : ${virgule(GMAX.toFixed(GMAX < 1 ? 1 : 0))} g.`}
       </Text>
     </View>
   );
