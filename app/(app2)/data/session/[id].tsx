@@ -105,6 +105,12 @@ import { longueurDerivee, versTramesQualite } from '@/features/data/confianceSou
 import { construireIndex, portion } from '@/telemetry/projectionCurviligne';
 import { calculeTendanceSession } from '@/features/data/progressionLogic';
 import {
+  evaluerTours,
+  type ClassementTour,
+  type TourEvalue,
+  type TourMesure,
+} from '@/features/data/validationToursLogic';
+import {
   lireChevauchement,
   lireRotation,
   type EchantillonRotation,
@@ -500,6 +506,56 @@ function fitTrajectory(
 /** Durée d'un tour en ms (les tours stockent des secondes). */
 function lapMs(lap: Lap): number {
   return Math.round(lap.duration_seconds * 1000);
+}
+
+/**
+ * Les tours de la séance au contrat du module M05 (`validationToursLogic`).
+ *
+ * DEUX MESURES MANQUENT, ET ELLES VALENT `null` — jamais zéro. La table `laps`
+ * ne porte ni vitesse minimale du tour ni durée cumulée des trous de mesure :
+ * `lapDetection` ne produit aujourd'hui que des franchissements et des durées.
+ * Un `trousMesureMs: 0` AFFIRMERAIT une mesure continue ; `null` dit « on ne
+ * sait pas ». Le module s'en accommode et n'émet alors ni marque d'arrêt ni
+ * marque de trou — il fonctionne dégradé sans mentir.
+ *
+ * `valide: true` parce que rien en base ne signale un tour inexploitable : les
+ * trois booléens de `laps` sont `is_outlap`, `is_inlap`, `is_best_lap`. Les
+ * deux premiers deviennent les tags que la détection amont expose déjà.
+ *
+ * AUCUNE MARQUE MANUELLE N'EST LUE NI ÉCRITE. Le tour que le pilote déclare
+ * gêné, ou choisit comme représentatif, n'a à ce jour aucune place en base —
+ * `laps` n'a ni colonne de motif ni colonne d'auteur, et le critère « chaque
+ * inclusion/exclusion conserve un motif audité » ne peut donc pas être tenu.
+ * L'écran reste en LECTURE automatique tant qu'une décision de schéma n'a pas
+ * été prise (table `lap_marks` dédiée, ou colonne `laps.marques`).
+ */
+function versToursMesure(laps: Lap[]): TourMesure[] {
+  return laps.map((l) => ({
+    index: l.lap_number,
+    tempsMs: l.duration_seconds > 0 ? lapMs(l) : null,
+    valide: true,
+    tags: [...(l.is_outlap ? ['outlap'] : []), ...(l.is_inlap ? ['inlap'] : [])],
+    vitesseMiniKmh: null,
+    trousMesureMs: null,
+  }));
+}
+
+/** Libellés d'écran des trois classements du module M05. */
+const LIBELLE_CLASSEMENT: Record<ClassementTour, string> = {
+  propre: 'propre',
+  suspect: 'suspect',
+  hors_chrono: 'hors chronométrage',
+};
+
+/**
+ * La ligne de marques d'un tour : son classement, puis les FAITS qui l'ont
+ * produit. `null` pour un tour propre sans marque — il n'y a rien à dire, et
+ * l'écran ne remplit pas le silence.
+ */
+function ligneMarques(tour: TourEvalue | undefined): string | null {
+  if (tour === undefined || tour.marques.length === 0) return null;
+  const faits = tour.marques.map((m) => m.fait).join(' ; ');
+  return `Tour ${tour.index} · ${LIBELLE_CLASSEMENT[tour.classement]} — ${faits}`;
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -960,6 +1016,23 @@ function ResumeSection({ session, laps }: { session: TelemetrySession; laps: Lap
     vmax: vmax !== '—',
   });
 
+  /**
+   * LA RÉSERVE SUR LA RÉFÉRENCE (module M05) — la « décision permise ».
+   *
+   * Le chrono affiché au-dessus est le meilleur temps de la séance. Quand ce
+   * meilleur temps BRUT porte une réserve — une sortie de stands, un écart net,
+   * une mesure trouée —, le module la dit en un fait chiffré. C'est le pilote
+   * qui décide ensuite si ce chrono le représente : choisir une référence
+   * pertinente n'est pas choisir la plus rapide.
+   *
+   * Rien n'est masqué et rien n'est corrigé : le chiffre reste, la réserve se
+   * pose à côté.
+   */
+  const reserve = useMemo(
+    () => evaluerTours(versToursMesure(laps)).reference?.reserve ?? null,
+    [laps]
+  );
+
   return (
     <View style={styles.resumeCard}>
       <Text style={styles.resumeEyebrow}>TOUR DE RÉFÉRENCE</Text>
@@ -971,6 +1044,7 @@ function ResumeSection({ session, laps }: { session: TelemetrySession; laps: Lap
           {raisons.chrono ? <Text style={styles.resumeRaison}>{raisons.chrono}</Text> : null}
         </>
       )}
+      {reserve !== null ? <Text style={styles.resumeReserve}>{reserve}</Text> : null}
       <View style={styles.hairlineRow}>
         <StatCell
           label="Tours"
@@ -1209,6 +1283,20 @@ function ToursSection({
 }) {
   const [width, setWidth] = useState(0);
 
+  /**
+   * Le verdict par tour (module M05) — un classement et, s'il y a lieu, les
+   * FAITS qui l'ont produit. La machine ne déclare pas une cause : elle dit
+   * « 8,4 s au-dessus de la médiane des tours propres », pas « trafic ».
+   *
+   * Il est calculé sur TOUS les tours, y compris ceux sans temps exploitable —
+   * l'histogramme n'en montre qu'une partie, mais un tour non chronométré reste
+   * un fait de la séance. La correspondance se fait par `lap_number`.
+   */
+  const verdictParTour = useMemo(() => {
+    const validation = evaluerTours(versToursMesure(laps));
+    return new Map(validation.tours.map((t) => [t.index, t]));
+  }, [laps]);
+
   const bars = useMemo(() => {
     const valid = laps.filter((l) => l.duration_seconds > 0);
     return valid.map((l) => ({ lapNumber: l.lap_number, ms: lapMs(l), isBest: l.is_best_lap }));
@@ -1240,6 +1328,15 @@ function ToursSection({
   const slot = width > 0 ? width / bars.length : 0;
   const barW = slot > 0 ? Math.max(3, slot * 0.62) : 0;
 
+  /** Un tour dont le module a quelque chose à dire : il s'atténue dans les barres. */
+  const estAttenue = (lapNumber: number): boolean => {
+    const c = verdictParTour.get(lapNumber)?.classement;
+    return c === 'suspect' || c === 'hors_chrono';
+  };
+  const verdictSelection = selectedLap !== null ? verdictParTour.get(selectedLap) : undefined;
+  const marquesSelection = ligneMarques(verdictSelection);
+  const desToursMarques = bars.some((b) => estAttenue(b.lapNumber));
+
   const onTapX = (x: number) => {
     if (slot <= 0) return;
     const idx = clamp(Math.floor(x / slot), 0, bars.length - 1);
@@ -1267,6 +1364,13 @@ function ToursSection({
         ) : (
           <Text style={styles.toursHint}>Touchez une barre pour isoler un tour.</Text>
         )}
+        {/*
+          Ce que le module a relevé SUR CE TOUR — le fait, jamais la cause. Un
+          tour propre sans marque n'ajoute rien : le silence est sa réponse.
+        */}
+        {marquesSelection !== null ? (
+          <Text style={styles.toursMarques}>{marquesSelection}</Text>
+        ) : null}
       </View>
 
       <GestureDetector gesture={tap}>
@@ -1282,7 +1386,17 @@ function ToursSection({
           accessibilityLabel="Tours de la séance"
           accessibilityValue={{
             text: selected
-              ? `Tour ${selected.lapNumber}, ${formatChronoMs(selected.ms)}`
+              ? [
+                  `Tour ${selected.lapNumber}, ${formatChronoMs(selected.ms)}`,
+                  // Les faits du module, sans répéter le numéro du tour.
+                  verdictSelection !== undefined && verdictSelection.marques.length > 0
+                    ? `${LIBELLE_CLASSEMENT[verdictSelection.classement]} — ${verdictSelection.marques
+                        .map((m) => m.fait)
+                        .join(' ; ')}`
+                    : null,
+                ]
+                  .filter(Boolean)
+                  .join('. ')
               : 'Aucun tour isolé',
           }}
           accessibilityActions={[{ name: 'increment' }, { name: 'decrement' }]}
@@ -1306,9 +1420,18 @@ function ToursSection({
                   : b.isBest
                     ? colors.bg.card2
                     : colors.border.strong;
+                /*
+                  MESURE DOUTEUSE = BARRE ATTÉNUÉE, PAS UNE COULEUR DE PLUS.
+                  Le tour suspect ou hors chronométrage recule d'un demi-ton :
+                  il reste lisible, il n'est ni effacé ni disqualifié. Aucune
+                  teinte n'est introduite — le rouge demeure la SÉLECTION, l'or
+                  demeure la référence, et la sélection l'emporte toujours sur
+                  l'atténuation : un tour qu'on isole se voit en plein.
+                */
+                const opacite = !isSelected && estAttenue(b.lapNumber) ? 0.38 : 1;
                 return (
                   <Group key={b.lapNumber}>
-                    <Rect x={x} y={y} width={barW} height={h} color={fill} />
+                    <Rect x={x} y={y} width={barW} height={h} color={fill} opacity={opacite} />
                     {b.isBest ? (
                       // Tour de référence : liseré or Heritage (record de séance).
                       <Rect
@@ -1319,6 +1442,7 @@ function ToursSection({
                         color={colors.heritage.gold}
                         style="stroke"
                         strokeWidth={1.5}
+                        opacity={opacite}
                       />
                     ) : null}
                   </Group>
@@ -1331,6 +1455,16 @@ function ToursSection({
       <Text style={styles.legendMono}>
         Barre courte = tour rapide. Liseré or = tour de référence.
       </Text>
+      {/*
+        La ligne n'apparaît QUE si des barres sont effectivement atténuées :
+        une légende qui décrit ce qui n'est pas à l'écran apprend à ne plus la
+        lire.
+      */}
+      {desToursMarques ? (
+        <Text style={styles.legendMono}>
+          Tour atténué : mesure douteuse — le détail au toucher.
+        </Text>
+      ) : null}
     </View>
   );
 }
@@ -3312,6 +3446,17 @@ const styles = StyleSheet.create({
     color: colors.text.low,
     marginTop: space.xs,
   },
+  /**
+   * Réserve sur la référence (M05) : un fait posé sous le chrono, pas un
+   * avertissement. Ton de la raison d'absence — même famille, même retrait.
+   */
+  resumeReserve: {
+    fontFamily: typo.body,
+    fontSize: fontSize.small,
+    lineHeight: 17,
+    color: colors.text.low,
+    marginTop: space.sm,
+  },
   resumeNoChrono: {
     fontFamily: typo.monoSemi,
     fontSize: 48,
@@ -3412,6 +3557,17 @@ const styles = StyleSheet.create({
     fontFamily: typo.body,
     fontSize: 12,
     color: colors.text.low,
+  },
+  /**
+   * Les marques du tour isolé : mono, discret, sous la ligne de tête. Mono
+   * parce que c'est un relevé — même famille que le chrono qu'il commente.
+   */
+  toursMarques: {
+    fontFamily: typo.mono,
+    fontSize: fontSize.micro,
+    lineHeight: 16,
+    color: colors.text.low,
+    marginTop: space.xs,
   },
   legendMono: {
     fontFamily: typo.mono,

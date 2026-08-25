@@ -88,7 +88,25 @@ arbitrage du fondateur avant toute ligne de code (voir § Conflits).
 
 | 5 « Terrain » | M02 + projection | `projectionCurviligne` (géométrie pure, non-producteur au registre de provenance) + zones de confiance réduite **atténuées sur le tracé** (chantier du lot 1 soldé) + `prevolLogic` (9 postes en faits, « non mesuré » jamais vert, réseau absent = enregistrement seul) branché dans `placement.tsx` avant l'armement — 44 tests |
 
-Aucune migration DB. Gardes du dépôt respectées après passage : cliquet typo
+| 6 « Tours » | M05 | `validationToursLogic` (classement propre / hors chrono / suspect, chaque marque portant son **fait** chiffré, écart net robuste par MAD **dans les deux sens**, référence = meilleur tour PROPRE avec réserve factuelle si le meilleur brut ne l'est pas) + section Tours (tours douteux atténués, détail au toucher, réserve près du chrono de référence) — 28 tests dont un **verrou lexical** : aucune sortie ne peut prononcer « trafic », « drapeau » ni une faute |
+
+**Décision de schéma en attente (M05, marquage manuel).** Le recensement de
+`database.types.ts` est formel : `laps` n'a ni `tags`, ni `status`, ni `jsonb`,
+ni auteur, ni motif — ses trois booléens (`is_outlap`, `is_inlap`,
+`is_best_lap`) sont des calculs, pas des déclarations. Aucune table
+`lap_marks` / `lap_tags` n'existe. Les trois candidats proches sont inadaptés :
+`coach_annotations` exige un `coach_id` (un pilote sans coach ne peut rien y
+écrire), `session_insights.lap_classification` est **recalculé** (toute marque
+humaine y serait écrasée), `pilot_notes` et `session_feedback` sont au grain
+séance. Conséquence : le critère du cahier — « chaque inclusion/exclusion
+conserve un motif audité » — **ne peut pas être satisfait en base aujourd'hui**.
+Le lot reste donc en lecture automatique pure et nomme le manque.
+Deux voies, au choix du fondateur : table dédiée `lap_marks (lap_id,
+session_id, author_id, kind, motif, created_at)` — un enregistrement par
+décision, l'audit est natif — ou colonne `laps.marques jsonb`, plus simple et
+moins auditable. Aucune migration écrite ni appliquée.
+
+Aucune autre migration DB. Gardes du dépôt respectées après passage : cliquet typo
 (9 tailles neuves converties à l'échelle `fontSize` de theme/v2), inventaire
 des entrées optionnelles (+4 justifiées). Bonus : trois « Il faut » préexistants
 reformulés (ecurieLogic, geocodeLogic, ressentiSaisonLogic).
