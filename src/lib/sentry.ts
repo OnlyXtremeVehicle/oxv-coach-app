@@ -4,7 +4,7 @@
  * - En dev (__DEV__) : no-op, on ne veut pas polluer Sentry avec les
  *   logs des sessions de développement.
  * - Sans EXPO_PUBLIC_SENTRY_DSN : no-op aussi.
- * - En preview/production avec DSN : init standard, traces 100%.
+ * - En preview/production avec DSN : init standard, traces échantillonnées.
  *
  * NB : le plugin config @sentry/react-native/expo a été RETIRÉ de app.json
  * en semaine 14 (conflit Gradle 8.8, doublon d'autolinking). Le module natif
@@ -34,7 +34,9 @@ export function initSentry(): void {
   Sentry.init({
     dsn,
     debug: false,
-    tracesSampleRate: 1.0,
+    // 20 % suffit pour le diagnostic de perf ; 100 % en prod coûte en quota
+    // Sentry et en réseau sur le téléphone du pilote.
+    tracesSampleRate: 0.2,
     enableAutoSessionTracking: true,
     sessionTrackingIntervalMillis: 30_000,
   });
