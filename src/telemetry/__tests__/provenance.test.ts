@@ -49,7 +49,9 @@ const DOSSIER = join(__dirname, '..');
  * test tant que quelqu'un n'a pas tranché s'il produit ou non. C'est la même
  * exigence que pour la banque, prise par l'autre bout.
  */
-const NON_PRODUCTEURS = ['provenance', 'niveaux', 'courbeDelta', 'virage'];
+// projectionCurviligne : géométrie pure — relie une abscisse (m) aux points de
+// la polyligne du tracé ; aucun chiffre montré au pilote n'en sort.
+const NON_PRODUCTEURS = ['provenance', 'niveaux', 'courbeDelta', 'virage', 'projectionCurviligne'];
 
 /** Les modules de calcul, hors ceux qui ne produisent rien. */
 const MODULES = readdirSync(DOSSIER)

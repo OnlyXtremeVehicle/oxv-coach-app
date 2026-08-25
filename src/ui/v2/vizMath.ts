@@ -225,18 +225,22 @@ export function pulsePeriodMs(bpm: number | null): number {
 // ---------------------------------------------------------------------------
 
 /**
- * Ajuste des points métriques (y vers le nord) dans un cadre écran
- * width×height (y vers le bas) : centrage + échelle uniforme (aspect
- * préservé), nord en haut. Points confondus → tous au centre.
+ * La transformation métrique → écran de `fitPointsToBox`, exposée seule.
+ *
+ * Elle se calcule sur la boîte englobante des points DONNÉS : pour projeter
+ * une sous-polyligne (portion de tracé atténuée, repère) dans le même cadre
+ * que le tracé complet, on la construit depuis le tracé COMPLET puis on
+ * l'applique aux points de la portion — la cadrer sur sa propre boîte la
+ * dessinerait ailleurs. `null` si aucun point exploitable.
  */
-export function fitPointsToBox(
+export function fitTransform(
   points: readonly XY[],
   width: number,
   height: number,
-  padding = 8
-): XY[] {
+  padding: number
+): ((p: XY) => XY) | null {
   const clean = points.filter((p) => Number.isFinite(p.x) && Number.isFinite(p.y));
-  if (clean.length === 0) return [];
+  if (clean.length === 0) return null;
 
   let minX = Infinity;
   let maxX = -Infinity;
@@ -260,10 +264,26 @@ export function fitPointsToBox(
 
   const cx = (minX + maxX) / 2;
   const cy = (minY + maxY) / 2;
-  return clean.map((p) => ({
+  return (p) => ({
     x: width / 2 + (p.x - cx) * scale,
     y: height / 2 - (p.y - cy) * scale,
-  }));
+  });
+}
+
+/**
+ * Ajuste des points métriques (y vers le nord) dans un cadre écran
+ * width×height (y vers le bas) : centrage + échelle uniforme (aspect
+ * préservé), nord en haut. Points confondus → tous au centre.
+ */
+export function fitPointsToBox(
+  points: readonly XY[],
+  width: number,
+  height: number,
+  padding = 8
+): XY[] {
+  const clean = points.filter((p) => Number.isFinite(p.x) && Number.isFinite(p.y));
+  const transform = fitTransform(clean, width, height, padding);
+  return transform === null ? [] : clean.map(transform);
 }
 
 /** Chemin SVG 'M … L …' (+ ' Z' si fermé). '' si moins de 2 points. */

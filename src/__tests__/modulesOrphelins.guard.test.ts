@@ -183,6 +183,9 @@ const CONNUS: readonly string[] = [
   '/src/components/lapscrubber.tsx',
   '/src/components/oxvpromiseblock.tsx',
   '/src/components/signature/radarempreinte.tsx',
+  // `prevollogic.ts` (lot M02) EST SORTI DE CETTE LISTE le 25/08/2026 : l'écran
+  // de placement (`app/(app2)/rec/placement.tsx`) affiche désormais le prévol
+  // avant l'armement — le module a son consommateur de production.
   '/src/hooks/detaillevellogic.ts',
   '/src/lib/queries/carteslogic.ts',
   '/src/media/thumbhash.ts',

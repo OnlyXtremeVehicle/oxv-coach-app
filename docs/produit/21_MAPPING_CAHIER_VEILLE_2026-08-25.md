@@ -86,6 +86,8 @@ arbitrage du fondateur avant toute ligne de code (voir § Conflits).
 | 3 « Virage fin » | M14 + M15 | `virageFinLogic` (« chevauchement décélération/rotation estimé », corrections observées, champ `alternatives` si signal insuffisant ; un test interdit « sous/survirage » dans les chaînes exportées) + 2 nouveaux Constats dans la Sheet — 22 tests |
 | 4 « Coach » | M27 + M09 | `avantApresLogic` (fenêtres appariées, statuts non testée/probable/validée/non concluante, réserves) + `comparabiliteLogic` (score 0-100, circuits différents = bloquant) + bloc AVANT/APRÈS dans le fil coach + bandeau comparabilité en tête de `comparer` (informe, ne bloque pas) — 34 tests |
 
+| 5 « Terrain » | M02 + projection | `projectionCurviligne` (géométrie pure, non-producteur au registre de provenance) + zones de confiance réduite **atténuées sur le tracé** (chantier du lot 1 soldé) + `prevolLogic` (9 postes en faits, « non mesuré » jamais vert, réseau absent = enregistrement seul) branché dans `placement.tsx` avant l'armement — 44 tests |
+
 Aucune migration DB. Gardes du dépôt respectées après passage : cliquet typo
 (9 tailles neuves converties à l'échelle `fontSize` de theme/v2), inventaire
 des entrées optionnelles (+4 justifiées). Bonus : trois « Il faut » préexistants

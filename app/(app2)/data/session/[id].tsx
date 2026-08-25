@@ -99,8 +99,10 @@ import {
   VERSION_CONFIANCE_ZONE,
   type ConfianceTour,
   type NiveauConfiance,
+  type TrameQualite,
 } from '@/features/data/confianceLogic';
 import { longueurDerivee, versTramesQualite } from '@/features/data/confianceSource';
+import { construireIndex, portion } from '@/telemetry/projectionCurviligne';
 import { calculeTendanceSession } from '@/features/data/progressionLogic';
 import {
   lireChevauchement,
@@ -1417,6 +1419,51 @@ function TraceSection({
     };
   }, [sessionId, selectedLap]);
 
+  // Trames de qualité du TOUR AFFICHÉ (module M03+) — pour marquer sur le
+  // tracé les zones où la confiance de mesure est réduite. Séance entière :
+  // rien à marquer, les zones sont un découpage DU TOUR. Échec de lecture :
+  // rien non plus — le Résumé porte déjà l'information.
+  const [tramesQualite, setTramesQualite] = useState<TrameQualite[] | null>(null);
+
+  useEffect(() => {
+    if (selectedLap === null) {
+      setTramesQualite(null);
+      return;
+    }
+    let cancelled = false;
+    setTramesQualite(null);
+    loadTramesQualiteTour(sessionId, selectedLap)
+      .then((lignes) => {
+        if (!cancelled) setTramesQualite(versTramesQualite(lignes));
+      })
+      .catch(() => {
+        if (!cancelled) setTramesQualite(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [sessionId, selectedLap]);
+
+  /**
+   * Zones en confiance FAIBLE (et uniquement elles), en bornes métriques le
+   * long de la polyligne affichée. Le découpage prend `index.longueurTotale`
+   * — la longueur de la POLYLIGNE — comme longueur de tour : une longueur
+   * dérivée par télémétrie ne coïncide pas exactement avec celle du tracé, et
+   * des bornes hors tracé ne se projetteraient pas. Une portion qui ne se
+   * projette pas malgré tout → rien n'est marqué.
+   */
+  const zonesAttenuees = useMemo(() => {
+    if (selectedLap === null || tramesQualite === null || tramesQualite.length === 0) return [];
+    if (!trace || trace.length < 2) return [];
+    const index = construireIndex(trace, true);
+    if (index === null) return [];
+    const tour = evaluerConfianceTour(tramesQualite, decouperZones(index.longueurTotale));
+    const faibles = tour.zones.filter((z) => z.niveau === 'faible');
+    if (faibles.length === 0) return [];
+    const bornes = faibles.map((z) => ({ debutM: z.zone.debutM, finM: z.zone.finM }));
+    return bornes.every((b) => portion(index, b.debutM, b.finM) !== null) ? bornes : [];
+  }, [selectedLap, tramesQualite, trace]);
+
   // Pastilles de marge : uniquement si des virages segmentés existent (honnête).
   const cornerMarkers = useMemo(
     () =>
@@ -1452,7 +1499,17 @@ function TraceSection({
         {selectedLap !== null ? `TOUR ${selectedLap}` : 'SÉANCE ENTIÈRE'}
       </Text>
       <View style={styles.traceCard}>
-        <TraceCircuit centerline={trace} height={200} markers={cornerMarkers} />
+        <TraceCircuit
+          centerline={trace}
+          height={200}
+          markers={cornerMarkers}
+          attenues={zonesAttenuees}
+        />
+        {zonesAttenuees.length > 0 ? (
+          <Text style={styles.legendMono}>
+            Trait atténué : mesure en confiance réduite (voir Résumé).
+          </Text>
+        ) : null}
       </View>
 
       {tappableCorners.length > 0 ? (

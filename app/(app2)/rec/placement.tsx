@@ -23,12 +23,17 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { router } from 'expo-router';
+import NetInfo from '@react-native-community/netinfo';
 import { Canvas, Path as SkPath } from '@shopify/react-native-skia';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, { Easing, runOnJS, useSharedValue, withTiming } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { bluetoothService } from '@/ble/bluetoothService';
+import { clampBatteryLevel } from '@/features/rec/equipementLogic';
+import { evaluerPrevol, RAPPEL_PREVOL, type EtatPoste } from '@/features/rec/prevolLogic';
+import { fontSize as fs } from '@/theme/v2';
+import { GpsFix, type RaceBoxData } from '@/types/telemetry';
 import type { LatLon } from '@/circuit/circuitGenerator';
 import { libelleAction, verdictArmement } from '@/features/rec/armementGateLogic';
 import { ARM_HOLD_MS } from '@/features/rec/armementLogic';
@@ -99,6 +104,48 @@ function finishLineRatio(centerline: readonly LatLon[], lat: number, lon: number
     total += seg;
   }
   return total > 0 ? upto / total : 0;
+}
+
+// ---------------------------------------------------------------------------
+// Prévol (M02) — la chaîne de mesure, poste par poste, avant d'armer
+// ---------------------------------------------------------------------------
+
+/**
+ * Cadence de rafraîchissement du prévol. Le boîtier émet à 25 Hz : refléter
+ * chaque trame dans l'état re-rendrait tout l'écran — tracé Skia compris —
+ * vingt-cinq fois par seconde. Une fois par seconde suffit à un état des lieux.
+ */
+const PREVOL_MAJ_MS = 1000;
+
+/**
+ * Complément oral de la pastille. Le fait seul (« Batterie du boîtier : 82 % »)
+ * ne dit pas l'état au lecteur d'écran — la pastille est purement visuelle.
+ * `non_mesure` reste vide : son fait dit déjà « non mesurée ».
+ */
+const ORAL_ETAT: Record<EtatPoste, string> = {
+  pret: ', prêt',
+  a_verifier: ', à vérifier',
+  bloquant: ', bloquant',
+  non_mesure: '',
+};
+
+/**
+ * La pastille d'état — dans les gris du kit, JAMAIS un sémaphore vert/rouge :
+ * point plein = prêt, cercle = à vérifier, croix discrète = bloquant,
+ * tiret = non mesuré. Le seul accent rouge de l'écran reste le bouton d'armement.
+ */
+function PastillePrevol({ etat }: { etat: EtatPoste }) {
+  return (
+    <View style={styles.pastilleCase}>
+      {etat === 'pret' ? (
+        <View style={styles.pastillePleine} />
+      ) : etat === 'a_verifier' ? (
+        <View style={styles.pastilleCerclee} />
+      ) : (
+        <Text style={styles.pastilleGlyphe}>{etat === 'bloquant' ? '×' : '—'}</Text>
+      )}
+    </View>
+  );
 }
 
 // ---------------------------------------------------------------------------
@@ -296,6 +343,78 @@ export default function PlacementScreen() {
   const [vehicleId, setVehicleId] = useState<string | null>(null);
   const [ble, setBle] = useState(() => bluetoothService.getStatus());
   useEffect(() => bluetoothService.onStatusChange(setBle), []);
+
+  /**
+   * PRÉVOL (M02) — ce que la chaîne expose RÉELLEMENT, rien de plus.
+   *
+   * Le boîtier est connecté depuis l'écran Équipement ; ici, partir en piste
+   * est l'étape suivante. C'est donc ici que la chaîne se passe en revue,
+   * poste par poste, AVANT le geste d'armement.
+   *
+   * Sources — uniquement celles qui existent dans le dépôt :
+   *   • trames BLE (`onData`) : batterie du boîtier, fix, hAcc, satellites ;
+   *   • `getCurrentRate()` : fréquence de trames observée ;
+   *   • NetInfo : réseau (le direct seulement, jamais l'enregistrement) ;
+   *   • l'état BLE ci-dessus : la liaison.
+   *
+   * Ce qui n'est PAS lu reste `null`, et le poste dit « non mesurée » :
+   * la mémoire du boîtier (le parser UBX ne la lit pas) et la batterie du
+   * téléphone (expo-battery absent du dépôt). On n'invente aucune donnée.
+   */
+  const [trame, setTrame] = useState<RaceBoxData | null>(null);
+  const [frequenceHz, setFrequenceHz] = useState<number | null>(null);
+  const [reseau, setReseau] = useState<boolean | null>(null);
+  const derniereTrameMs = useRef(0);
+
+  useEffect(
+    () =>
+      bluetoothService.onData((frame: RaceBoxData) => {
+        const now = Date.now();
+        if (now - derniereTrameMs.current < PREVOL_MAJ_MS) return;
+        derniereTrameMs.current = now;
+        setTrame(frame);
+        // Le taux est calculé sur une fenêtre glissante d'une seconde : il vaut
+        // 0 tant qu'elle n'est pas remplie. Or on est DANS `onData` — une trame
+        // vient d'arriver — donc un 0 ici est « pas encore calculé », jamais
+        // « aucune trame » : il reste non mesuré plutôt qu'un faux bloquant.
+        const taux = bluetoothService.getCurrentRate();
+        setFrequenceHz(taux > 0 ? taux : null);
+      }),
+    []
+  );
+
+  // Liaison tombée → les dernières valeurs lues ne décrivent plus rien : on ne
+  // certifie pas ce qu'on ne lit plus. Les postes redisent « non mesuré ».
+  useEffect(() => {
+    if (ble === 'connected') return;
+    setTrame(null);
+    setFrequenceHz(null);
+  }, [ble]);
+
+  useEffect(
+    () =>
+      NetInfo.addEventListener((s) => {
+        // Même définition du « en ligne » que src/lib/netinfo.ts.
+        setReseau(Boolean(s.isConnected) && s.isInternetReachable !== false);
+      }),
+    []
+  );
+
+  const bilan = useMemo(
+    () =>
+      evaluerPrevol({
+        batteriePct: trame ? clampBatteryLevel(trame.battery.level) : null,
+        memoirePct: null, // non lue par le parser UBX — le poste le dit
+        fixValide: trame ? trame.gps.fix === GpsFix.Fix3D : null,
+        hAccM: trame ? trame.gps.accuracy : null, // mètres (parser : mm / 1000)
+        satellites: trame ? trame.gps.satellites : null,
+        frequenceHz,
+        connexionEtablie: ble === 'connected',
+        batterieTelephonePct: null, // expo-battery absent du dépôt — le poste le dit
+        reseauDisponible: reseau,
+      }),
+    [trame, frequenceHz, ble, reseau]
+  );
 
   // Le 4e argument ferme le chemin « armer sans circuit », qui retombait sur
   // `BELTOISE_FINISH` — une ligne d'arrivée qui n'appartient à aucun tracé réel.
@@ -573,6 +692,40 @@ export default function PlacementScreen() {
           <Text style={styles.vehicleNote}>Séance rattachée à {vehicleName(vehicleChoisi)}.</Text>
         ) : null}
 
+        {/*
+          LE PRÉVOL — la chaîne de mesure, dite AVANT le geste d'armement.
+
+          Fiche M02 du cahier veille : découvrir au débrief que rien n'a été
+          mesuré est le pire des scénarios. Chaque poste sort avec son FAIT
+          (« Batterie du boîtier : 82 % ») et sa pastille — les gris du kit,
+          pas un sémaphore. Le verdict reprend la phrase du module telle
+          quelle : réseau absent → « enregistrement seul », dit factuellement,
+          et la captation part quand même (le cahier l'exige). Le prévol
+          MONTRE ; la seule porte qui bloque l'armement reste `verdictArmement`.
+        */}
+        <View style={styles.prevolBloc}>
+          <Text style={styles.prevolEyebrow}>PRÉVOL</Text>
+          <Text style={styles.prevolVerdict} accessibilityLiveRegion="polite">
+            {bilan.verdict.phrase}
+          </Text>
+          {bilan.postes.map((p) => (
+            <View
+              key={p.poste}
+              style={styles.prevolLigne}
+              accessible
+              accessibilityLabel={`${p.fait}${ORAL_ETAT[p.etat]}`}
+            >
+              <PastillePrevol etat={p.etat} />
+              <Text
+                style={[styles.prevolFait, p.etat === 'non_mesure' && styles.prevolFaitAbsent]}
+              >
+                {p.fait}
+              </Text>
+            </View>
+          ))}
+          <Text style={styles.prevolRappel}>{RAPPEL_PREVOL}</Text>
+        </View>
+
         {error ? (
           <Text style={styles.error} accessibilityLiveRegion="polite">
             {error}
@@ -741,6 +894,87 @@ const styles = StyleSheet.create({
     fontSize: 15,
     lineHeight: 23,
     color: colors.text.mid,
+  },
+  // --- Prévol (M02) ---------------------------------------------------------
+  prevolBloc: {
+    marginTop: space.xl,
+    backgroundColor: colors.bg.card,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: colors.border.card,
+    borderRadius: radius.card,
+    padding: space.lg,
+  },
+  prevolEyebrow: {
+    fontFamily: typo.mono,
+    fontSize: fs.eyebrow,
+    letterSpacing: 2,
+    color: colors.text.mid,
+    marginBottom: space.sm,
+  },
+  prevolVerdict: {
+    fontFamily: typo.bodyMedium,
+    fontSize: fs.bodyLg,
+    lineHeight: 21,
+    color: colors.text.hi,
+    marginBottom: space.md,
+  },
+  prevolLigne: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: space.md,
+    paddingVertical: 3,
+  },
+  /**
+   * La case de pastille : largeur fixe pour l'alignement des faits, hauteur
+   * calée sur la ligne du fait (lineHeight 21) pour centrer point et cercle.
+   */
+  pastilleCase: {
+    width: 16,
+    height: 21,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  // Point plein = prêt. Chrome neutre (text.hi), jamais un vert de sémaphore.
+  pastillePleine: {
+    width: 7,
+    height: 7,
+    borderRadius: 4,
+    backgroundColor: colors.text.hi,
+  },
+  // Cercle = à vérifier : le même point, vidé.
+  pastilleCerclee: {
+    width: 9,
+    height: 9,
+    borderRadius: 5,
+    borderWidth: 1,
+    borderColor: colors.text.hi,
+  },
+  // Croix discrète = bloquant ; tiret = non mesuré (le signe d'absence de l'app).
+  pastilleGlyphe: {
+    fontFamily: typo.mono,
+    fontSize: fs.body,
+    lineHeight: 21,
+    color: colors.text.mid,
+    textAlign: 'center',
+  },
+  prevolFait: {
+    flex: 1,
+    fontFamily: typo.body,
+    fontSize: fs.body,
+    lineHeight: 21,
+    color: colors.text.hi,
+  },
+  // L'absence se dit plus bas que le fait mesuré — text.mid tient le plancher
+  // de contraste du flux REC (cf. les notes voisines).
+  prevolFaitAbsent: {
+    color: colors.text.mid,
+  },
+  prevolRappel: {
+    fontFamily: typo.body,
+    fontSize: fs.small,
+    lineHeight: 18,
+    color: colors.text.mid,
+    marginTop: space.md,
   },
   vehicleNote: {
     fontFamily: typo.body,

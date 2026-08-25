@@ -26,13 +26,21 @@ import Animated, {
 } from 'react-native-reanimated';
 
 import type { LatLon } from '@/circuit/circuitGenerator';
+import { construireIndex, portion } from '@/telemetry/projectionCurviligne';
 
 import { GlowStroke } from './motion/GlowStroke';
 import { useReduceMotion } from './motion/useReduceMotion';
 import { SpringDot } from './SpringDot';
 import { colors, motion, radius, space, type } from './tokens';
 import { useFirstViewport } from './useFirstViewport';
-import { DOT_STAGGER_MS, centerlineToTrace, pointAtRatio, type XY } from './vizMath';
+import {
+  DOT_STAGGER_MS,
+  centerlineToTrace,
+  fitTransform,
+  pointAtRatio,
+  pointsToSvgPath,
+  type XY,
+} from './vizMath';
 
 export interface TraceMarker {
   /** Position le long du tracé, 0..1 (abscisse curviligne). */
@@ -52,6 +60,15 @@ export interface TraceCircuitProps {
   progress?: number | SharedValue<number>;
   /** Puces d'événements le long du tracé. */
   markers?: readonly TraceMarker[];
+  /**
+   * Portions du tracé en CONFIANCE DE MESURE RÉDUITE — bornes en mètres le
+   * long de la polyligne (abscisses curvilignes, module de projection).
+   * Rendues en trait atténué : un voile du fond de carte, jamais une couleur
+   * QDI, jamais de rouge — la fragilité de la mesure n'est pas une alerte.
+   * Une borne qui ne se projette pas sur ce tracé → AUCUNE portion n'est
+   * marquée (l'écran Résumé porte déjà l'information en clair).
+   */
+  attenues?: readonly { debutM: number; finM: number }[];
   /** Couleur du trait de progression. Défaut accent. */
   color?: string;
   /** Lumière du trait. Défaut accentGlow. */
@@ -79,6 +96,13 @@ const TRACE_PADDING = 14;
 const BASE_STROKE = 5;
 const GLOW_STROKE = 3;
 const MARKER_R = 5;
+/**
+ * Voile des portions en confiance réduite : le fond de carte, semi-opaque,
+ * posé SUR le trait — il l'atténue (base et lumière ensemble) sans introduire
+ * de couleur. Un peu plus large que le trait de fond pour couvrir ses bords.
+ */
+const ATTENUE_STROKE = BASE_STROKE + 4;
+const ATTENUE_OPACITY = 0.6;
 
 export function TraceCircuit({
   centerline,
@@ -87,6 +111,7 @@ export function TraceCircuit({
   attributionMasquee = false,
   progress,
   markers = [],
+  attenues = [],
   color = colors.accent,
   glowColor = colors.accentGlow,
   animateOnViewport = true,
@@ -104,6 +129,27 @@ export function TraceCircuit({
         : { path: '', points: [] as XY[] },
     [centerline, width, height, closed]
   );
+
+  // Portions atténuées : abscisses métriques → sous-polylignes (projection
+  // curviligne) → écran, par LA MÊME transformation de cadrage que le tracé
+  // complet (mêmes points sources, même padding). Si une borne ne se projette
+  // pas (`portion` → null : ces distances et ce tracé ne parlent pas du même
+  // tour), on ne marque RIEN — jamais un marquage partiel silencieux.
+  const attenuePaths = useMemo(() => {
+    if (width <= 0 || attenues.length === 0) return [];
+    const index = construireIndex(centerline, closed);
+    if (index === null) return [];
+    const transform = fitTransform(index.points, width, height, TRACE_PADDING);
+    if (transform === null) return [];
+    const chemins: string[] = [];
+    for (const zone of attenues) {
+      const points = portion(index, zone.debutM, zone.finM);
+      if (points === null) return [];
+      const chemin = pointsToSvgPath(points.map(transform), false);
+      if (chemin !== '') chemins.push(chemin);
+    }
+    return chemins;
+  }, [attenues, centerline, closed, width, height]);
 
   const controlled = progress !== undefined;
   const internal = useSharedValue(0);
@@ -129,6 +175,12 @@ export function TraceCircuit({
   // l'annotationBand ; les puces restent purement visuelles.
   const a11yLabel = `Tracé du circuit${
     markers.length > 0 ? `, ${markers.length} ${markers.length > 1 ? 'repères' : 'repère'}` : ''
+  }${
+    attenuePaths.length > 0
+      ? `, ${attenuePaths.length} ${
+          attenuePaths.length > 1 ? 'portions atténuées' : 'portion atténuée'
+        } (confiance de mesure réduite)`
+      : ''
   }`;
 
   return (
@@ -154,6 +206,18 @@ export function TraceCircuit({
             strokeWidth={GLOW_STROKE}
             progress={controlled ? progress : internal}
           />
+          {attenuePaths.map((chemin, index) => (
+            <Path
+              key={`attenue-${index}`}
+              path={chemin}
+              style="stroke"
+              strokeWidth={ATTENUE_STROKE}
+              strokeCap="round"
+              strokeJoin="round"
+              color={colors.bg.card}
+              opacity={ATTENUE_OPACITY}
+            />
+          ))}
           {markers.map((marker, index) => {
             const at = pointAtRatio(trace.points, marker.t, closed);
             if (at === null) return null;

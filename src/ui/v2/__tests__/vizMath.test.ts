@@ -14,6 +14,7 @@ import {
   centerlineToTrace,
   cleanSamples,
   fitPointsToBox,
+  fitTransform,
   formatPillarValue,
   meanBpm,
   normalizeSparkline,
@@ -254,6 +255,34 @@ describe('fitPointsToBox', () => {
     );
     expect(same[0]).toEqual({ x: 50, y: 25 });
     expect(fitPointsToBox([{ x: NaN, y: 1 }], 100, 50)).toEqual([]);
+  });
+});
+
+describe('fitTransform', () => {
+  const square: XY[] = [
+    { x: 0, y: 0 },
+    { x: 10, y: 0 },
+    { x: 10, y: 10 },
+    { x: 0, y: 10 },
+  ];
+
+  it('est exactement la transformation de fitPointsToBox', () => {
+    const t = fitTransform(square, 100, 50, 5);
+    expect(t).not.toBeNull();
+    expect(square.map(t!)).toEqual(fitPointsToBox(square, 100, 50, 5));
+  });
+
+  it('projette une sous-polyligne dans le cadre du tracé COMPLET', () => {
+    const t = fitTransform(square, 100, 50, 5)!;
+    // Le milieu du côté bas (5, 0) — cadré sur le carré entier, pas sur lui-même.
+    const p = t({ x: 5, y: 0 });
+    expect(p.x).toBeCloseTo(50); // centre horizontal
+    expect(p.y).toBeCloseTo(45); // bas du carré de 40 px centré dans 50
+  });
+
+  it('aucun point exploitable → null, jamais une transformation inventée', () => {
+    expect(fitTransform([], 100, 50, 5)).toBeNull();
+    expect(fitTransform([{ x: NaN, y: 1 }], 100, 50, 5)).toBeNull();
   });
 });
 
