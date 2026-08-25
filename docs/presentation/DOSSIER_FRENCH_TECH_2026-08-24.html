@@ -1,0 +1,1683 @@
+<meta charset="utf-8">
+<title>Dossier French Tech OXV Mirror</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=Archivo:wght@500;600;700;800&family=Hanken+Grotesk:wght@400;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap">
+<style>
+  :root{
+    --paper:#FFFFFF; --panel:#F7F8FA; --carbon:#0B0B0D; --carbon-line:#2A2C33;
+    --ink:#17181C; --sub:#45484F; --faint:#8B8F98; --line:#E5E6EA; --hair:#F0F1F4;
+    --rouge:#C8102E; --or:#FFB703; --or-txt:#8F6400; --heritage:#C4A459;
+    --q-traj:#2E6FD8; --q-frein:#D8383F; --q-accel:#188A50; --q-fluid:#B98A00; --q-regul:#0E93A8;
+    --disp:'Archivo Black','Arial Black',Arial,sans-serif;
+    --tit:'Archivo',Arial,sans-serif;
+    --sans:'Hanken Grotesk',system-ui,-apple-system,'Segoe UI',sans-serif;
+    --mono:'JetBrains Mono',ui-monospace,'Cascadia Mono',monospace;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--paper);color:var(--sub);font-family:var(--sans);font-size:14.5px;line-height:1.58;-webkit-font-smoothing:antialiased}
+  .wrap{max-width:800px;margin:0 auto;padding:0 24px}
+  ::selection{background:rgba(200,16,46,.14)}
+  h1,h2,h3,h4{color:var(--ink);text-wrap:balance}
+  h2{font-family:var(--tit);font-size:23px;font-weight:800;letter-spacing:-.01em;line-height:1.16}
+  h3{font-size:14.5px;font-weight:700}
+  p{max-width:68ch}
+  strong{color:var(--ink);font-weight:700}
+  a{color:var(--ink);text-decoration:underline;text-decoration-color:#C9CDD6;text-underline-offset:3px}
+  a:focus-visible{outline:2px solid var(--rouge);outline-offset:2px}
+  section{padding:34px 0 22px}
+  .shead{margin-bottom:16px;display:flex;flex-direction:column;gap:8px}
+  .eyebrow{font-family:var(--tit);font-weight:600;font-size:10px;letter-spacing:.3em;text-transform:uppercase;color:var(--faint)}
+  .eyebrow .n{color:var(--rouge)}
+  .lede{font-size:14.5px;color:var(--sub);max-width:62ch}
+  .fine{font-family:var(--mono);font-size:9.5px;color:var(--faint);display:block;margin-top:8px;letter-spacing:.03em}
+
+  /* ── Couverture ── */
+  header.cover{margin:26px 0 0;background:var(--carbon);color:#EDEEF1;border-radius:14px;padding:48px 44px 36px;position:relative;overflow:hidden}
+  header.cover::before{content:'';position:absolute;left:0;top:0;bottom:0;width:4px;background:var(--rouge)}
+  .marque{font-family:var(--tit);font-weight:600;font-size:11px;letter-spacing:.42em;color:#9BA0AA;text-transform:uppercase}
+  .marque b{color:var(--rouge)}
+  header.cover h1{font-family:var(--disp);font-weight:400;font-size:clamp(38px,7vw,60px);line-height:1;letter-spacing:.01em;color:#fff;text-transform:uppercase;margin:22px 0 12px}
+  header.cover h1 span{color:var(--rouge)}
+  .thesis{font-family:var(--tit);font-weight:600;font-size:clamp(15px,2.6vw,19px);color:#D8DAE0;max-width:34ch;line-height:1.4}
+  .doctrine{margin-top:28px;border-left:3px solid var(--rouge);padding:2px 0 2px 18px}
+  .doctrine p{font-size:15.5px;color:#EDEEF1;line-height:1.5;max-width:36ch}
+  .doctrine .fine{color:#8B8F98}
+  .meta-doc{display:flex;flex-wrap:wrap;gap:10px 30px;margin-top:30px;padding-top:16px;border-top:1px solid var(--carbon-line)}
+  .meta-doc div{font-family:var(--mono);font-size:9px;color:#767B86;letter-spacing:.08em}
+  .meta-doc span{display:block;color:#C9CCD3;font-family:var(--sans);font-size:12px;margin-top:3px}
+
+  /* ── Carnet de route ── */
+  .sommaire{margin:16px 0 6px;border:1px solid var(--line);border-radius:14px;overflow:hidden}
+  .sommaire>header{padding:15px 20px 13px;border-bottom:1px solid var(--line);background:var(--panel)}
+  .som-row{display:grid;grid-template-columns:60px 1fr auto;gap:16px;align-items:baseline;padding:13px 20px;border-top:1px solid var(--hair)}
+  .som-row:first-of-type{border-top:none}
+  .som-a{font-family:var(--disp);font-size:24px;color:var(--rouge);line-height:1}
+  .som-t{font-family:var(--tit);font-weight:700;font-size:14px;color:var(--ink)}
+  .som-t small{display:block;font-family:var(--sans);font-weight:400;font-size:11.5px;color:var(--faint);margin-top:2px}
+  .som-c{font-family:var(--mono);font-size:10px;color:var(--faint);white-space:nowrap}
+  @media(max-width:560px){.som-row{grid-template-columns:44px 1fr}.som-c{display:none}}
+
+  /* ── Ouvertures d'acte ── */
+  .part{margin:48px 0 0;padding:32px 34px 30px;border-radius:14px;background:var(--carbon);color:#E8E9ED;position:relative;overflow:hidden;break-inside:avoid}
+  .part::after{content:attr(data-act);position:absolute;right:8px;top:-30px;font-family:var(--disp);font-size:168px;line-height:1;color:rgba(255,255,255,.05);pointer-events:none}
+  .part .k{font-family:var(--tit);font-weight:600;font-size:10px;letter-spacing:.38em;color:var(--rouge);text-transform:uppercase}
+  .part h2{font-family:var(--disp);font-weight:400;color:#fff;font-size:25px;letter-spacing:.02em;text-transform:uppercase;margin-top:10px;position:relative}
+  .part .hook{color:#B9BDC6;font-size:13.5px;margin-top:12px;max-width:54ch;position:relative}
+  .part .hook::before{content:'';display:block;width:34px;height:3px;background:var(--rouge);margin-bottom:10px}
+  .part p{max-width:54ch}
+
+  /* ── Respirations ── */
+  .pull{margin:28px 0;padding:4px 0 4px 20px;border-left:3px solid var(--rouge)}
+  .pull p{font-family:var(--tit);font-weight:700;font-size:21px;line-height:1.28;color:var(--ink);max-width:28ch}
+
+  /* ── Données ── */
+  .stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(112px,1fr));gap:8px;margin:16px 0}
+  .stat{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:14px 13px 12px;break-inside:avoid}
+  .stat .v{font-family:var(--disp);font-size:22px;color:var(--ink);line-height:1;letter-spacing:.01em}
+  .stat .v small{font-size:.52em;color:var(--faint);font-family:var(--mono)}
+  .stat .l{margin-top:7px;font-size:11px;color:var(--sub);line-height:1.35}
+
+  .cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(215px,1fr));gap:9px;margin:14px 0}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:14px 15px;break-inside:avoid;min-width:0}
+  .card h3{font-size:13.5px}
+  .card p{font-size:12px;margin-top:4px;color:var(--sub)}
+  .card .eyebrow{display:block;margin-bottom:6px;font-size:9px;letter-spacing:.24em}
+
+  .principes{display:grid;grid-template-columns:repeat(auto-fit,minmax(136px,1fr));gap:8px;margin:14px 0;counter-reset:pr}
+  .principe{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:12px 13px;counter-increment:pr;break-inside:avoid}
+  .principe::before{content:'0' counter(pr);font-family:var(--disp);font-size:12px;color:var(--rouge);display:block;margin-bottom:6px}
+  .principe h3{font-size:12.5px;line-height:1.3}
+  .principe p{font-size:11px;margin-top:4px;color:var(--faint);line-height:1.4}
+
+  .verbes{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin:14px 0}
+  @media(max-width:600px){.verbes{grid-template-columns:1fr}}
+  .verbes>div{border-radius:8px;padding:13px 15px;border:1px solid var(--line);break-inside:avoid}
+  .verbes .non{background:#FDF2F3;border-color:#F2C9CE}
+  .verbes .oui{background:var(--panel)}
+  .verbes h4{font-family:var(--tit);font-size:9.5px;letter-spacing:.2em;margin-bottom:9px;font-weight:600;text-transform:uppercase}
+  .verbes .non h4{color:var(--rouge)}
+  .verbes .oui h4{color:var(--sub)}
+  .verbes ul{list-style:none;display:flex;flex-wrap:wrap;gap:5px}
+  .verbes li{font-size:11.5px;padding:3px 9px;border-radius:99px;border:1px solid var(--line);background:#fff;color:var(--sub)}
+  .verbes .non li{text-decoration:line-through;text-decoration-color:rgba(200,16,46,.65);color:var(--faint)}
+
+  .branches{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin:14px 0}
+  @media(max-width:640px){.branches{grid-template-columns:1fr}}
+  .branche{background:#fff;border:1px solid var(--line);border-left-width:4px;border-radius:6px;padding:11px 13px;break-inside:avoid;min-width:0}
+  .branche h3{font-size:13px;display:flex;gap:8px;align-items:baseline;flex-wrap:wrap}
+  .branche h3 .alias{font-family:var(--mono);font-size:9px;color:var(--faint);letter-spacing:.08em;font-weight:400}
+  .branche p{font-size:11.5px;margin-top:3px;color:var(--sub)}
+  .branche .formule{margin-top:7px;font-family:var(--mono);font-size:10px;color:var(--sub);background:var(--panel);border-radius:5px;padding:6px 9px;overflow-x:auto;white-space:nowrap}
+
+  .roles{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:9px;margin:14px 0}
+  .role{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:12px 13px;break-inside:avoid}
+  .role h4{font-family:var(--tit);font-size:9.5px;letter-spacing:.18em;color:var(--sub);margin-bottom:8px;font-weight:600;text-transform:uppercase}
+  .role .sw{display:flex;gap:4px;margin-bottom:7px}
+  .role .sw i{display:block;height:16px;flex:1;border-radius:3px}
+  .role p{font-size:10.5px;color:var(--faint);line-height:1.4}
+
+  figure{margin:18px 0;background:#fff;border:1px solid var(--line);border-radius:10px;padding:18px 14px 12px;break-inside:avoid;page-break-inside:avoid}
+  figure .scroll{overflow-x:auto}
+  figure svg{display:block;max-width:100%;height:auto;margin:0 auto;color:var(--sub)}
+  figcaption{margin-top:10px;font-size:11px;color:var(--faint);text-align:center;max-width:72ch;margin-left:auto;margin-right:auto;line-height:1.45}
+  figcaption b{color:var(--sub);font-weight:700}
+
+  .tblwrap{overflow-x:auto;margin:14px 0;border:1px solid var(--line);border-radius:8px;break-inside:avoid}
+  table{width:100%;border-collapse:collapse;font-size:12px;min-width:520px}
+  th{font-family:var(--tit);font-size:9px;letter-spacing:.16em;text-transform:uppercase;color:var(--faint);text-align:left;padding:9px 13px;background:var(--panel);font-weight:600}
+  td{padding:8px 13px;border-top:1px solid var(--hair);color:var(--sub);vertical-align:top}
+  td b{color:var(--ink)}
+  td.num{font-family:var(--mono);font-variant-numeric:tabular-nums;white-space:nowrap;font-size:11px}
+
+  .note{border:1px solid var(--line);border-left:3px solid var(--or);border-radius:0 8px 8px 0;background:var(--panel);padding:12px 16px;margin:16px 0;break-inside:avoid}
+  .note.rouge{border-left-color:var(--rouge)}
+  .note h4{font-size:12.5px;margin-bottom:4px}
+  .note p{font-size:12px}
+
+  .placeholder{border:1.5px dashed #C9CDD6;border-radius:8px;padding:13px 16px;margin:14px 0;break-inside:avoid}
+  .placeholder h4{font-family:var(--tit);font-size:9.5px;letter-spacing:.2em;color:var(--or-txt);margin-bottom:6px;font-weight:600}
+  .placeholder p,.placeholder li{font-size:12px;color:var(--sub)}
+  .placeholder ul{margin:4px 0 0 16px}
+
+  .deux{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin:14px 0}
+  @media(max-width:600px){.deux{grid-template-columns:1fr}}
+  .deux>div{border:1px solid var(--line);border-radius:8px;padding:13px 15px;background:var(--panel);break-inside:avoid}
+  .deux h4{font-family:var(--tit);font-size:9.5px;letter-spacing:.18em;margin-bottom:8px;font-weight:600;text-transform:uppercase}
+  .deux ul{list-style:none}
+  .deux li{font-size:12px;padding:3px 0;color:var(--sub)}
+  .deux li::before{content:'— ';color:var(--faint)}
+
+  .citation{border-left:3px solid var(--line);padding:4px 0 4px 16px;margin:14px 0;font-size:13.5px;color:var(--sub)}
+
+  .embleme{width:60px;height:60px;display:block;margin-bottom:20px}
+  footer .embleme{width:26px;height:26px;margin:0 0 10px}
+  .charte{display:flex;flex-wrap:wrap;gap:8px;margin:0;flex:1;min-width:0}
+  .chip{flex:1 1 92px;min-width:92px;border:1px solid var(--line);border-radius:8px;overflow:hidden;background:#fff}
+  .chip i{display:block;height:40px}
+  .chip b{display:block;font-family:var(--sans);font-size:10.5px;color:var(--ink);padding:6px 9px 1px;font-weight:700}
+  .chip small{display:block;font-family:var(--mono);font-size:8.5px;color:var(--faint);padding:0 9px 7px}
+
+  .principe{position:relative}
+  .pico{position:absolute;top:11px;right:11px;width:19px;height:19px;color:var(--rouge)}
+  .grille5{display:flex;flex-wrap:wrap;gap:8px;margin:16px 0 0;align-items:center}
+  .grille5 .glabel{font-family:var(--tit);font-weight:600;font-size:10px;letter-spacing:.22em;text-transform:uppercase;color:var(--faint);margin-right:4px;flex-basis:100%}
+  .grille5 span:not(.glabel){font-family:var(--mono);font-size:10.5px;color:var(--sub);border:1px solid var(--line);border-radius:99px;padding:4px 12px;background:#fff}
+  .grille5 b{color:var(--ink);font-family:var(--sans);font-weight:700;margin-right:6px}
+  header.cover .damier{position:absolute;left:0;right:0;bottom:0;height:8px;background:repeating-conic-gradient(rgba(255,255,255,.85) 0 25%,transparent 0 50%) 0 0/16px 16px}
+
+  /* ── Démo interactive (version vivante) et pont QR (version imprimée) ── */
+  .demo-cadre{background:var(--carbon);border-radius:14px;padding:22px 22px 18px;color:#EDEEF1;position:relative;overflow:hidden}
+  .demo-cadre::before{content:'';position:absolute;left:0;top:0;bottom:0;width:4px;background:var(--rouge)}
+  .demo-grid{display:grid;grid-template-columns:1.4fr 1fr;gap:20px;align-items:start}
+  @media(max-width:640px){.demo-grid{grid-template-columns:1fr}}
+  .demo-grid svg{display:block;width:100%;height:auto}
+  .demo-lect{display:flex;gap:24px;margin-top:12px}
+  .demo-lect b{font-family:var(--disp);font-size:30px;color:#fff;display:block;line-height:1;font-weight:400}
+  .demo-lect span{font-family:var(--mono);font-size:9px;color:#8B8F98;letter-spacing:.06em;display:block;margin-top:4px}
+  .demo-ctrl{display:flex;gap:12px;align-items:center;margin-top:18px}
+  .demo-ctrl button{font-family:var(--tit);font-weight:700;font-size:12px;letter-spacing:.08em;text-transform:uppercase;background:var(--rouge);color:#fff;border:none;border-radius:6px;padding:9px 18px;cursor:pointer}
+  .demo-ctrl button:focus-visible,.demo-ctrl input:focus-visible{outline:2px solid #fff;outline-offset:2px}
+  .demo-ctrl input[type=range]{flex:1;accent-color:var(--rouge)}
+  .dtemps{font-family:var(--mono);font-size:11px;color:#B9BDC6;min-width:46px;text-align:right}
+  .demo-note{font-family:var(--mono);font-size:9.5px;color:#767B86;margin-top:12px;line-height:1.55;max-width:none}
+  .qr-vivant{display:none}
+  @media print{
+    .demo-live{display:none}
+    .qr-vivant{display:flex;gap:18px;align-items:center;border:1px solid var(--line);border-radius:8px;padding:14px 18px;margin:0 0 18px;break-inside:avoid}
+    .qr-vivant img{width:88px;height:88px}
+    .qr-vivant p{font-size:11px;color:var(--sub)}
+    .qr-vivant b{font-family:var(--tit);font-size:12.5px;color:var(--ink);display:block;margin-bottom:3px}
+    .qr-vivant .mono{font-family:var(--mono);font-size:10px;color:var(--faint)}
+  }
+  .part::before{content:'';position:absolute;left:0;right:0;bottom:0;height:8px;background:repeating-conic-gradient(rgba(255,255,255,.8) 0 25%,transparent 0 50%) 0 0/16px 16px}
+
+  footer{padding:26px 0 48px;margin-top:20px;border-top:1px solid var(--line)}
+  footer p{font-size:10.5px;color:var(--faint);max-width:80ch;line-height:1.5}
+  .sig{font-family:var(--tit);font-size:10px;font-weight:600;letter-spacing:.24em;color:var(--faint);margin-top:12px;text-transform:uppercase}
+  .sig b{color:var(--rouge)}
+  .printbar{position:sticky;top:0;z-index:9;background:var(--carbon);color:#E8E9ED;font-family:var(--mono);font-size:11px;letter-spacing:.08em;text-align:center;padding:8px 12px}
+  .printbar b{color:var(--or)}
+
+  .damier-foot{height:8px;background:repeating-conic-gradient(#0B0B0D 0 25%,transparent 0 50%) 0 0/16px 16px;margin-bottom:16px}
+
+  @page{
+    size:A4;margin:12mm 13mm 15mm;
+    @bottom-right{content:"OXV MIRROR — " counter(page);font-family:'JetBrains Mono',monospace;font-size:8px;color:#8B8F98}
+  }
+  @media print{
+    .printbar{display:none}
+    body{font-size:12.5px;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+    .wrap{max-width:none;padding:0}
+    header.cover{border-radius:0;margin:0;padding:26mm 16mm 14mm;page-break-after:always;min-height:242mm;display:flex;flex-direction:column}
+    header.cover .meta-doc{margin-top:auto}
+    .sommaire{page-break-after:always;border-radius:0}
+    section{padding:16px 0 10px}
+    .part{page-break-before:always;border-radius:0}
+    h2{page-break-after:avoid}
+    .shead{break-inside:avoid;break-after:avoid}
+    a{text-decoration:none;color:inherit}
+    .tblwrap{border-radius:0;break-inside:auto}
+    .tblwrap table{min-width:0 !important}
+    .tblwrap tr{break-inside:avoid}
+    figure .scroll{overflow:visible}
+    figure .scroll svg{min-width:0 !important;width:100%}
+    .branche .formule{white-space:normal;overflow:visible}
+    .pull{break-inside:avoid}
+  }
+</style>
+
+<div class="printbar">DOCUMENT IMPRIMABLE — <b>Ctrl / ⌘ + P</b> pour générer le PDF (A4)</div>
+<div class="wrap">
+
+<!-- ═══════════ COUVERTURE ═══════════ -->
+<header class="cover">
+  <img class="embleme" alt="Emblème OXV" src="data:image/png;base64,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">
+  <div class="marque"><b>OXV</b>&nbsp;&nbsp;Only Xtreme Vehicle</div>
+  <h1>OXV<br>Mirror<span>.</span></h1>
+  <p class="thesis">La télémétrie qui s'interdit tout affichage en piste — et le prouve dans son code.</p>
+  <div class="doctrine">
+    <p>« L'app est un miroir. Elle vous montre. Elle ne vous dirige pas. La piste est à vous. Les décisions aussi. »</p>
+    <span class="fine">Doctrine fondatrice — que chaque pilote signera dans le Pacte de pilotage</span>
+  </div>
+  <div class="meta-doc">
+    <div>PIÈCE<span>Dossier de candidature · Bourse French Tech (Bpifrance)</span></div>
+    <div>ÉTABLI LE<span>24 août 2026</span></div>
+    <div>FONDATEUR<span>Gabin Fillat</span></div>
+    <div>PLATEFORME<span>iOS &amp; Android</span></div>
+    <div>DONNÉES<span>100 % UE — hébergement, routage, cartes</span></div>
+    <div>MÉTHODE<span>chaque fait vérifié sur l'application, double contrôle</span></div>
+  </div>
+  <div class="damier" aria-hidden="true"></div>
+</header>
+
+<!-- ═══════════ CARNET DE ROUTE ═══════════ -->
+<nav class="sommaire" aria-label="Sommaire">
+  <header><span class="eyebrow">Carnet de route — cinq actes, vingt-cinq chapitres</span></header>
+  <div class="som-row"><span class="som-a" aria-hidden="true">A</span><div class="som-t">La promesse<small>Le refus fondateur, le problème du marché, la doctrine et son silence.</small></div><span class="som-c">01–03</span></div>
+  <div class="som-row"><span class="som-a" aria-hidden="true">B</span><div class="som-t">La journée d'un pilote<small>De la réservation au bilan du soir — le produit, dans l'ordre où on le vit.</small></div><span class="som-c">04–09</span></div>
+  <div class="som-row"><span class="som-a" aria-hidden="true">C</span><div class="som-t">Le cercle<small>Écurie, club, coachs, partenaires, circuit : la valeur se multiplie.</small></div><span class="som-c">10–15</span></div>
+  <div class="som-row"><span class="som-a" aria-hidden="true">D</span><div class="som-t">La preuve<small>Souveraineté des données, qualité d'ingénierie, chiffres — le vérifiable.</small></div><span class="som-c">16–18</span></div>
+  <div class="som-row"><span class="som-a" aria-hidden="true">E</span><div class="som-t">La candidature<small>Concurrents nommés, marché, incertitudes, programme, impact, équipe.</small></div><span class="som-c">19–25</span></div>
+</nav>
+
+<!-- ════════════════════ ACTE A ════════════════════ -->
+<div class="part" data-act="A">
+  <div class="k">Acte A · chapitres 01–03</div>
+  <h2>La promesse</h2>
+  <p class="hook">Tout commence par un refus : celui de montrer un chrono à un pilote lancé à 200 km/h.</p>
+</div>
+
+<!-- 01 -->
+<section id="essentiel">
+  <div class="shead">
+    <span class="eyebrow"><span class="n">01</span> · L'essentiel</span>
+    <h2>La télémétrie qui protège le pilote d'elle-même</h2>
+    <p class="lede">25 mesures par seconde en piste, <strong>rien</strong> à l'écran. Tout se relit après — en français, sans note ni classement. Et un seul produit opère tout l'écosystème du circuit.</p>
+  </div>
+  <div class="stats">
+    <div class="stat"><div class="v">25<small> Hz</small></div><div class="l">de télémétrie GPS + inertielle, par boîtier Bluetooth</div></div>
+    <div class="stat"><div class="v">5</div><div class="l">branches d'analyse de la conduite — jamais un score unique</div></div>
+    <div class="stat"><div class="v">142</div><div class="l">écrans réels, cinq espaces métier</div></div>
+    <div class="stat"><div class="v">6</div><div class="l">appareils et connexions externes pris en charge</div></div>
+    <div class="stat"><div class="v">3 564</div><div class="l">tests verts, dont 44 gardes de décisions produit</div></div>
+    <div class="stat"><div class="v">100<small> %</small></div><div class="l">des données dans l'UE — hébergement, routage, cartes</div></div>
+    <div class="stat"><div class="v">0</div><div class="l">écran affiché en piste — le silence est codé (ch. 03)</div></div>
+    <div class="stat"><div class="v">3</div><div class="l">circuits déjà modélisés — l'architecture est multi-circuits</div></div>
+  </div>
+</section>
+
+<!-- 02 -->
+<section id="probleme">
+  <div class="shead">
+    <span class="eyebrow"><span class="n">02</span> · Le problème et le marché</span>
+    <h2>Sur circuit, la donnée pousse à la faute</h2>
+    <p class="lede">Le track day est le sport automobile des particuliers : un vrai circuit, sa propre voiture, aucun championnat. Les outils existants viennent de la compétition — et sur un amateur, leur cadrage produit exactement le mauvais réflexe.</p>
+  </div>
+  <div class="deux">
+    <div>
+      <h4 style="color:var(--rouge)">LA TÉLÉMÉTRIE CLASSIQUE</h4>
+      <ul>
+        <li>chronos en direct, sous les yeux du pilote</li>
+        <li>classements, « secteurs à gagner »</li>
+        <li>données brutes illisibles sans formation</li>
+        <li>cadrage compétition → rouler contre le chiffre</li>
+      </ul>
+    </div>
+    <div>
+      <h4 style="color:var(--q-accel)">OXV MIRROR</h4>
+      <ul>
+        <li>rien pendant la conduite, tout après</li>
+        <li>un seul chiffre par écran : la <strong>marge</strong></li>
+        <li>constats en français, questions ouvertes</li>
+        <li>le mot « limite » est banni du produit</li>
+      </ul>
+    </div>
+  </div>
+  <p style="font-size:12.5px">Le chrono existe — mais il est <strong>subordonné</strong>. Dans l'app, il se lit en dernier, en petit : <em>« Vos chronos évoluent aussi, mais ce n'est pas l'essentiel. »</em> Cette inversion de hiérarchie fait le produit — les concurrents sont nommés, un par un, au chapitre 19.</p>
+  <div class="note">
+    <h4>Un cadre juridique dès la conception</h4>
+    <p>Chaque pilote signe in-app le <strong>Pacte de pilotage</strong> : l'app n'est ni un instructeur, ni une aide à la conduite en temps réel — un système de relecture a posteriori. Preuve d'acceptation conservée 3 ans. Les coachs signent leur propre <strong>Pacte de coaching</strong>, distinct.</p>
+  </div>
+</section>
+
+<!-- 03 -->
+<section id="doctrine" class="pb">
+  <div class="shead">
+    <span class="eyebrow"><span class="n">03</span> · Le parti pris</span>
+    <h2>Le miroir : cinq principes tenus par des tests</h2>
+    <p class="lede">Beaucoup de produits affichent une charte. Celle d'OXV Mirror est <strong>exécutable</strong> : un scanner parcourt tous les écrans à chaque livraison et bloque la compilation si une phrase interdite apparaît.</p>
+  </div>
+  <div class="principes">
+    <div class="principe"><svg class="pico" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l7 3v5c0 4.4-3 7.6-7 9-4-1.4-7-4.6-7-9V6z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg><h3>Sécurité avant performance</h3><p>Une seule zone à explorer par séance. Jamais une liste.</p></div>
+    <div class="principe"><svg class="pico" viewBox="0 0 24 24" aria-hidden="true"><g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="4" x2="12" y2="20"/><path d="M8 9l-3 3 3 3M16 9l3 3-3 3"/></g></svg><h3>Miroir, pas coach</h3><p>Aucune instruction de pilotage, jamais. Des constats, des questions.</p></div>
+    <div class="principe"><svg class="pico" viewBox="0 0 24 24" aria-hidden="true"><g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5a5 5 0 0 1 5 5v3l1.5 2.5h-13L7 13v-3a5 5 0 0 1 5-5z"/><line x1="5" y1="4" x2="19" y2="20"/></g></svg><h3>Silence en piste</h3><p>Véhicule en mouvement : aucun écran, son, vibration.</p></div>
+    <div class="principe"><svg class="pico" viewBox="0 0 24 24" aria-hidden="true"><text x="12" y="17.5" text-anchor="middle" font-size="17" font-weight="700" fill="currentColor" font-family="Hanken Grotesk,sans-serif">»</text></svg><h3>Ton OXV</h3><p>Vouvoiement, pas d'emoji, phrases courtes. « Ferrari sec ».</p></div>
+    <div class="principe"><svg class="pico" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.5" fill="none" stroke="currentColor" stroke-width="1.8"/><text x="12" y="16" text-anchor="middle" font-size="11" font-weight="700" fill="currentColor" font-family="Hanken Grotesk,sans-serif">1</text></svg><h3>Un chiffre par écran</h3><p>Un indicateur central. Le reste est qualitatif.</p></div>
+  </div>
+  <figure>
+    <svg viewBox="0 0 760 150" role="img" aria-label="Machine à états du silence en piste : à l'arrêt, écrans normaux ; dès 60 kilomètres heure avec enregistrement actif, l'état roulage n'autorise aucun écran, aucune vibration, aucune notification ; entre les runs, retour à un état factuel.">
+      <defs><marker id="m1" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6.5" markerHeight="6.5" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="#474C57"/></marker></defs>
+      <g font-family="Hanken Grotesk,sans-serif" font-size="12.5" text-anchor="middle">
+        <rect x="20" y="38" width="170" height="60" rx="10" fill="none" stroke="#C9CDD6" stroke-width="1.3"/>
+        <text x="105" y="63" fill="#14151A" font-weight="700">À l'arrêt</text>
+        <text x="105" y="81" fill="#878D99" font-size="10.5">tous les écrans</text>
+        <rect x="292" y="30" width="196" height="76" rx="10" fill="#FDF2F3" stroke="#C8102E" stroke-width="1.6"/>
+        <text x="390" y="56" fill="#C8102E" font-weight="800">ROULAGE</text>
+        <text x="390" y="74" fill="#14151A" font-size="11" font-weight="600">0 écran autorisé</text>
+        <text x="390" y="90" fill="#878D99" font-size="10">vibrations coupées · notifications muettes</text>
+        <rect x="570" y="38" width="170" height="60" rx="10" fill="none" stroke="#C9CDD6" stroke-width="1.3"/>
+        <text x="655" y="63" fill="#14151A" font-weight="700">Entre-runs</text>
+        <text x="655" y="81" fill="#878D99" font-size="10.5">état factuel, à froid</text>
+        <line x1="190" y1="68" x2="288" y2="68" stroke="#474C57" stroke-width="1.3" marker-end="url(#m1)"/>
+        <line x1="488" y1="68" x2="566" y2="68" stroke="#474C57" stroke-width="1.3" marker-end="url(#m1)"/>
+        <text x="239" y="56" font-family="JetBrains Mono,monospace" font-size="9.5" fill="#878D99">REC + ≥ 60 km/h</text>
+        <text x="527" y="56" font-family="JetBrains Mono,monospace" font-size="9.5" fill="#878D99">arrêt</text>
+        <text x="390" y="134" font-family="JetBrains Mono,monospace" font-size="9.5" fill="#878D99">l'écran n'affiche qu'un point rouge qui pulse et le mot REC</text>
+      </g>
+    </svg>
+    <figcaption><b>Le silence est codé, pas promis.</b> En roulage, la liste des écrans autorisés est vide dans la machine à états ; chaque vibration devient une non-opération dans la primitive elle-même. Le seuil de 60 km/h distingue la piste du paddock — l'enregistrement, lui, couvre tout le roulage.</figcaption>
+  </figure>
+  <div class="verbes">
+    <div class="non">
+      <h4>36 TOURNURES INTERDITES — SCANNÉES À CHAQUE LIVRAISON</h4>
+      <ul><li>freinez</li><li>accélérez</li><li>il faut</li><li>vous devriez</li><li>évitez</li><li>bravo</li><li>parfait !</li><li>attention !</li><li>trop lent</li><li>repère de freinage</li></ul>
+    </div>
+    <div class="oui">
+      <h4>LE REGISTRE DU MIROIR</h4>
+      <ul><li>Une zone à observer</li><li>À creuser la prochaine fois</li><li>Était-ce volontaire ?</li><li>Que sentez-vous ?</li><li>Confortable</li><li>Terrain serré</li><li>Apprivoisé</li></ul>
+    </div>
+  </div>
+  <div class="pull"><p>La doctrine n'est pas une charte. C'est un test qui échoue.</p></div>
+  <p style="font-size:12.5px">Le soin va jusqu'au mot : « <strong>Préservation</strong> », jamais « Sauvegarde ». Et un second filtre contrôle à l'exécution tout texte généré — en cas de doute, il bloque.</p>
+
+</section>
+
+<!-- ════════════════════ ACTE B ════════════════════ -->
+<div class="part" data-act="B">
+  <div class="k">Acte B · chapitres 04–09</div>
+  <h2>La journée d'un pilote</h2>
+  <p class="hook">Samedi. Un pilote réserve, roule, se tait — et le soir, l'app lui rend sa journée. Suivez-le : c'est le produit entier.</p>
+</div>
+
+<!-- 04 -->
+<section id="reserver">
+  <div class="shead">
+    <span class="eyebrow"><span class="n">04</span> · Réserver</span>
+    <h2>Choisir sa journée, sentir la rareté</h2>
+    <p class="lede">Le catalogue des journées circuit vit dans l'app : dates, offres, places restantes en jauge segmentée — <strong>la rareté se voit</strong>, elle ne se lit pas. Journée complète : liste d'attente, jamais un bouton mort.</p>
+  </div>
+  <figure>
+    <svg viewBox="0 0 760 120" role="img" aria-label="La jauge de places d'une journée : vingt segments, les places restantes en rouge accent, les places prises en gris. Journée complète : liste d'attente.">
+      <g font-family="JetBrains Mono,monospace" font-size="10">
+        <text x="28" y="24" fill="#878D99" letter-spacing="2">JOURNÉE DU 12 OCTOBRE — 6 PLACES RESTANTES</text>
+        <g stroke="#fff" stroke-width="2">
+          <rect x="28" y="36" width="35.2" height="26" fill="#D5D8DE"/><rect x="63.2" y="36" width="35.2" height="26" fill="#D5D8DE"/><rect x="98.4" y="36" width="35.2" height="26" fill="#D5D8DE"/><rect x="133.6" y="36" width="35.2" height="26" fill="#D5D8DE"/><rect x="168.8" y="36" width="35.2" height="26" fill="#D5D8DE"/><rect x="204" y="36" width="35.2" height="26" fill="#D5D8DE"/><rect x="239.2" y="36" width="35.2" height="26" fill="#D5D8DE"/><rect x="274.4" y="36" width="35.2" height="26" fill="#D5D8DE"/><rect x="309.6" y="36" width="35.2" height="26" fill="#D5D8DE"/><rect x="344.8" y="36" width="35.2" height="26" fill="#D5D8DE"/><rect x="380" y="36" width="35.2" height="26" fill="#D5D8DE"/><rect x="415.2" y="36" width="35.2" height="26" fill="#D5D8DE"/><rect x="450.4" y="36" width="35.2" height="26" fill="#D5D8DE"/><rect x="485.6" y="36" width="35.2" height="26" fill="#D5D8DE"/>
+          <rect x="520.8" y="36" width="35.2" height="26" fill="#C8102E"/><rect x="556" y="36" width="35.2" height="26" fill="#C8102E"/><rect x="591.2" y="36" width="35.2" height="26" fill="#C8102E"/><rect x="626.4" y="36" width="35.2" height="26" fill="#C8102E"/><rect x="661.6" y="36" width="35.2" height="26" fill="#C8102E"/><rect x="696.8" y="36" width="35.2" height="26" fill="#C8102E"/>
+        </g>
+        <text x="28" y="86" fill="#878D99">places prises</text>
+        <text x="732" y="86" fill="#C8102E" text-anchor="end" font-weight="600">places restantes — en accent</text>
+        <text x="28" y="106" fill="#878D99">4 offres par journée : Access · Signature · Heritage · Promotion — prix lus en base, jamais codés en dur</text>
+      </g>
+    </svg>
+    <figcaption><b>La jauge à 20 segments.</b> Le tunnel de réservation est mesuré pas à pas — analytique respectueuse, sans cookie tiers.</figcaption>
+  </figure>
+  <div class="note">
+    <h4>Le paiement in-app, volontairement inerte</h4>
+    <p>Le tunnel est prêt ; aujourd'hui, la réservation aboutit sur oxvehicle.fr. Une prestation physique se règle hors achat intégré Apple/Google — décision maîtrisée, pas une lacune.</p>
+  </div>
+  <div class="cards">
+    <div class="card"><span class="eyebrow">Compte unique</span><h3>Le site et l'app, liés</h3><p>Le compte créé sur oxvehicle.fr se lie à l'app par un <strong>code court</strong> — pas de second mot de passe. Réservations, documents et licence suivent le pilote partout.</p></div>
+    <div class="card"><span class="eyebrow">Jour J</span><h3>Le Pass OXV</h3><p>Chaque réservation devient un QR code. À l'accueil du circuit, l'équipe scanne — la présence est pointée, sans papier ni file.</p></div>
+    <div class="card"><span class="eyebrow">Avant de rouler</span><h3>Tout est en règle, d'avance</h3><p>Licence FFSA sur la fiche, décharge à <strong>signature électronique</strong>, documents du jour J réunis dans « Vos pièces ». Le circuit gagne un accueil fluide ; le pilote, une journée sans paperasse.</p></div>
+  </div>
+</section>
+
+<!-- 05 -->
+<section id="jourj" class="pb">
+  <div class="shead">
+    <span class="eyebrow"><span class="n">05</span> · Le jour J</span>
+    <h2>Brancher, rouler, ne rien regarder</h2>
+  </div>
+  <figure>
+    <svg viewBox="0 0 760 190" role="img" aria-label="Frise d'une journée : préparation la veille, appairage et consentements à l'arrivée, silence total en piste, pause factuelle entre les runs, choix du moment en fin de séance, bilan et signature le soir.">
+      <g font-family="Hanken Grotesk,sans-serif" text-anchor="middle">
+        <line x1="30" y1="96" x2="730" y2="96" stroke="#E3E5EA" stroke-width="2"/>
+        <g>
+          <circle cx="70"  cy="96" r="7" fill="#fff" stroke="#878D99" stroke-width="1.6"/>
+          <circle cx="196" cy="96" r="7" fill="#fff" stroke="#878D99" stroke-width="1.6"/>
+          <circle cx="330" cy="96" r="10" fill="#C8102E"/>
+          <circle cx="330" cy="96" r="3.5" fill="#fff"/>
+          <circle cx="464" cy="96" r="7" fill="#fff" stroke="#878D99" stroke-width="1.6"/>
+          <circle cx="586" cy="96" r="7" fill="#fff" stroke="#878D99" stroke-width="1.6"/>
+          <circle cx="706" cy="96" r="7" fill="#fff" stroke="#188A50" stroke-width="2"/>
+        </g>
+        <g font-size="12" fill="#14151A" font-weight="700">
+          <text x="70"  y="62">La veille</text>
+          <text x="196" y="62">Arrivée</text>
+          <text x="330" y="54" fill="#C8102E" font-weight="800">EN PISTE</text>
+          <text x="464" y="62">Entre-runs</text>
+          <text x="586" y="62">Fin de séance</text>
+          <text x="706" y="62">Le soir · J+1</text>
+        </g>
+        <g font-size="9.5" fill="#878D99" font-family="JetBrains Mono,monospace">
+          <text x="70"  y="126">rappel · documents</text>
+          <text x="70"  y="139">rendez-vous d'écurie</text>
+          <text x="196" y="126">appairage Bluetooth</text>
+          <text x="196" y="139">consentements · QR</text>
+          <text x="330" y="126" fill="#C8102E">silence total</text>
+          <text x="330" y="139" fill="#C8102E">l'équipement enregistre</text>
+          <text x="464" y="126">pause factuelle</text>
+          <text x="464" y="139">aucune analyse à chaud</text>
+          <text x="586" y="126">« Découvrir »</text>
+          <text x="586" y="139">ou « Plus tard »</text>
+          <text x="706" y="126">Bilan · Signature</text>
+          <text x="706" y="139">puis l'app se tait</text>
+        </g>
+        <text x="380" y="174" font-size="10" fill="#878D99">Après le bilan : « L'app se taira jusqu'à la veille de votre prochaine session. Profitez de cette pause. »</text>
+      </g>
+    </svg>
+    <figcaption><b>Le rythme appartient au pilote.</b> Les notifications sont des rituels choisis — bilan prêt, veille de session, records — chacun désactivable.</figcaption>
+  </figure>
+  <figure>
+    <svg viewBox="0 0 760 330" role="img" aria-label="L'application au centre, reliée à six connexions externes : le boîtier RaceBox en Bluetooth à 25 hertz, la ceinture cardio sur un canal séparé et consenti, les lunettes connectées du coach au bord de piste, le QR code du Pass OXV pour le jour J, le code court qui lie le compte du site, et la vidéo du pilote qui reste sur son téléphone.">
+      <g font-family="Hanken Grotesk,sans-serif" font-size="12" text-anchor="middle">
+        <rect x="300" y="132" width="160" height="66" rx="14" fill="#FDF2F3" stroke="#C8102E" stroke-width="1.8"/>
+        <text x="380" y="160" fill="#C8102E" font-weight="800" font-size="14">OXV Mirror</text>
+        <text x="380" y="178" fill="#878D99" font-size="10">iOS · Android</text>
+        <g stroke="#C9CDD6" stroke-width="1.3">
+          <line x1="300" y1="145" x2="212" y2="76"/>
+          <line x1="460" y1="145" x2="548" y2="76"/>
+          <line x1="300" y1="165" x2="200" y2="165"/>
+          <line x1="460" y1="165" x2="560" y2="165"/>
+          <line x1="300" y1="185" x2="212" y2="256"/>
+          <line x1="460" y1="185" x2="548" y2="256"/>
+        </g>
+        <g fill="#fff" stroke="#C9CDD6" stroke-width="1.3">
+          <rect x="30"  y="26" width="184" height="56" rx="10"/>
+          <rect x="546" y="26" width="184" height="56" rx="10"/>
+          <rect x="16"  y="138" width="184" height="56" rx="10"/>
+          <rect x="560" y="138" width="184" height="56" rx="10"/>
+          <rect x="30"  y="248" width="184" height="56" rx="10"/>
+          <rect x="546" y="248" width="184" height="56" rx="10"/>
+        </g>
+        <g fill="#14151A" font-weight="700" font-size="12">
+          <text x="122" y="48">Boîtier RaceBox</text>
+          <text x="638" y="48">Ceinture cardio</text>
+          <text x="108" y="160">Compte du site</text>
+          <text x="652" y="160">Lunettes coach</text>
+          <text x="122" y="270">Pass OXV</text>
+          <text x="638" y="270">Vidéo du pilote</text>
+        </g>
+        <g fill="#878D99" font-size="9.5" font-family="JetBrains Mono,monospace">
+          <text x="122" y="66">Bluetooth · 25 Hz · GPS + G</text>
+          <text x="638" y="66">canal séparé · consenti</text>
+          <text x="108" y="178">liaison par code court</text>
+          <text x="652" y="178">bord de piste · faits seuls</text>
+          <text x="122" y="288">QR de check-in, jour J</text>
+          <text x="638" y="288">reste sur le téléphone</text>
+        </g>
+      </g>
+    </svg>
+    <figcaption><b>Six connexions, chacune bornée.</b> Cardio par ceinture Polar ou Apple Watch, même consentement révocable — s'il tombe, la télémétrie continue. La vidéo ne quitte jamais le téléphone.</figcaption>
+  </figure>
+  <figure>
+    <div class="scroll">
+    <svg viewBox="0 0 1060 168" role="img" aria-label="Chaîne de traitement : boîtier RaceBox, transmission Bluetooth à 25 hertz, décodage des trames, file locale hors-ligne, base européenne, algorithmes, restitution après la séance." style="min-width:880px">
+      <defs><marker id="fl" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6.5" markerHeight="6.5" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="#474C57"/></marker></defs>
+      <g font-family="JetBrains Mono,monospace" font-size="10" text-anchor="middle">
+        <g stroke="#C9CDD6" fill="#fff" stroke-width="1.3">
+          <rect x="8"   y="46" width="128" height="56" rx="10"/>
+          <rect x="196" y="46" width="128" height="56" rx="10"/>
+          <rect x="384" y="46" width="128" height="56" rx="10"/>
+          <rect x="572" y="46" width="128" height="56" rx="10" stroke="#188A50" stroke-width="1.6"/>
+          <rect x="760" y="46" width="128" height="56" rx="10"/>
+          <rect x="924" y="46" width="128" height="56" rx="10" stroke="#C8102E" stroke-width="1.6"/>
+        </g>
+        <g fill="#14151A" font-family="Hanken Grotesk,sans-serif" font-size="12.5" font-weight="700">
+          <text x="72"   y="70">RaceBox</text>
+          <text x="260"  y="70">Décodage</text>
+          <text x="448"  y="70">File locale</text>
+          <text x="636"  y="70">Base UE</text>
+          <text x="824"  y="70">Algorithmes</text>
+          <text x="988"  y="70">Restitution</text>
+        </g>
+        <g fill="#878D99" font-size="9.5">
+          <text x="72"  y="88">GPS + inertiel 6 axes</text>
+          <text x="260" y="88">protocole vérifié</text>
+          <text x="448" y="88">hors-ligne d'abord</text>
+          <text x="636" y="88">Irlande · accès ligne à ligne</text>
+          <text x="824" y="88">QDI · marge · tours</text>
+          <text x="988" y="88">jamais en piste</text>
+        </g>
+        <g stroke="#474C57" stroke-width="1.2" marker-end="url(#fl)">
+          <line x1="136" y1="74" x2="192" y2="74"/>
+          <line x1="324" y1="74" x2="380" y2="74"/>
+          <line x1="512" y1="74" x2="568" y2="74"/>
+          <line x1="700" y1="74" x2="756" y2="74"/>
+          <line x1="888" y1="74" x2="920" y2="74"/>
+        </g>
+        <g fill="#878D99" font-size="9">
+          <text x="164" y="62">BLE · 25 Hz</text>
+          <text x="352" y="62">88 octets</text>
+          <text x="540" y="62">sans doublon</text>
+          <text x="728" y="62">par lots</text>
+        </g>
+        <g fill="#878D99" font-size="9">
+          <text x="72"  y="130">reconnexion illimitée</text>
+          <text x="72"  y="142">pendant la capture</text>
+          <text x="448" y="130">un fichier par opération</text>
+          <text x="448" y="142">rien n'est jamais jeté</text>
+          <text x="636" y="130">fichier brut conservé</text>
+          <text x="636" y="142">7 jours en filet</text>
+        </g>
+      </g>
+    </svg>
+    </div>
+    <figcaption><b>Une coupure réseau au circuit ne coûte jamais une donnée.</b> Séance de 20 min ≈ 30 000 mesures, toutes écrites sur disque avant envoi, rejouables sans doublon. Le réseau saturé d'un paddock un samedi n'est pas un risque : c'est le cas prévu.</figcaption>
+  </figure>
+  <figure>
+    <svg viewBox="0 0 760 116" role="img" aria-label="La trame de 88 octets du boîtier : deux octets de synchronisation, un en-tête de quatre octets, quatre-vingts octets de mesures, deux octets de somme de contrôle. Toute trame corrompue est rejetée.">
+      <g font-family="JetBrains Mono,monospace" font-size="10">
+        <text x="28" y="22" fill="#878D99" letter-spacing="2">UNE TRAME = 88 OCTETS · 25 FOIS PAR SECONDE</text>
+        <g stroke="#fff" stroke-width="2">
+          <rect x="28" y="34" width="16" height="32" fill="#45484F"/>
+          <rect x="44" y="34" width="8" height="32" fill="#6E7480"/>
+          <rect x="52" y="34" width="8" height="32" fill="#6E7480"/>
+          <rect x="60" y="34" width="16" height="32" fill="#B0B5BF"/>
+          <rect x="76" y="34" width="624" height="32" fill="#C8102E"/>
+          <rect x="700" y="34" width="16" height="32" fill="#45484F"/>
+        </g>
+        <text x="388" y="54" fill="#fff" text-anchor="middle" font-size="9.5">80 octets de mesures — position · vitesse · cap · G · gyroscope · horodatage GPS</text>
+        <g fill="#878D99" font-size="9">
+          <text x="28" y="84">sync · 2</text>
+          <text x="86" y="84">en-tête · 4 (classe, id, longueur)</text>
+          <text x="716" y="84" text-anchor="end">contrôle · 2</text>
+        </g>
+        <text x="28" y="104" fill="#878D99" font-size="9">somme de contrôle Fletcher-8 vérifiée à réception : une trame corrompue est rejetée, jamais interprétée</text>
+      </g>
+    </svg>
+    <figcaption><b>Le protocole, au niveau de l'octet.</b> Le décodeur est propriétaire, écrit et testé pour ce boîtier — pas une bibliothèque intermédiaire de plus entre le capteur et le pilote.</figcaption>
+  </figure>
+</section>
+
+<!-- 06 -->
+<section id="bilan">
+  <div class="shead">
+    <span class="eyebrow"><span class="n">06</span> · Le soir — le Bilan</span>
+    <h2>Un seul chiffre : la marge</h2>
+    <p class="lede">L'accueil de l'app a deux visages : dans les 7 jours qui suivent une séance, il s'ouvre sur la photo du jour et mène au Bilan. Le Bilan tient en un chiffre — <strong>combien il vous restait</strong>.</p>
+  </div>
+  <figure>
+    <svg viewBox="0 0 640 292" role="img" aria-label="Jauge de marge en demi-cercle : rouge sous 15 pour cent, or de 15 à 30, vert au-delà de 30. L'aiguille indique 51 pour cent, exemple réel en zone verte.">
+      <g transform="translate(320,232)">
+        <path d="M -170 0 A 170 170 0 0 1 -151.5 -77.2" fill="none" stroke="#D8383F" stroke-width="22"/>
+        <path d="M -151.5 -77.2 A 170 170 0 0 1 -99.9 -137.5" fill="none" stroke="#FFB703" stroke-width="22"/>
+        <path d="M -99.9 -137.5 A 170 170 0 0 1 170 0" fill="none" stroke="#188A50" stroke-width="22"/>
+        <g font-family="JetBrains Mono,monospace" font-size="10.5" fill="#878D99">
+          <text x="-188" y="16" text-anchor="middle">0</text>
+          <text x="-166" y="-88" text-anchor="end">15</text>
+          <text x="-106" y="-152" text-anchor="end">30</text>
+          <text x="188" y="16" text-anchor="middle">100</text>
+        </g>
+        <line x1="0" y1="0" x2="4.7" y2="-149.9" stroke="#14151A" stroke-width="2.6"/>
+        <circle cx="0" cy="0" r="6" fill="#14151A"/>
+        <text x="0" y="-54" text-anchor="middle" font-family="JetBrains Mono,monospace" font-size="50" fill="#14151A">51<tspan font-size="23" fill="#878D99"> %</tspan></text>
+        <text x="0" y="-28" text-anchor="middle" font-family="Hanken Grotesk,sans-serif" font-size="13" fill="#188A50" font-weight="700">Confortable</text>
+      </g>
+      <g font-family="Hanken Grotesk,sans-serif" font-size="11" fill="#878D99">
+        <text x="70"  y="276">« Terrain serré »</text>
+        <text x="208" y="276">« À explorer »</text>
+        <text x="424" y="276">« Confortable »</text>
+      </g>
+    </svg>
+    <figcaption><b>Vert dès 30 %, or de 15 à 30, rouge sous 15</b> — trois étiquettes humaines, jamais une note. La valeur illustrée (51 %) est un cas réel du banc d'essai interne.</figcaption>
+  </figure>
+  <div class="branche" style="border-left-color:#878D99;margin:12px 0"><h3>La formule, telle qu'écrite dans le code</h3>
+    <p>Une seule source de vérité : la constance réutilise le calcul de la Régularité. Sans véhicule caractérisé <strong>par la mesure</strong>, l'app affiche la marge pilote seule — et le dit.</p>
+    <div class="formule">marge pilote = 0,6 × constance + 0,4 × fluidité&nbsp;&nbsp;·&nbsp;&nbsp;marge globale = 0,4 × véhicule + 0,6 × pilote</div>
+  </div>
+  <div class="cards">
+    <div class="card"><span class="eyebrow">Le lendemain</span><h3>Le débrief J+1</h3><p>Un récit court, en français, sans une seule consigne — puis l'app se tait jusqu'à la veille de la prochaine session. La relance douce que le pilote attend, jamais celle qu'il subit.</p></div>
+    <div class="card"><span class="eyebrow">Le focus</span><h3>« Une chose. Pas plus. »</h3><p>Une seule zone à explorer — le virage le plus en retrait — formulée en question. Si tout est vert, l'app ne propose rien. C'est le Principe 1 rendu tangible.</p></div>
+    <div class="card"><span class="eyebrow">Le souvenir</span><h3>La carte-souvenir</h3><p>Une carte élégante au meilleur tour réel — le seul objet OXV pensé pour être vu <strong>hors</strong> de l'app. Chaque partage est une publicité choisie par le pilote.</p></div>
+  </div>
+</section>
+
+<!-- 07 -->
+<section id="qdi" class="pb">
+  <div class="shead">
+    <span class="eyebrow"><span class="n">07</span> · La Signature — le QDI</span>
+    <h2>Cinq branches, jamais un score</h2>
+    <p class="lede">Le <strong>Quality Driving Index</strong> lit la conduite en cinq branches (0–100), jamais agrégées, jamais classées. La seule référence : <strong>vous-même</strong>, sur ce circuit, médiane de vos 5 dernières séances.</p>
+  </div>
+  <figure>
+    <svg viewBox="0 0 720 340" role="img" aria-label="Radar à cinq branches du QDI : trajectoire, fluidité, accélération, freinage, régularité. Le polygone plein est la séance du jour, le polygone pointillé la référence personnelle du pilote.">
+      <g transform="translate(230,175)">
+        <g stroke="#E3E5EA" fill="none" stroke-width="1">
+          <polygon points="0,-40 38,-12.4 23.5,32.4 -23.5,32.4 -38,-12.4"/>
+          <polygon points="0,-80 76.1,-24.7 47,64.7 -47,64.7 -76.1,-24.7"/>
+          <polygon points="0,-120 114.1,-37.1 70.5,97.1 -70.5,97.1 -114.1,-37.1"/>
+          <line x1="0" y1="0" x2="0" y2="-120"/><line x1="0" y1="0" x2="114.1" y2="-37.1"/><line x1="0" y1="0" x2="70.5" y2="97.1"/><line x1="0" y1="0" x2="-70.5" y2="97.1"/><line x1="0" y1="0" x2="-114.1" y2="-37.1"/>
+        </g>
+        <polygon points="0,-86 87.5,-28.4 51.7,71.2 -49.4,68 -80.8,-26.2" fill="none" stroke="#878D99" stroke-width="1.3" stroke-dasharray="4 4"/>
+        <polygon points="0,-102 95.1,-30.9 42.3,58.2 -56.4,77.6 -68.5,-22.2" fill="rgba(46,111,216,.08)" stroke="#2E6FD8" stroke-width="1.7"/>
+        <circle cx="0" cy="-102" r="4.5" fill="#2E6FD8"/>
+        <circle cx="95.1" cy="-30.9" r="4.5" fill="#B98A00"/>
+        <circle cx="42.3" cy="58.2" r="4.5" fill="#188A50"/>
+        <circle cx="-56.4" cy="77.6" r="4.5" fill="#D8383F"/>
+        <circle cx="-68.5" cy="-22.2" r="4.5" fill="#0E93A8"/>
+        <g font-family="Hanken Grotesk,sans-serif" font-size="12.5" fill="#14151A" font-weight="700">
+          <text x="0" y="-134" text-anchor="middle">Trajectoire</text>
+          <text x="126" y="-40" text-anchor="start">Fluidité</text>
+          <text x="80" y="116" text-anchor="start">Accélération</text>
+          <text x="-80" y="116" text-anchor="end">Freinage</text>
+          <text x="-126" y="-40" text-anchor="end">Régularité</text>
+        </g>
+      </g>
+      <g transform="translate(474,84)" font-family="JetBrains Mono,monospace" font-size="10.5" fill="#474C57">
+        <rect x="0" y="-6" width="26" height="3.5" fill="#2E6FD8"/><text x="34" y="0">séance du jour</text>
+        <line x1="0" y1="22" x2="26" y2="22" stroke="#878D99" stroke-width="2" stroke-dasharray="4 4"/><text x="34" y="26">votre référence</text>
+        <text x="34" y="40" fill="#878D99" font-size="9">médiane de vos 5 dernières</text>
+        <text x="34" y="51" fill="#878D99" font-size="9">séances sur ce circuit</text>
+        <text x="0" y="88" fill="#878D99" font-size="9">Une branche non mesurable</text>
+        <text x="0" y="99" fill="#878D99" font-size="9">s'affiche « — », jamais estimée.</text>
+        <text x="0" y="132" fill="#878D99" font-size="9">Écran Signature, noms pilote :</text>
+        <text x="0" y="143" fill="#878D99" font-size="9">Cap · Trajectoire · Visée</text>
+        <text x="0" y="154" fill="#878D99" font-size="9">· Plongée · Anticipation</text>
+        <text x="0" y="186" fill="#878D99" font-size="9">Algorithme versionné — toute</text>
+        <text x="0" y="197" fill="#878D99" font-size="9">évolution de formule est tracée.</text>
+      </g>
+    </svg>
+    <figcaption><b>La Signature du pilote</b> (illustration). Le seul comparant autorisé est le pilote lui-même.</figcaption>
+  </figure>
+  <div class="branches">
+    <div class="branche" style="border-left-color:var(--q-regul)"><h3>Régularité <span class="alias">CAP</span></h3>
+      <p>Vos tours se ressemblent-ils ? Coefficient de variation des temps au tour.</p>
+      <div class="formule">CV = σ/moyenne · 0 % → 100 · ≥ 6 % → 0 · min 3 tours</div></div>
+    <div class="branche" style="border-left-color:var(--q-fluid)"><h3>Fluidité <span class="alias">ANTICIPATION</span></h3>
+      <p>Le volant travaille-t-il en douceur ? Vitesse de variation de l'appui latéral.</p>
+      <div class="formule">moy |ΔG_lat/Δt| · 0,25 g/s → 100 · 2,0 g/s → 0 · min 50 éch.</div></div>
+    <div class="branche" style="border-left-color:var(--q-frein)"><h3>Freinage <span class="alias">VISÉE</span></h3>
+      <p>Progressivité de chaque phase de freinage (≤ −0,25 g, ≥ 4 mesures).</p>
+      <div class="formule">σ(ΔG/Δt) par phase · 0,5 g/s → 100 · 3,0 g/s → 0 · min 3 phases</div></div>
+    <div class="branche" style="border-left-color:var(--q-accel)"><h3>Accélération <span class="alias">PLONGÉE</span></h3>
+      <p>Même lecture à la remise des gaz (phases ≥ +0,15 g).</p>
+      <div class="formule">σ(ΔG/Δt) par phase · 0,5 g/s → 100 · 3,0 g/s → 0 · min 3 phases</div></div>
+    <div class="branche" style="border-left-color:var(--q-traj);grid-column:1/-1"><h3>Trajectoire</h3>
+      <p>Repassez-vous au même endroit ? Chaque tour est rééchantillonné en 40 points à fractions égales de distance ; le score est la dispersion moyenne de vos lignes, en mètres.</p>
+      <div class="formule">dispersion inter-tours · ≤ 0,5 m → 100 · ≥ 5 m → 0 · min 2 tours de ≥ 100 m</div></div>
+  </div>
+  <div class="note">
+    <h4>Honnêteté capteurs — affichée au pilote</h4>
+    <p>Le boîtier lit GPS et accélérations — ni volant, ni pédales — et l'app le dit dans son écran « La méthode ». Les trous radio &gt; 200 ms sont exclus : une perte Bluetooth n'est pas un à-coup de conduite.</p>
+  </div>
+</section>
+
+<!-- 08 -->
+<section id="atelier">
+  <div class="shead">
+    <span class="eyebrow"><span class="n">08</span> · Les jours suivants — l'atelier</span>
+    <h2>Analyser, comparer, se souvenir</h2>
+    <p class="lede">La séance reste. Le pilote y revient quand il veut, avec des outils qui s'ouvrent chacun sur sa propre condition de données — du chrono simple au nuage d'appuis.</p>
+  </div>
+  <figure>
+    <svg viewBox="0 0 760 210" role="img" aria-label="Les cinq niveaux de restitution, en escalier : le chrono dès un tour, la régularité dès trois tours, l'écart entre vos tours dès deux tours comparables, les phases du virage et les appuis de la voiture dès cent mesures avec gyroscope. Chaque niveau s'ouvre sur sa propre condition, sans chaîne de paliers.">
+      <g font-family="Hanken Grotesk,sans-serif" font-size="11.5" text-anchor="middle">
+        <g stroke="#C9CDD6" stroke-width="1.3">
+          <rect x="24"  y="150" width="132" height="34" rx="7" fill="#F7F8FA"/>
+          <rect x="170" y="120" width="132" height="64" rx="7" fill="#F7F8FA"/>
+          <rect x="316" y="90"  width="132" height="94" rx="7" fill="#F7F8FA"/>
+          <rect x="462" y="60"  width="132" height="124" rx="7" fill="#F7F8FA"/>
+          <rect x="608" y="30"  width="132" height="154" rx="7" fill="#EAF1FB" stroke="#2E6FD8"/>
+        </g>
+        <g fill="#14151A" font-weight="700">
+          <text x="90"  y="170">Le chrono</text>
+          <text x="236" y="141">La régularité</text>
+          <text x="382" y="111">L'écart entre</text>
+          <text x="382" y="125">vos tours</text>
+          <text x="528" y="81">Les phases</text>
+          <text x="528" y="95">du virage</text>
+          <text x="674" y="51">Les appuis</text>
+          <text x="674" y="65">de la voiture</text>
+        </g>
+        <g fill="#878D99" font-size="9" font-family="JetBrains Mono,monospace">
+          <text x="90"  y="199">≥ 1 tour</text>
+          <text x="236" y="199">≥ 3 tours</text>
+          <text x="382" y="199">2 tours comparables</text>
+          <text x="528" y="199">≥ 100 mesures gyro</text>
+          <text x="674" y="199">≥ 100 mesures gyro</text>
+        </g>
+        <text x="380" y="18" fill="#474C57" font-size="10.5">Chaque niveau s'ouvre sur SA condition — jamais une chaîne de paliers à débloquer.</text>
+      </g>
+    </svg>
+    <figcaption><b>Cinq niveaux, zéro gamification.</b> Un niveau fermé faute de capteur est fermé « par le boîtier » — jamais un défi à relever.</figcaption>
+  </figure>
+  <figure>
+    <svg viewBox="0 0 760 216" role="img" aria-label="Anatomie de l'écran Séance : huit sections ancrées — résumé, tours, écarts, tracé, télémétrie, constats, cœur, conditions — et quatre vues de télémétrie : appuis, canaux gradués, carte de chaleur, rejouer.">
+      <g font-family="Hanken Grotesk,sans-serif" font-size="11">
+        <rect x="40" y="14" width="188" height="188" rx="16" fill="#fff" stroke="#C9CDD6" stroke-width="1.6"/>
+        <g font-size="9.5" fill="#474C57">
+          <rect x="54" y="28"  width="160" height="16" rx="4" fill="#F1F2F5"/><text x="62" y="39.5">Résumé · chiffre roi</text>
+          <rect x="54" y="48"  width="160" height="16" rx="4" fill="#F1F2F5"/><text x="62" y="59.5">Tours</text>
+          <rect x="54" y="68"  width="160" height="16" rx="4" fill="#F1F2F5"/><text x="62" y="79.5">Écarts (delta)</text>
+          <rect x="54" y="88"  width="160" height="16" rx="4" fill="#F1F2F5"/><text x="62" y="99.5">Tracé</text>
+          <rect x="54" y="108" width="160" height="16" rx="4" fill="#EAF1FB" stroke="#2E6FD8" stroke-width="1"/><text x="62" y="119.5" fill="#2E6FD8" font-weight="600">Télémétrie</text>
+          <rect x="54" y="128" width="160" height="16" rx="4" fill="#F1F2F5"/><text x="62" y="139.5">Constats</text>
+          <rect x="54" y="148" width="160" height="16" rx="4" fill="#F1F2F5"/><text x="62" y="159.5">Cœur (consenti)</text>
+          <rect x="54" y="168" width="160" height="16" rx="4" fill="#F1F2F5"/><text x="62" y="179.5">Conditions météo</text>
+        </g>
+        <path d="M 214 116 C 260 116 268 60 300 52" stroke="#2E6FD8" stroke-width="1.2" fill="none" stroke-dasharray="3 3"/>
+        <g>
+          <rect x="304" y="34" width="196" height="38" rx="8" fill="#fff" stroke="#C9CDD6" stroke-width="1.2"/>
+          <text x="316" y="50" fill="#14151A" font-weight="700" font-size="11">Les appuis (G-G)</text>
+          <text x="316" y="64" fill="#878D99" font-size="9">nuage G latéral × G longitudinal, couleur = vitesse</text>
+          <rect x="304" y="78" width="196" height="38" rx="8" fill="#fff" stroke="#C9CDD6" stroke-width="1.2"/>
+          <text x="316" y="94" fill="#14151A" font-weight="700" font-size="11">Les canaux</text>
+          <text x="316" y="108" fill="#878D99" font-size="9">vitesse et G, axes gradués, curseur au doigt</text>
+          <rect x="304" y="122" width="196" height="38" rx="8" fill="#fff" stroke="#C9CDD6" stroke-width="1.2"/>
+          <text x="316" y="138" fill="#14151A" font-weight="700" font-size="11">La carte de chaleur</text>
+          <text x="316" y="152" fill="#878D99" font-size="9">le tracé coloré par la vitesse, rampe monotone</text>
+          <rect x="304" y="166" width="196" height="38" rx="8" fill="#fff" stroke="#C9CDD6" stroke-width="1.2"/>
+          <text x="316" y="182" fill="#14151A" font-weight="700" font-size="11">Rejouer</text>
+          <text x="316" y="196" fill="#878D99" font-size="9">la trajectoire rejouée pas à pas</text>
+        </g>
+        <g font-size="10" fill="#474C57">
+          <text x="524" y="50" font-weight="700" fill="#14151A">Et autour de la séance :</text>
+          <text x="524" y="70">· superposition des passages d'un virage</text>
+          <text x="524" y="88">· zoom virage, apex mesuré</text>
+          <text x="524" y="106">· photos de la séance, galerie</text>
+          <text x="524" y="124">· relevé météo du jour</text>
+          <text x="524" y="142">· vidéo alignée (calage à la touche)</text>
+          <text x="524" y="160">· export PDF du bilan</text>
+          <text x="524" y="178">· comparateur : 2 séances, ou un ami</text>
+          <text x="524" y="196" fill="#878D99">(double consentement requis)</text>
+        </g>
+      </g>
+    </svg>
+    <figcaption><b>L'écran Séance</b> : huit sections ancrées, quatre vues de télémétrie. Le nuage d'appuis dit « enveloppe atteinte » — jamais « limite du pneu » ; la rubrique Cœur n'existe que si la biométrie a été consentie.</figcaption>
+  </figure>
+  <div class="roles">
+    <div class="role"><h4>MAGNITUDE</h4>
+      <div class="sw"><i style="background:#1E5178"></i><i style="background:#2C7CAE"></i><i style="background:#4AA3D8"></i><i style="background:#7FC4EE"></i></div>
+      <p>Une grandeur continue : une teinte, du sombre au clair. Jamais d'arc-en-ciel.</p></div>
+    <div class="role"><h4>ORDRE</h4>
+      <div class="sw"><i style="background:#184F95"></i><i style="background:#2A78D6"></i><i style="background:#86B6EF"></i></div>
+      <p>Des éléments ordonnés : la même teinte en pas discrets.</p></div>
+    <div class="role"><h4>POLARITÉ</h4>
+      <div class="sw"><i style="background:#D95926"></i><i style="background:#B0B5BF"></i><i style="background:#3987E5"></i></div>
+      <p>Un écart signé autour d'un neutre gris — le zéro se lit « rien ».</p></div>
+    <div class="role"><h4>ÉTAT</h4>
+      <div class="sw"><i style="background:#D8383F"></i><i style="background:#FFB703"></i><i style="background:#188A50"></i></div>
+      <p>Les zones de marge. Jamais recyclées en série de données.</p></div>
+  </div>
+  <div class="cards">
+    <div class="card"><span class="eyebrow">Saison</span><h3>Votre style au fil des mois</h3><p>Médiane de chaque branche par mois, en constats <strong>juxtaposés</strong> — jamais une courbe d'évolution. Un mois sans mesure disparaît plutôt que d'afficher une fausse valeur.</p></div>
+    <div class="card"><span class="eyebrow">Carnet</span><h3>Intentions et objectifs</h3><p>Le pilote note son intention avant la séance, la relit après. Les objectifs, mesurables et datés, peuvent venir d'un coach — en observation, jamais en injonction.</p></div>
+    <div class="card"><span class="eyebrow">Garage</span><h3>Le carnet du véhicule</h3><p>Chaque voiture a sa fiche : photos plein cadre, spécifications, et un <strong>journal de réglages daté</strong> — chaque intervention notée, entrée par entrée. L'app ne juge jamais le matériel.</p></div>
+    <div class="card"><span class="eyebrow">Mécanique interne</span><h3>Des mesures qui tiennent la route</h3><p>Tours comptés au franchissement d'une <strong>porte</strong> (la voie des stands ne déclenche rien), virages détectés par courbure, apex mesuré, comparaisons mètre par mètre — jamais « à t = 10 s ».</p></div>
+  </div>
+</section>
+
+<!-- 09 -->
+<section id="honnetete" class="pb">
+  <div class="shead">
+    <span class="eyebrow"><span class="n">09</span> · La confiance</span>
+    <h2>Une restitution qui ne ment pas — c'est vérifiable</h2>
+    <p class="lede">L'argument de vente le plus solide du produit : chaque chiffre affiché sait d'où il vient, et le dit.</p>
+  </div>
+  <figure>
+    <svg viewBox="0 0 760 168" role="img" aria-label="Deux mécanismes d'honnêteté : chaque grandeur porte une étiquette de provenance — mesurée, déduite ou inférée, et une grandeur inférée ne peut jamais être le chiffre principal d'un écran ; chaque séance annonce son niveau de confiance — complète, partielle ou limitée.">
+      <g font-family="Hanken Grotesk,sans-serif">
+        <text x="24" y="30" font-family="JetBrains Mono,monospace" font-size="10" letter-spacing="2" fill="#878D99">PROVENANCE — CHAQUE GRANDEUR EST ÉTIQUETÉE</text>
+        <g font-size="12" font-weight="700" text-anchor="middle">
+          <rect x="24"  y="44" width="150" height="46" rx="9" fill="#EAF6EF" stroke="#188A50"/>
+          <text x="99"  y="63" fill="#188A50">[M] Mesurée</text>
+          <text x="99"  y="80" font-size="9.5" font-weight="400" fill="#474C57">vitesse, position, G</text>
+          <rect x="190" y="44" width="150" height="46" rx="9" fill="#F7F8FA" stroke="#C9CDD6"/>
+          <text x="265" y="63" fill="#474C57">[D] Déduite</text>
+          <text x="265" y="80" font-size="9.5" font-weight="400" fill="#878D99">distance = ∫v·dt</text>
+          <rect x="356" y="44" width="170" height="46" rx="9" fill="#FDF6E7" stroke="#B98A00"/>
+          <text x="441" y="63" fill="#8F6400">[I] Inférée</text>
+          <text x="441" y="80" font-size="9.5" font-weight="400" fill="#8F6400">tour idéal composé</text>
+        </g>
+        <text x="546" y="60" font-size="11.5" fill="#14151A" font-weight="700">Règle dure :</text>
+        <text x="546" y="76" font-size="11" fill="#474C57">une grandeur [I] ne porte</text>
+        <text x="546" y="90" font-size="11" fill="#474C57">jamais le chiffre roi d'un écran</text>
+        <text x="24" y="126" font-family="JetBrains Mono,monospace" font-size="10" letter-spacing="2" fill="#878D99">CONFIANCE — CHAQUE SÉANCE ANNONCE SA FIABILITÉ</text>
+        <g font-size="11" text-anchor="middle" font-weight="600">
+          <rect x="24"  y="136" width="215" height="26" rx="13" fill="#EAF6EF" stroke="#188A50"/><text x="131" y="153" fill="#188A50">complète · ≥ 90 % + tour + virage</text>
+          <rect x="253" y="136" width="150" height="26" rx="13" fill="#FDF6E7" stroke="#B98A00"/><text x="328" y="153" fill="#8F6400">partielle · ≥ 60 %</text>
+          <rect x="417" y="136" width="110" height="26" rx="13" fill="#F7F8FA" stroke="#C9CDD6"/><text x="472" y="153" fill="#474C57">limitée</text>
+          <text x="640" y="153" font-size="10" font-weight="400" fill="#878D99">raisons factuelles affichées</text>
+        </g>
+      </g>
+    </svg>
+    <figcaption><b>Une donnée absente n'est pas un zéro.</b> Un composant recevant une grandeur « absente » ne <em>peut pas</em> la dessiner. Libellé unique : « non mesuré sur cette séance ».</figcaption>
+  </figure>
+</section>
+
+<!-- ═══ INTERLUDE — version vivante uniquement ═══ -->
+<section id="essai" class="demo-live">
+  <div class="shead">
+    <span class="eyebrow"><span class="n">◆</span> · Interlude — uniquement dans cette version</span>
+    <h2>Essayez le miroir</h2>
+    <p class="lede">Un extrait réel du banc d'essai — 4 min 25 de conduite, restituées comme l'app le fait : après, jamais pendant. Faites glisser, ou laissez rouler.</p>
+  </div>
+  <div class="demo-cadre">
+    <div class="demo-grid">
+      <div>
+        <svg id="dTrace" viewBox="0 0 400 400" role="img" aria-label="Tracé du parcours reconstruit depuis le GPS ; le point suit la position au curseur, le trait rouge marque le chemin déjà parcouru.">
+          <path id="dFond" fill="none" stroke="#2A2C33" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+          <path id="dProg" fill="none" stroke="#C8102E" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+          <circle id="dPos" r="5.5" fill="#F5F5F7"/>
+        </svg>
+      </div>
+      <div>
+        <svg id="dGG" viewBox="0 0 240 240" role="img" aria-label="Diagramme des appuis : G latéral en abscisse, G longitudinal en ordonnée, cercles repères à 0,3 et 0,6 g ; les points s'accumulent au fil de l'extrait.">
+          <line x1="120" y1="6" x2="120" y2="234" stroke="#1E1F24"/>
+          <line x1="6" y1="120" x2="234" y2="120" stroke="#1E1F24"/>
+          <circle cx="120" cy="120" r="55" fill="none" stroke="#2A2C33"/>
+          <circle cx="120" cy="120" r="110" fill="none" stroke="#2A2C33"/>
+          <text x="177" y="115" font-size="9" fill="#8B8F98" font-family="JetBrains Mono,monospace">0,3 g</text>
+          <text x="216" y="115" font-size="9" fill="#8B8F98" font-family="JetBrains Mono,monospace">0,6</text>
+          <text x="120" y="16" font-size="8" fill="#565B66" font-family="JetBrains Mono,monospace" text-anchor="middle">accélération</text>
+          <text x="120" y="232" font-size="8" fill="#565B66" font-family="JetBrains Mono,monospace" text-anchor="middle">freinage</text>
+          <g id="dPts"></g>
+          <circle id="dGPos" r="5" fill="#C8102E"/>
+        </svg>
+        <div class="demo-lect">
+          <div><b id="dV">0</b><span>km/h · vitesse [M]</span></div>
+          <div><b id="dGl">0,00</b><span>g latéral [M]</span></div>
+        </div>
+      </div>
+    </div>
+    <div class="demo-ctrl">
+      <button id="dPlay" type="button">Rouler ×8</button>
+      <input id="dScrub" type="range" min="0" max="0" value="0" step="1" aria-label="Position dans l'extrait">
+      <span class="dtemps" id="dT">0:00</span>
+    </div>
+    <p class="demo-note">Données réelles du banc d'essai, 1 mesure sur 8 affichée. Orientation et position neutralisées — aucune coordonnée n'est embarquée dans cette page. Le miroir restitue ; il ne juge pas.</p>
+  </div>
+</section>
+<script>
+(function () {
+  var el = function (id) { return document.getElementById(id); };
+  if (!el('dTrace')) return;
+  var P = "0,-704.8,454.2,47.2,0.007,0.058;2,-705.5,458.3,48.2,0.014,0.000;6,-706.1,462.7,48.9,-0.003,0.034;9,-706.9,466.9,49.6,0.033,0.000;12,-707.7,471.2,50.4,0.012,0.058;15,-708.6,475.5,51.3,0.025,0.061;19,-709.7,479.8,52.2,0.037,0.056;22,-710.9,484.2,53.0,0.024,0.033;25,-712.1,488.7,53.7,0.016,0.072;28,-713.4,493.3,54.4,0.033,0.091;32,-714.8,497.9,55.3,-0.045,0.043;35,-716.3,502.4,55.2,-0.057,-0.022;38,-717.8,506.5,55.1,-0.040,0.007;41,-719.2,510.7,55.1,-0.062,0.051;44,-720.7,515.1,55.2,-0.061,-0.003;47,-722.2,519.9,55.2,-0.055,-0.001;51,-723.7,524.6,55.3,-0.044,-0.011;54,-725.2,529.4,55.2,-0.035,0.006;57,-726.7,534.1,55.4,-0.076,0.002;60,-728.2,538.9,55.6,-0.052,-0.011;63,-729.7,543.6,55.9,-0.076,0.007;66,-731.3,548.3,55.8,-0.012,-0.001;70,-732.8,552.9,56.1,-0.063,-0.030;73,-734.4,557.5,56.1,-0.044,-0.007;76,-736.0,562.2,56.2,-0.031,-0.009;80,-737.6,566.9,56.2,-0.115,-0.003;83,-739.3,571.6,56.4,-0.078,-0.048;86,-740.9,576.4,55.9,-0.077,0.009;89,-742.6,581.0,55.7,-0.083,-0.026;92,-744.2,585.6,55.5,-0.092,-0.003;95,-745.9,590.0,55.2,-0.104,-0.080;98,-747.6,594.4,54.8,-0.079,-0.007;102,-749.3,598.8,54.8,-0.107,0.015;105,-751.0,603.2,54.5,-0.090,-0.033;108,-752.7,607.7,54.3,-0.115,0.020;111,-754.4,612.1,54.0,-0.129,0.035;115,-756.1,616.5,54.0,-0.116,-0.018;118,-757.9,620.9,53.6,-0.074,-0.031;121,-759.6,625.3,53.6,-0.091,0.015;124,-761.4,629.7,53.3,-0.101,-0.008;128,-763.1,634.0,53.3,-0.126,0.009;131,-764.9,638.3,52.8,-0.097,-0.014;134,-766.7,642.6,52.9,-0.093,0.027;137,-768.5,646.9,52.8,-0.118,0.009;140,-770.3,651.1,52.9,-0.106,0.013;143,-772.2,655.4,52.7,-0.103,-0.037;147,-774.0,659.6,53.0,-0.101,-0.008;150,-775.9,663.9,52.8,-0.048,-0.015;153,-777.7,668.2,52.7,-0.068,0.010;156,-779.5,672.4,52.7,-0.120,0.005;159,-781.4,676.6,52.8,-0.145,0.005;162,-783.2,680.8,52.8,-0.136,0.011;166,-785.0,685.1,52.2,-0.113,0.000;169,-786.9,689.3,52.4,-0.123,0.001;173,-788.7,693.4,51.6,-0.147,-0.016;176,-790.5,697.6,52.6,-0.078,-0.055;179,-792.3,701.9,51.6,-0.094,-0.007;182,-794.0,706.1,52.3,-0.065,0.012;185,-795.8,710.4,53.0,-0.089,-0.007;188,-797.7,714.6,52.9,-0.107,-0.010;191,-799.5,718.9,53.2,-0.083,-0.056;195,-801.4,723.2,53.3,-0.114,0.013;198,-803.2,727.5,52.7,-0.194,-0.015;201,-805.0,731.8,52.8,-0.151,-0.029;204,-806.7,736.0,52.5,-0.182,-0.016;207,-808.4,740.2,51.7,-0.126,-0.002;211,-810.2,744.4,51.4,-0.165,-0.048;214,-811.8,748.6,50.8,-0.186,0.001;217,-813.3,752.7,50.2,-0.132,-0.042;220,-814.7,756.9,49.6,-0.188,-0.029;224,-816.1,761.0,48.7,-0.193,-0.060;227,-817.5,765.1,48.6,-0.186,-0.036;230,-818.8,769.2,47.7,-0.160,-0.026;233,-820.0,773.2,47.3,-0.253,-0.022;236,-821.2,777.2,46.2,-0.190,-0.052;239,-822.4,781.0,44.8,-0.252,-0.003;243,-823.5,784.8,44.4,-0.178,-0.009;246,-824.6,788.6,43.4,-0.245,-0.015;249,-825.8,792.0,41.5,-0.206,-0.008;252,-826.8,795.5,40.4,-0.237,0.002;255,-827.7,798.9,39.3,-0.287,0.005;259,-828.7,802.1,38.0,-0.220,-0.050;262,-829.6,805.2,37.1,-0.211,-0.019;265,-830.4,808.2,34.2,-0.277,-0.023;268,-831.1,811.0,32.4,-0.202,-0.073;272,-831.9,813.8,32.4,-0.252,-0.038;275,-832.5,816.5,31.2,-0.207,-0.001;278,-833.1,819.2,30.4,-0.156,0.028;281,-833.7,821.8,30.3,-0.175,0.011;284,-834.3,824.3,30.1,-0.150,-0.060;287,-834.8,826.8,29.5,-0.119,-0.057;291,-835.4,829.4,30.0,-0.138,0.011;294,-835.9,832.1,29.4,-0.157,-0.016;297,-836.3,834.6,28.8,-0.147,-0.018;300,-836.7,837.2,28.5,-0.202,-0.008;303,-837.1,839.6,27.4,-0.170,-0.021;307,-837.5,841.9,27.0,-0.212,-0.026;310,-837.9,844.1,26.2,-0.180,0.060;313,-838.2,846.3,25.2,-0.190,0.064;316,-838.6,848.4,24.5,-0.209,-0.025;320,-838.9,850.4,23.3,-0.219,-0.033;323,-839.2,852.3,22.6,-0.225,0.026;326,-839.4,854.2,21.6,-0.257,0.038;329,-839.7,856.0,20.0,-0.212,-0.027;333,-839.9,857.6,18.8,-0.222,-0.008;336,-840.1,859.2,17.6,-0.302,0.092;339,-840.4,860.5,15.9,-0.113,-0.041;342,-840.6,861.8,15.6,-0.284,-0.050;345,-840.7,863.2,15.8,-0.149,-0.048;348,-840.8,864.4,12.6,-0.258,-0.221;351,-840.7,865.5,13.0,-0.125,-0.165;354,-840.3,866.7,14.1,-0.082,-0.290;358,-839.7,867.9,15.3,-0.147,-0.371;361,-838.8,869.0,16.4,-0.141,-0.342;364,-837.7,869.7,15.8,-0.200,-0.319;368,-836.4,870.3,16.5,-0.196,-0.328;371,-835.1,870.4,15.2,-0.186,-0.192;374,-833.8,870.4,15.2,-0.141,-0.193;377,-832.4,870.2,15.8,-0.129,-0.212;380,-831.0,869.7,17.0,-0.050,-0.271;384,-829.5,869.2,18.3,-0.035,-0.191;387,-828.0,868.4,19.8,0.120,-0.088;390,-826.3,867.5,21.8,0.079,0.174;393,-824.5,866.5,24.4,0.090,-0.119;396,-822.5,865.5,26.3,0.067,0.049;399,-820.2,864.3,28.8,0.035,0.000;402,-817.9,863.1,30.7,0.116,-0.050;406,-815.4,861.9,32.1,0.020,-0.028;409,-812.8,860.5,33.6,-0.015,0.016;412,-810.0,859.1,35.7,0.091,-0.077;416,-807.1,857.6,37.1,0.039,-0.019;418,-804.1,856.0,38.5,0.083,-0.061;422,-801.0,854.3,40.6,0.087,-0.050;425,-797.8,852.6,42.4,0.060,0.006;428,-794.4,850.8,43.0,-0.055,-0.004;431,-791.0,849.0,43.3,-0.061,-0.031;435,-787.5,847.3,44.1,0.064,-0.043;438,-783.9,845.5,45.8,0.056,-0.020;441,-780.2,843.6,47.4,0.080,-0.006;444,-776.4,841.7,49.1,0.121,-0.033;447,-772.4,839.7,50.9,0.101,0.015;450,-768.3,837.6,52.5,0.062,0.010;454,-764.1,835.4,53.2,0.142,-0.066;457,-759.7,833.3,55.0,0.113,0.034;460,-755.2,831.0,56.6,0.096,-0.087;463,-750.6,828.7,58.3,0.126,0.039;466,-745.9,826.3,60.2,0.071,-0.031;470,-741.1,824.0,60.9,0.148,0.010;473,-736.1,821.6,61.7,-0.021,0.021;477,-731.1,819.3,61.4,-0.057,0.046;480,-726.1,817.2,61.1,-0.056,0.069;483,-721.1,815.1,60.8,-0.099,0.104;486,-716.0,813.2,59.7,-0.065,0.167;489,-710.9,811.5,59.1,-0.076,0.181;492,-705.7,810.1,58.9,-0.052,0.191;495,-700.5,809.0,58.6,-0.024,0.204;498,-695.3,808.2,58.6,-0.008,0.227;502,-690.1,807.7,58.8,0.037,0.195;505,-684.8,807.5,59.2,0.039,0.221;508,-679.5,807.6,59.4,0.026,0.242;511,-674.1,808.1,60.3,0.035,0.198;514,-668.7,808.8,61.5,0.045,0.172;518,-663.2,809.8,62.9,0.033,0.172;521,-657.6,811.1,64.3,0.044,0.101;524,-652.1,812.5,65.0,-0.068,0.105;527,-646.5,814.2,64.6,-0.061,0.033;531,-640.9,815.9,65.1,-0.084,0.041;534,-635.4,817.7,64.6,-0.060,0.042;537,-629.9,819.5,64.9,-0.045,-0.001;540,-624.4,821.4,64.8,-0.095,0.010;543,-618.9,823.2,64.8,-0.109,-0.075;546,-613.4,825.2,65.0,-0.082,-0.066;550,-607.9,827.0,65.0,-0.114,-0.061;553,-602.4,828.9,64.8,-0.088,-0.057;556,-597.0,830.7,64.7,-0.027,-0.065;560,-591.5,832.5,64.7,-0.065,-0.065;563,-586.0,834.2,64.7,-0.017,-0.081;566,-580.4,835.8,65.3,-0.015,-0.108;569,-574.8,837.4,65.7,-0.007,-0.117;572,-569.1,838.9,66.2,-0.013,-0.144;575,-563.3,840.3,66.5,-0.054,-0.138;579,-557.5,841.4,66.4,-0.061,-0.226;582,-551.7,842.4,66.3,-0.046,-0.230;585,-545.9,843.1,66.1,-0.057,-0.235;588,-540.0,843.6,66.5,-0.009,-0.230;591,-534.1,843.9,67.1,-0.015,-0.142;594,-528.1,843.9,67.8,0.002,-0.175;598,-522.0,843.8,67.8,-0.061,-0.206;601,-516.0,843.5,67.6,-0.025,-0.158;604,-510.1,842.9,67.2,-0.116,-0.122;607,-504.2,842.2,67.0,-0.046,-0.124;610,-498.2,841.2,67.2,-0.064,-0.124;614,-492.3,840.2,67.1,-0.047,-0.121;617,-486.4,839.1,67.2,-0.043,-0.072;620,-480.5,837.9,67.6,-0.045,-0.064;623,-474.6,836.7,67.9,-0.037,-0.006;626,-468.7,835.4,68.1,-0.066,-0.063;630,-462.8,834.1,67.9,-0.072,0.032;633,-456.8,832.9,68.0,-0.076,-0.026;636,-450.9,831.5,68.1,-0.104,-0.046;639,-445.1,830.2,67.8,-0.063,-0.034;643,-439.2,828.9,67.9,-0.111,-0.080;646,-433.3,827.5,68.0,-0.099,0.004;649,-427.5,826.2,67.5,-0.086,0.008;652,-421.7,824.8,67.0,-0.185,-0.039;655,-415.9,823.5,66.4,-0.158,0.026;658,-410.2,822.2,65.5,-0.167,0.008;662,-404.6,821.0,64.7,-0.161,-0.005;665,-399.1,819.7,64.2,-0.151,-0.005;668,-393.6,818.5,63.5,-0.118,0.007;671,-388.1,817.3,63.0,-0.108,-0.021;675,-382.7,816.2,62.7,-0.097,0.028;678,-377.3,815.1,62.1,-0.107,0.031;681,-371.9,814.1,62.1,-0.184,0.073;684,-366.5,813.3,61.5,-0.113,0.106;687,-361.1,812.6,60.9,-0.141,0.109;690,-355.8,812.0,60.6,-0.112,0.035;694,-350.5,811.6,59.9,-0.130,0.018;697,-345.2,811.2,59.8,-0.089,0.041;700,-339.9,810.9,59.6,-0.086,-0.054;704,-334.6,810.6,59.7,-0.067,-0.118;707,-329.3,810.3,59.8,-0.052,-0.181;710,-323.9,809.9,60.0,-0.051,-0.255;713,-318.6,809.3,59.9,-0.005,-0.315;716,-313.3,808.5,60.1,0.000,-0.297;719,-308.0,807.5,61.0,0.004,-0.351;723,-302.7,806.2,61.6,-0.045,-0.163;726,-297.4,804.9,61.5,-0.079,-0.243;729,-292.1,803.5,61.6,-0.047,-0.205;732,-286.8,801.9,62.2,-0.001,-0.212;735,-281.6,800.1,63.2,0.029,-0.190;738,-276.3,798.1,64.2,-0.034,-0.293;742,-271.0,795.9,64.1,-0.081,-0.268;745,-265.9,793.5,64.0,-0.086,-0.306;748,-260.9,790.8,63.8,-0.037,-0.280;752,-256.0,787.9,64.1,0.000,-0.344;755,-251.2,784.8,64.8,0.000,-0.302;758,-246.6,781.4,65.7,-0.005,-0.306;761,-242.0,777.7,66.2,-0.003,-0.311;764,-237.6,773.9,66.1,-0.126,-0.342;767,-233.4,769.8,65.1,-0.137,-0.342;771,-229.5,765.7,63.7,-0.142,-0.294;774,-225.9,761.4,62.8,-0.144,-0.287;777,-222.4,757.1,61.9,-0.120,-0.230;780,-219.2,752.7,61.1,-0.119,-0.188;783,-216.2,748.4,60.0,-0.125,-0.119;787,-213.2,744.0,59.6,-0.071,-0.082;790,-210.3,739.6,59.0,-0.073,-0.056;793,-207.5,735.3,58.7,-0.092,-0.011;797,-204.6,731.0,58.5,-0.060,0.116;800,-201.6,726.8,58.2,-0.043,0.201;803,-198.4,722.8,58.4,-0.063,0.332;806,-194.9,719.0,58.8,-0.008,0.336;809,-191.2,715.4,59.0,-0.002,0.332;812,-187.1,712.1,59.6,-0.048,0.439;816,-182.8,709.2,59.3,-0.040,0.424;819,-178.2,706.6,58.8,-0.080,0.344;822,-173.5,704.5,58.2,-0.061,0.240;825,-168.7,702.6,57.4,-0.073,0.144;828,-164.0,700.8,57.1,-0.011,0.015;831,-159.2,699.0,57.2,0.006,-0.125;834,-154.5,697.1,57.6,-0.003,-0.263;838,-149.9,694.9,58.1,0.061,-0.325;841,-145.3,692.4,58.9,0.020,-0.297;844,-140.8,689.7,59.3,0.072,-0.288;848,-136.5,686.7,60.2,0.059,-0.259;850,-132.2,683.4,60.8,0.037,-0.274;854,-128.0,680.0,61.6,0.078,-0.249;857,-123.8,676.4,62.6,0.053,-0.269;860,-119.8,672.5,63.6,0.059,-0.209;864,-115.7,668.6,64.7,0.060,-0.147;867,-111.7,664.5,65.7,0.072,-0.135;870,-107.7,660.2,66.7,0.067,-0.142;873,-103.7,655.9,67.2,-0.048,-0.109;876,-99.7,651.5,66.8,-0.066,-0.118;879,-95.7,647.2,66.3,-0.123,-0.093;882,-91.9,642.9,65.2,-0.166,-0.045;886,-88.1,638.7,63.7,-0.156,-0.069;889,-84.4,634.5,62.4,-0.177,-0.061;893,-80.7,630.5,61.2,-0.167,-0.027;895,-77.2,626.5,59.8,-0.091,-0.030;899,-73.6,622.7,59.4,-0.084,-0.014;902,-70.1,618.8,58.8,-0.115,-0.024;905,-66.5,615.1,59.1,-0.044,0.035;908,-62.8,611.4,59.1,-0.042,0.103;911,-59.1,607.8,59.0,-0.027,0.039;915,-55.2,604.3,59.3,-0.026,0.073;918,-51.2,600.8,59.3,-0.067,0.097;921,-47.1,597.6,59.0,-0.048,0.054;924,-43.0,594.3,60.0,0.002,0.036;927,-38.7,591.1,60.5,0.017,0.121;930,-34.2,588.1,61.1,0.031,0.127;934,-29.5,585.1,62.4,0.030,0.138;937,-24.7,582.3,63.3,0.049,0.143;941,-19.7,579.6,64.4,0.052,0.101;943,-14.5,577.1,65.1,0.089,0.112;946,-9.2,574.7,66.5,0.043,0.083;950,-3.6,572.4,67.3,0.085,0.090;953,2.0,570.3,68.4,0.098,0.109;956,7.9,568.3,69.6,0.082,0.081;959,13.9,566.3,71.2,0.072,0.071;963,20.0,564.5,72.1,0.033,0.006;966,26.1,562.6,72.3,-0.030,0.038;969,32.4,560.9,72.4,-0.041,-0.001;972,38.5,559.2,71.7,-0.057,-0.031;975,44.7,557.5,71.3,-0.057,-0.107;979,50.8,555.8,71.5,-0.020,-0.127;982,56.9,554.1,71.6,0.036,-0.156;985,63.1,552.2,71.8,0.014,-0.194;988,69.2,550.2,72.6,0.032,-0.153;991,75.3,548.1,73.0,0.003,-0.187;994,81.4,545.8,73.3,0.038,-0.113;998,87.5,543.4,73.7,0.060,-0.111;1001,93.6,540.8,74.3,0.035,-0.100;1004,99.7,538.2,74.9,0.065,-0.121;1008,105.8,535.6,75.6,0.040,-0.129;1011,112.0,532.8,76.2,-0.021,-0.109;1014,118.1,530.1,75.4,-0.111,-0.074;1017,124.2,527.3,74.6,-0.071,-0.062;1020,130.2,524.6,74.0,-0.058,-0.107;1023,136.1,521.8,73.3,-0.055,-0.087;1026,141.9,519.1,72.5,-0.052,-0.080;1030,147.7,516.3,72.0,-0.049,-0.061;1033,153.4,513.5,71.6,-0.039,-0.063;1036,159.1,510.8,71.1,-0.043,-0.061;1040,164.7,508.0,70.4,-0.013,-0.031;1042,170.4,505.3,70.1,-0.029,0.015;1046,176.0,502.6,70.0,-0.021,0.004;1049,181.5,500.0,69.7,0.045,0.051;1052,187.1,497.3,69.7,0.053,-0.034;1055,192.7,494.7,70.1,0.026,-0.003;1059,198.4,492.1,70.3,0.027,-0.013;1062,204.1,489.5,70.9,0.027,-0.005;1065,209.8,486.9,71.2,0.034,-0.027;1068,215.5,484.3,71.2,-0.005,-0.054;1071,221.3,481.7,70.6,-0.056,-0.043;1074,227.0,479.1,69.8,-0.045,-0.084;1078,232.6,476.5,69.2,-0.053,-0.074;1081,238.2,474.0,68.6,-0.039,-0.073;1084,243.6,471.4,68.1,-0.084,-0.075;1088,249.0,468.9,67.5,-0.082,-0.087;1091,254.4,466.3,66.7,-0.059,-0.107;1094,259.7,463.8,66.2,-0.031,-0.066;1097,264.9,461.2,66.1,-0.021,-0.055;1100,270.2,458.6,66.8,0.047,-0.061;1103,275.5,455.9,67.8,0.034,-0.071;1107,280.9,453.2,68.8,0.085,-0.059;1110,286.3,450.4,70.2,0.045,-0.042;1113,291.9,447.6,71.3,0.071,-0.042;1116,297.5,444.6,72.6,0.071,-0.070;1119,303.3,441.6,74.3,0.076,-0.021;1122,309.2,438.5,75.7,0.070,-0.020;1126,315.2,435.5,76.9,0.073,-0.031;1129,321.3,432.3,78.3,0.084,-0.036;1132,327.5,429.1,79.7,0.070,-0.043;1135,333.8,425.8,80.1,-0.074,-0.054;1138,340.0,422.6,79.9,-0.090,-0.098;1142,346.2,419.3,79.6,-0.095,0.015;1145,352.4,416.0,79.3,-0.078,-0.032;1148,358.6,412.8,78.7,-0.086,-0.039;1151,364.8,409.5,78.1,-0.082,-0.065;1155,370.9,406.3,77.9,-0.101,-0.080;1158,376.9,403.0,77.3,-0.067,0.044;1161,383.0,399.8,76.7,-0.058,0.003;1164,389.0,396.6,76.5,-0.109,0.062;1167,395.0,393.5,76.2,-0.098,0.014;1171,401.0,390.4,75.6,-0.052,0.094;1174,407.0,387.5,75.3,-0.076,0.143;1177,413.0,384.7,75.0,-0.102,0.063;1180,419.1,382.1,74.2,-0.117,-0.005;1183,425.0,379.5,73.0,-0.153,0.058;1186,431.0,377.1,71.7,-0.221,-0.036;1190,436.8,374.7,69.8,-0.139,0.083;1193,442.4,372.5,67.5,-0.227,-0.007;1196,447.9,370.3,65.9,-0.206,-0.045;1200,453.2,368.1,64.8,-0.078,-0.105;1203,458.4,365.9,63.6,-0.135,-0.183;1206,463.5,363.6,62.5,-0.143,-0.196;1209,468.4,361.1,61.8,-0.042,-0.183;1212,473.2,358.5,61.7,0.013,-0.233;1215,477.9,355.6,62.3,0.048,-0.249;1218,482.5,352.5,63.1,0.092,-0.260;1222,487.1,349.1,64.4,0.100,-0.187;1225,491.7,345.5,65.9,0.123,-0.159;1228,496.2,341.7,67.2,0.124,-0.147;1232,500.7,337.7,68.8,0.139,-0.119;1235,505.3,333.6,70.0,0.142,-0.113;1238,509.9,329.2,71.3,0.137,-0.077;1241,514.5,324.8,73.1,0.106,-0.100;1244,519.2,320.2,74.5,0.145,-0.043;1247,524.0,315.5,76.0,0.115,-0.008;1251,528.8,310.8,76.4,-0.063,0.022;1254,533.6,306.1,75.4,-0.048,-0.003;1257,538.5,301.5,75.7,0.045,-0.016;1260,543.4,296.9,76.2,0.071,-0.056;1263,548.3,292.2,76.5,0.107,0.019;1266,553.3,287.5,77.4,0.094,-0.020;1270,558.4,282.8,78.6,0.079,0.010;1273,563.6,278.0,79.6,0.084,-0.069;1276,568.8,273.1,80.9,0.084,0.025;1280,574.0,268.2,81.7,0.101,-0.040;1282,579.3,263.2,82.6,0.137,-0.126;1286,584.6,258.1,83.3,-0.043,-0.092;1289,589.9,252.9,82.5,-0.075,-0.162;1292,595.0,247.8,81.9,-0.034,-0.146;1295,600.0,242.6,81.9,0.039,-0.027;1299,605.1,237.4,82.6,0.016,-0.113;1302,610.3,232.1,83.2,0.073,0.028;1305,615.5,226.8,84.1,0.046,-0.107;1308,620.7,221.4,84.6,0.067,-0.015;1311,625.9,215.9,84.2,-0.082,-0.051;1315,631.0,210.6,83.2,-0.063,-0.091;1318,636.1,205.3,82.5,-0.062,-0.042;1321,641.1,200.0,81.1,-0.162,-0.117;1324,645.9,194.9,79.2,-0.045,-0.083;1327,650.8,189.8,78.4,-0.105,-0.031;1330,655.5,184.8,77.0,-0.113,0.064;1334,660.2,180.0,75.6,-0.147,0.057;1337,664.8,175.3,73.6,-0.132,0.112;1340,669.3,170.7,71.9,-0.101,0.015;1343,673.8,166.3,71.2,-0.089,0.076;1347,678.3,161.9,70.1,-0.086,-0.032;1350,682.7,157.6,69.4,-0.042,-0.007;1353,687.0,153.4,68.8,-0.047,-0.056;1356,691.4,149.1,68.5,-0.035,-0.036;1359,695.7,144.8,68.6,0.050,-0.072;1362,700.0,140.5,69.7,0.023,-0.117;1366,704.3,136.1,70.6,0.050,-0.052;1369,708.7,131.5,71.7,0.030,-0.084;1372,713.0,126.9,72.7,0.056,-0.060;1375,717.5,122.1,73.6,0.069,-0.072;1378,721.9,117.3,74.6,0.071,-0.041;1382,726.5,112.4,75.7,0.030,-0.085;1385,731.0,107.4,77.0,-0.005,-0.121;1388,735.6,102.3,76.8,-0.074,-0.133;1391,740.1,97.3,76.4,-0.053,-0.131;1395,744.5,92.2,76.1,-0.078,-0.054;1398,748.9,87.1,76.1,-0.114,-0.083;1401,753.2,82.0,75.4,-0.031,-0.110;1404,757.5,76.8,75.7,-0.077,-0.138;1407,761.8,71.7,75.4,0.000,-0.051;1410,766.1,66.5,76.3,0.055,-0.129;1414,770.4,61.2,77.3,-0.009,-0.064;1417,774.7,55.8,77.8,0.006,-0.100;1420,779.1,50.4,78.0,-0.052,-0.017;1424,783.3,45.0,77.6,-0.098,-0.154;1427,787.6,39.6,77.4,-0.093,-0.164;1430,791.7,34.1,76.8,-0.081,-0.090;1433,795.7,28.7,76.4,-0.090,-0.157;1436,799.7,23.2,76.0,-0.081,-0.137;1439,803.6,17.7,75.8,-0.084,-0.142;1443,807.4,12.2,75.3,-0.079,-0.130;1446,811.0,6.6,74.8,-0.089,-0.098;1449,814.6,1.1,74.3,-0.053,-0.059;1452,818.1,-4.4,73.2,-0.039,-0.158;1455,821.5,-10.0,73.1,-0.102,-0.121;1458,824.7,-15.5,72.1,-0.083,-0.116;1462,827.9,-21.1,71.8,-0.078,-0.180;1465,830.9,-26.6,71.0,-0.089,-0.108;1468,833.8,-32.1,70.7,-0.002,-0.080;1471,836.7,-37.7,70.7,-0.048,-0.095;1474,839.5,-43.3,70.6,-0.033,-0.094;1478,842.3,-48.9,70.6,0.001,0.012;1481,845.0,-54.5,70.0,-0.059,-0.109;1484,847.7,-60.0,69.7,-0.078,-0.008;1487,850.4,-65.5,69.0,-0.101,-0.067;1491,853.0,-71.0,67.8,-0.173,-0.028;1494,855.6,-76.3,66.8,-0.159,-0.048;1497,858.1,-81.6,65.6,-0.165,-0.028;1500,860.5,-86.8,64.2,-0.172,-0.006;1503,863.0,-91.9,62.8,-0.175,0.019;1507,865.3,-96.8,60.9,-0.152,0.014;1510,867.7,-101.6,59.9,-0.215,-0.018;1513,870.0,-106.3,58.6,-0.219,-0.129;1516,872.3,-110.9,57.2,-0.157,-0.086;1520,874.4,-115.4,57.1,-0.021,-0.073;1522,876.6,-120.0,57.3,-0.051,-0.084;1526,878.8,-124.6,57.5,-0.087,-0.045;1529,881.0,-129.1,56.9,-0.122,-0.074;1533,883.1,-133.7,57.0,-0.039,-0.072;1536,885.2,-138.3,57.3,-0.039,-0.063;1539,887.4,-142.9,58.4,0.010,-0.035;1542,889.6,-147.6,59.2,0.018,-0.056;1545,891.9,-152.5,60.4,0.010,-0.120;1548,894.1,-157.3,60.9,0.020,-0.017;1551,896.4,-162.3,61.8,-0.020,-0.105;1554,898.7,-167.3,62.4,-0.050,-0.021;1558,901.0,-172.3,62.7,-0.083,-0.050;1561,903.2,-177.4,62.5,-0.072,-0.038;1564,905.5,-182.4,62.1,-0.071,-0.004;1567,907.9,-187.4,62.3,-0.099,0.029;1570,910.2,-192.3,61.9,-0.059,-0.036;1574,912.6,-197.3,61.8,-0.064,-0.022;1577,915.0,-202.2,61.8,-0.113,0.039;1580,917.4,-207.1,61.4,-0.097,-0.004;1583,919.9,-211.9,61.5,-0.115,0.067;1587,922.4,-216.8,61.2,-0.114,-0.032;1590,924.9,-221.6,61.2,-0.093,0.000;1593,927.4,-226.4,61.1,-0.108,0.045;1596,929.9,-231.1,60.7,-0.058,-0.033;1599,932.4,-235.9,60.7,-0.096,0.034;1602,934.9,-240.6,60.0,-0.166,-0.015;1606,937.4,-245.2,58.9,-0.144,0.017;1609,939.8,-249.8,57.6,-0.093,0.012;1612,942.2,-254.2,56.6,-0.166,-0.017;1616,944.5,-258.6,55.6,-0.213,-0.002;1619,946.8,-262.8,54.0,-0.260,0.019;1622,949.0,-266.9,52.2,-0.211,-0.014;1625,951.2,-270.9,50.6,-0.208,-0.004;1628,953.2,-274.8,48.8,-0.211,-0.044;1631,955.2,-278.5,46.9,-0.225,-0.006;1635,957.1,-282.1,45.3,-0.273,0.016;1638,959.0,-285.5,43.4,-0.227,-0.006;1641,960.7,-288.8,41.6,-0.209,-0.012;1644,962.4,-291.9,39.5,-0.216,-0.040;1647,964.0,-294.9,37.5,-0.290,-0.042;1650,965.4,-297.7,34.9,-0.303,-0.017;1654,966.8,-300.3,32.3,-0.319,-0.015;1657,968.0,-302.7,29.5,-0.327,-0.010;1660,969.1,-304.8,26.2,-0.333,-0.039;1663,970.1,-306.7,23.2,-0.344,-0.042;1667,970.9,-308.4,20.4,-0.272,-0.068;1670,971.6,-309.9,18.1,-0.273,-0.017;1673,972.3,-311.2,15.4,-0.288,-0.035;1676,972.8,-312.3,12.8,-0.270,-0.017;1679,973.2,-313.2,10.7,-0.124,-0.009;1683,973.6,-314.0,10.7,-0.068,-0.082;1686,973.9,-314.9,9.7,-0.120,-0.076;1689,974.1,-315.8,10.7,0.015,-0.176;1692,974.2,-316.7,10.6,-0.144,-0.278;1695,974.0,-317.7,11.1,-0.005,-0.144;1698,973.6,-318.6,12.5,0.037,-0.267;1702,972.9,-319.6,14.1,0.054,-0.302;1705,972.0,-320.5,15.4,0.067,-0.272;1708,970.8,-321.4,17.5,0.127,-0.189;1711,969.4,-322.3,19.1,0.188,-0.066;1714,967.8,-323.3,21.6,0.199,0.042;1718,966.1,-324.4,24.2,0.181,-0.001;1721,964.1,-325.6,25.8,0.057,-0.023;1724,962.2,-326.7,25.5,-0.049,-0.039;1728,960.2,-327.8,25.6,0.033,-0.024;1731,958.2,-329.0,26.6,0.120,0.012;1734,956.1,-330.2,28.3,0.148,0.010;1737,953.8,-331.5,30.0,0.173,0.005;1740,951.4,-332.8,32.1,0.171,-0.004;1743,948.7,-334.2,34.2,0.199,-0.014;1746,946.0,-335.8,36.3,0.211,0.000;1750,943.0,-337.4,38.7,0.211,0.005;1753,939.8,-339.1,41.1,0.219,0.028;1756,936.5,-340.9,43.4,0.214,0.024;1760,932.9,-342.8,45.8,0.188,0.040;1763,929.3,-344.8,48.0,0.182,0.047;1766,925.5,-347.0,49.6,-0.020,0.037;1769,921.7,-349.2,49.2,-0.026,0.015;1772,917.9,-351.4,49.1,0.081,0.039;1776,914.2,-353.6,50.2,0.098,0.025;1779,910.3,-356.0,51.2,0.123,0.012;1782,906.4,-358.5,52.6,0.130,0.072;1785,902.4,-361.1,54.0,0.122,0.073;1788,898.4,-363.8,54.9,0.128,0.065;1791,894.3,-366.5,56.2,0.142,0.053;1794,890.2,-369.5,57.6,0.146,0.115;1798,886.0,-372.5,59.2,0.141,0.087;1801,881.7,-375.8,60.7,0.134,0.078;1804,877.5,-379.2,61.9,0.138,0.092;1807,873.2,-382.7,63.6,0.175,0.065;1811,868.8,-386.4,65.0,0.159,0.102;1814,864.4,-390.3,66.9,0.162,-0.020;1817,859.9,-394.3,68.1,0.153,0.099;1820,855.4,-398.4,69.7,0.143,0.032;1824,850.8,-402.6,71.2,0.121,0.040;1827,846.2,-406.9,70.7,-0.095,0.075;1830,841.6,-411.3,70.2,-0.029,0.021;1833,837.2,-415.6,70.1,0.037,0.071;1836,832.7,-419.9,70.5,0.040,0.034;1839,828.2,-424.3,71.4,0.071,0.026;1843,823.7,-428.8,71.8,0.069,0.039;1846,819.1,-433.3,72.5,0.051,0.009;1849,814.5,-437.8,73.4,0.082,0.058;1852,809.9,-442.4,74.2,0.059,0.003;1855,805.2,-447.1,74.9,0.053,0.008;1858,800.4,-451.8,75.6,0.083,0.011;1862,795.6,-456.5,76.3,0.072,0.034;1865,790.7,-461.3,77.1,0.096,0.017;1868,785.8,-466.1,78.0,0.070,-0.028;1872,780.8,-471.0,79.1,0.088,0.032;1875,775.7,-475.9,80.3,0.084,0.008;1878,770.6,-480.9,81.2,0.072,0.052;1881,765.4,-486.0,82.1,0.057,0.026;1884,760.2,-491.1,82.9,0.090,0.012;1887,754.9,-496.3,84.1,0.082,0.021;1890,749.5,-501.6,85.3,0.105,-0.076;1894,744.0,-506.9,86.7,0.076,-0.036;1897,738.4,-512.2,87.8,0.081,-0.052;1900,732.7,-517.5,88.6,0.105,-0.006;1903,726.9,-522.9,89.3,-0.064,-0.048;1906,721.0,-528.2,88.6,-0.053,0.009;1910,715.2,-533.5,88.8,0.008,0.001;1913,709.4,-538.8,88.9,0.026,-0.003;1916,703.5,-544.0,89.6,0.029,-0.043;1920,697.5,-549.3,90.2,0.033,-0.029;1923,691.5,-554.6,90.7,0.035,0.009;1926,685.4,-559.9,91.2,0.031,-0.086;1929,679.2,-565.1,91.6,0.056,0.061;1932,673.0,-570.4,92.2,0.039,0.018;1935,666.7,-575.8,92.7,0.030,0.031;1938,660.4,-581.1,93.2,0.027,0.002;1942,654.1,-586.4,93.3,0.043,-0.012;1945,647.7,-591.8,93.5,-0.038,-0.044;1948,641.4,-597.0,92.4,-0.110,-0.046;1952,635.1,-602.2,91.5,-0.016,-0.040;1955,628.8,-607.4,91.1,0.020,-0.015;1958,622.5,-612.5,90.8,0.023,0.005;1961,616.3,-617.6,90.7,0.036,0.046;1964,610.1,-622.7,90.8,0.045,-0.036;1968,603.8,-627.8,90.8,0.027,0.053;1971,597.6,-633.0,90.8,0.016,0.007;1974,591.4,-638.1,90.6,0.043,0.016;1977,585.2,-643.2,90.5,0.024,-0.020;1980,579.0,-648.2,90.3,0.026,-0.007;1983,572.8,-653.3,90.5,0.055,-0.055;1987,566.5,-658.4,90.4,0.056,-0.080;1990,560.3,-663.4,90.5,0.012,-0.030;1993,554.1,-668.4,90.1,-0.037,-0.032;1996,547.9,-673.3,88.9,-0.072,-0.003;1999,541.8,-678.1,87.7,-0.072,-0.022;2002,535.8,-682.9,86.8,-0.037,-0.025;2006,529.8,-687.7,86.0,-0.015,-0.015;2009,523.9,-692.5,85.8,-0.016,-0.030;2013,518.0,-697.2,85.6,0.027,-0.006;2016,512.1,-702.0,85.4,0.018,0.040;2019,506.2,-706.7,85.2,0.051,-0.036;2022,500.3,-711.5,85.5,-0.006,-0.002;2025,494.5,-716.2,84.4,-0.090,-0.017;2028,488.7,-720.8,83.0,-0.101,-0.003;2031,483.1,-725.4,81.3,-0.111,0.005;2035,477.5,-729.8,79.7,-0.161,-0.059;2038,472.1,-734.1,77.2,-0.179,0.006;2041,466.9,-738.3,75.1,-0.180,-0.019;2044,461.8,-742.3,72.5,-0.230,-0.046;2047,456.9,-746.2,70.0,-0.180,-0.019;2050,452.1,-749.9,67.6,-0.184,0.000;2054,447.5,-753.5,65.2,-0.192,-0.006;2057,443.1,-756.9,63.0,-0.195,-0.006;2060,438.8,-760.2,60.5,-0.159,-0.005;2064,434.6,-763.4,58.4,-0.152,-0.014;2067,430.6,-766.4,56.3,-0.206,-0.013;2070,426.8,-769.3,53.3,-0.234,-0.028;2073,423.1,-772.1,50.3,-0.243,0.029;2076,419.7,-774.6,48.3,-0.144,-0.024;2079,416.4,-777.1,46.4,-0.126,0.012;2082,413.2,-779.5,44.7,-0.157,-0.020;2086,410.1,-781.9,42.6,-0.136,0.031;2089,407.3,-784.1,40.9,-0.129,0.025;2092,404.6,-786.4,39.7,0.001,0.084;2096,402.1,-788.8,38.5,-0.128,0.098;2098,399.8,-791.2,36.2,-0.213,0.085;2102,397.8,-793.5,35.4,-0.026,0.103;2105,395.9,-796.0,34.3,-0.087,0.127;2108,394.3,-798.5,34.3,0.052,0.165;2111,392.9,-801.2,34.8,0.067,0.192;2115,391.8,-804.1,35.4,0.026,0.229;2118,390.9,-807.1,35.8,0.009,0.207;2121,390.4,-810.2,36.2,0.001,0.246;2124,390.3,-813.4,36.8,0.057,0.249;2127,390.5,-816.7,37.9,0.115,0.251;2130,391.0,-820.1,39.6,0.121,0.304;2134,392.0,-823.5,41.1,0.132,0.242;2137,393.3,-827.0,43.3,0.188,0.186;2140,394.9,-830.6,45.2,0.173,0.219;2144,396.8,-834.2,47.2,0.191,0.137;2146,399.0,-837.9,49.4,0.089,0.143;2150,401.4,-841.6,49.0,-0.063,0.068;2153,403.9,-845.1,48.7,0.002,0.049;2156,406.5,-848.6,49.4,0.076,0.041;2159,409.2,-852.1,50.6,0.103,0.000;2163,412.0,-855.6,51.7,0.115,0.025;2166,414.9,-859.3,52.9,0.112,0.030;2169,417.9,-862.9,53.8,0.044,0.026;2172,421.0,-866.6,53.6,-0.087,0.022;2175,424.1,-870.1,52.5,-0.119,0.042;2179,427.0,-873.5,50.8,-0.165,0.018;2182,429.9,-876.9,49.4,-0.172,0.039;2185,432.7,-880.1,47.5,-0.157,0.038;2188,435.3,-883.1,45.1,-0.161,0.036;2191,437.9,-886.0,43.1,-0.250,0.008;2194,440.2,-888.8,40.5,-0.265,0.005;2198,442.4,-891.4,37.6,-0.247,-0.044;2201,444.3,-893.9,34.7,-0.203,-0.096;2204,446.0,-896.4,33.3,-0.086,-0.200;2207,447.4,-898.9,31.6,-0.081,-0.291;2211,448.5,-901.4,29.9,-0.168,-0.445;2214,449.0,-903.9,29.4,-0.140,-0.469;2217,449.0,-906.4,28.3,-0.129,-0.476;2221,448.6,-908.8,26.4,-0.090,-0.502;2224,447.6,-910.9,26.2,-0.037,-0.454;2226,446.3,-912.8,26.4,0.040,-0.480;2230,444.6,-914.5,27.3,0.033,-0.490;2233,442.5,-915.8,27.3,0.056,-0.483;2236,440.2,-916.6,28.0,0.104,-0.456;2239,437.8,-917.0,28.9,0.053,-0.479;2242,435.1,-916.9,30.0,0.114,-0.474;2246,432.5,-916.3,31.5,0.142,-0.464;2249,429.8,-915.3,33.3,0.136,-0.408;2253,427.1,-913.8,35.6,0.222,-0.332;2255,424.4,-911.9,37.7,0.236,-0.080;2259,421.7,-909.8,40.6,0.272,0.021;2262,418.7,-907.5,43.3,0.287,0.054;2265,415.6,-905.0,45.8,0.251,0.030;2268,412.3,-902.4,48.1,0.216,0.045;2271,408.9,-899.7,48.9,-0.053,0.023;2274,405.6,-896.9,48.3,-0.011,0.024;2278,402.3,-894.2,48.7,0.117,0.036;2281,399.0,-891.3,49.7,0.112,0.056;2284,395.6,-888.4,50.6,0.131,0.024;2288,392.2,-885.4,51.9,0.127,-0.015;2291,388.7,-882.2,53.3,0.163,-0.025;2294,385.2,-878.9,54.5,0.132,-0.048;2297,381.8,-875.4,55.8,0.133,-0.125;2300,378.3,-871.8,57.1,0.130,-0.106;2303,374.9,-867.9,58.0,0.137,-0.109;2307,371.6,-863.9,59.2,0.118,-0.144;2310,368.3,-859.7,60.4,0.135,-0.134;2313,365.1,-855.4,61.8,0.129,-0.083;2316,362.0,-850.8,62.8,0.112,0.003;2319,358.8,-846.2,63.9,0.129,-0.068;2323,355.7,-841.4,65.0,0.135,-0.043;2326,352.6,-836.4,65.9,0.126,0.100;2329,349.4,-831.4,67.1,0.104,-0.007;2332,346.2,-826.4,67.8,0.134,0.064;2335,343.0,-821.2,68.9,0.013,-0.055;2338,339.9,-816.0,68.0,-0.045,0.045;2342,336.8,-810.8,67.7,0.022,0.076;2345,333.8,-805.7,67.9,0.049,0.063;2348,330.7,-800.5,68.0,0.033,0.143;2351,327.6,-795.3,68.5,0.079,0.067;2355,324.4,-790.1,69.3,0.039,0.082;2358,321.2,-784.8,69.3,0.060,0.058;2361,318.0,-779.6,69.4,-0.032,0.049;2364,314.9,-774.3,68.9,-0.050,0.016;2367,311.8,-769.2,67.8,-0.084,-0.009;2371,308.7,-764.1,66.7,-0.143,0.022;2374,305.8,-759.1,65.0,-0.098,0.016;2377,302.9,-754.2,63.5,-0.116,-0.017;2380,300.1,-749.4,61.8,-0.171,-0.024;2383,297.5,-744.8,59.8,-0.180,-0.014;2386,294.9,-740.3,57.4,-0.192,-0.046;2390,292.4,-736.0,55.6,-0.122,-0.008;2393,289.9,-731.9,54.2,-0.079,0.024;2396,287.5,-727.8,53.2,-0.094,0.056;2400,285.0,-723.9,52.3,-0.047,0.095;2403,282.4,-720.1,51.8,-0.008,0.152;2406,279.6,-716.5,51.3,-0.046,0.204;2409,276.7,-713.1,50.6,-0.006,0.283;2412,273.5,-709.8,51.1,0.050,0.325;2415,270.1,-706.8,51.5,0.048,0.354;2419,266.4,-704.1,51.9,0.080,0.321;2422,262.5,-701.7,52.6,0.035,0.411;2425,258.3,-699.6,53.2,0.129,0.372;2428,253.8,-697.8,53.9,0.088,0.418;2431,249.2,-696.5,54.8,0.090,0.382;2435,244.4,-695.5,56.1,0.129,0.328;2438,239.4,-694.8,57.3,0.111,0.382;2441,234.2,-694.6,58.2,0.147,0.279;2444,229.0,-694.6,59.5,0.144,0.197;2447,223.6,-694.9,60.9,0.163,0.102;2451,218.2,-695.3,62.1,0.135,0.075;2454,212.6,-695.8,63.5,0.139,0.029;2457,207.0,-696.4,64.5,0.152,0.050;2460,201.2,-697.1,66.0,0.165,0.042;2463,195.4,-697.9,67.0,0.149,0.071;2466,189.4,-698.8,67.4,-0.069,0.058;2470,183.6,-699.8,66.5,-0.039,0.068;2473,177.9,-700.9,65.7,0.032,0.141;2476,172.2,-702.1,65.9,0.035,0.178;2480,166.5,-703.6,66.0,0.068,0.190;2483,160.9,-705.4,66.3,0.053,0.215;2486,155.4,-707.3,65.8,-0.075,0.234;2489,150.0,-709.5,64.9,-0.066,0.208;2492,144.8,-711.9,63.9,-0.059,0.231;2495,139.8,-714.4,63.2,-0.065,0.207;2499,135.0,-717.2,62.2,-0.034,0.200;2502,130.4,-720.1,61.6,-0.053,0.168;2505,125.9,-723.2,61.1,-0.037,0.179;2508,121.6,-726.5,60.9,0.021,0.179;2511,117.4,-729.9,61.1,0.036,0.170;2514,113.3,-733.5,61.8,0.030,0.155;2518,109.3,-737.3,62.5,0.044,0.101;2521,105.3,-741.2,63.1,0.038,0.173;2524,101.4,-745.2,63.7,-0.045,0.234;2527,97.8,-749.5,63.3,-0.076,0.125;2531,94.2,-753.8,62.9,-0.045,0.141;2534,90.8,-758.2,63.1,-0.043,0.140;2537,87.5,-762.7,63.1,-0.027,0.147;2540,84.3,-767.3,63.6,-0.072,0.159;2544,81.2,-772.0,63.4,-0.075,0.226;2547,78.3,-776.7,62.9,-0.099,0.199;2550,75.7,-781.6,62.2,-0.126,0.140;2553,73.1,-786.4,61.7,-0.148,0.118;2556,70.7,-791.2,60.7,-0.179,0.102;2559,68.4,-796.0,59.3,-0.211,0.073;2562,66.1,-800.6,57.6,-0.257,0.018;2566,64.0,-805.1,55.2,-0.310,0.005;2569,62.0,-809.3,52.3,-0.389,0.011;2572,60.1,-813.3,48.9,-0.342,0.001;2575,58.3,-817.1,46.1,-0.335,0.042;2578,56.5,-820.6,43.3,-0.348,0.038;2582,54.9,-823.9,40.4,-0.311,0.034;2585,53.4,-827.0,37.9,-0.274,0.033;2588,52.0,-829.9,35.6,-0.287,0.016;2591,50.6,-832.6,33.2,-0.309,-0.010;2595,49.4,-835.0,30.3,-0.404,-0.064;2598,48.2,-837.2,26.7,-0.387,-0.093;2601,47.1,-839.0,23.6,-0.385,-0.200;2604,45.9,-840.5,20.3,-0.433,-0.298;2607,44.7,-841.5,17.0,-0.433,-0.173;2610,43.7,-842.2,13.6,-0.471,-0.157;2614,42.7,-842.5,10.2,-0.403,-0.121;2617,42.0,-842.6,7.9,-0.257,-0.096;2620,41.3,-842.5,7.3,-0.202,-0.102;2624,40.7,-842.3,7.8,-0.116,-0.103;2627,40.0,-842.0,7.7,-0.192,-0.163;2630,39.5,-841.6,7.2,-0.179,-0.083;2633,39.0,-841.2,6.9,-0.179,-0.086;2636,38.7,-840.7,6.1,-0.169,-0.080;2639,38.4,-840.3,5.3,-0.185,-0.112;2643,38.3,-839.9,4.4,-0.167,-0.031;2646,38.1,-839.5,3.4,-0.150,0.027;2649,38.0,-839.3,2.3,-0.197,-0.014".split(';').map(function (s) {
+    var a = s.split(',');
+    return { t: +a[0], x: +a[1], y: +a[2], v: +a[3], gx: +a[4], gy: +a[5] };
+  });
+  var th = 0.65, c = Math.cos(th), s = Math.sin(th);
+  P.forEach(function (p) { var x = p.x * c - p.y * s, y = p.x * s + p.y * c; p.x = x; p.y = y; });
+  var minx = Infinity, maxx = -Infinity, miny = Infinity, maxy = -Infinity;
+  P.forEach(function (p) {
+    if (p.x < minx) minx = p.x; if (p.x > maxx) maxx = p.x;
+    if (p.y < miny) miny = p.y; if (p.y > maxy) maxy = p.y;
+  });
+  var m = 18, k = Math.min((400 - 2 * m) / (maxx - minx), (400 - 2 * m) / (maxy - miny));
+  var ox = (400 - k * (maxx - minx)) / 2, oy = (400 - k * (maxy - miny)) / 2;
+  var C = P.map(function (p) {
+    return [(ox + (p.x - minx) * k).toFixed(1), (400 - (oy + (p.y - miny) * k)).toFixed(1)];
+  });
+  var seg = C.map(function (q) { return q[0] + ' ' + q[1]; });
+  el('dFond').setAttribute('d', 'M' + seg.join('L'));
+  var GS = 110 / 0.6, SVGNS = 'http://www.w3.org/2000/svg';
+  var pts = el('dPts'), dots = [];
+  P.forEach(function (p) {
+    var d2 = document.createElementNS(SVGNS, 'circle');
+    d2.setAttribute('cx', (120 + p.gy * GS).toFixed(1));
+    d2.setAttribute('cy', (120 - p.gx * GS).toFixed(1));
+    d2.setAttribute('r', '1.6');
+    d2.setAttribute('fill', 'rgba(245,245,247,.30)');
+    d2.style.display = 'none';
+    pts.appendChild(d2);
+    dots.push(d2);
+  });
+  var scrub = el('dScrub'), prog = el('dProg'), pos = el('dPos'), gpos = el('dGPos');
+  var vEl = el('dV'), glEl = el('dGl'), tEl = el('dT'), play = el('dPlay');
+  scrub.max = String(P.length - 1);
+  var shown = -1, timer = null;
+  function maj(i) {
+    i = Math.max(0, Math.min(P.length - 1, i));
+    var p = P[i];
+    prog.setAttribute('d', 'M' + seg.slice(0, i + 1).join('L'));
+    pos.setAttribute('cx', C[i][0]); pos.setAttribute('cy', C[i][1]);
+    gpos.setAttribute('cx', (120 + p.gy * GS).toFixed(1));
+    gpos.setAttribute('cy', (120 - p.gx * GS).toFixed(1));
+    if (i > shown) { for (var j = shown + 1; j <= i; j++) dots[j].style.display = ''; }
+    else if (i < shown) { for (var j2 = i + 1; j2 <= shown; j2++) dots[j2].style.display = 'none'; }
+    shown = i;
+    vEl.textContent = String(Math.round(p.v));
+    glEl.textContent = Math.abs(p.gy).toFixed(2).replace('.', ',');
+    var sec = Math.round(p.t / 10);
+    tEl.textContent = Math.floor(sec / 60) + ':' + ('0' + (sec % 60)).slice(-2);
+    scrub.value = String(i);
+  }
+  function stop() { if (timer) { clearInterval(timer); timer = null; play.textContent = 'Rouler ×8'; } }
+  play.addEventListener('click', function () {
+    if (timer) { stop(); return; }
+    var i = +scrub.value;
+    if (i >= P.length - 1) i = 0;
+    play.textContent = 'Suspendre';
+    timer = setInterval(function () {
+      i++;
+      if (i >= P.length - 1) { maj(P.length - 1); stop(); return; }
+      maj(i);
+    }, 40);
+  });
+  scrub.addEventListener('input', function () { stop(); maj(+scrub.value); });
+  maj(0);
+})();
+</script>
+
+<!-- ════════════════════ ACTE C ════════════════════ -->
+<div class="part" data-act="C">
+  <div class="k">Acte C · chapitres 10–15</div>
+  <h2>Le cercle</h2>
+  <p class="hook">Autour de lui, chacun a son écran : l'écurie, le coach, le restaurant d'étape, le circuit. Chaque acteur qui entre rend le produit plus difficile à quitter.</p>
+</div>
+
+<!-- 10 -->
+<section id="ecurie">
+  <div class="shead">
+    <span class="eyebrow"><span class="n">10</span> · L'écurie</span>
+    <h2>Rouler ensemble — la rétention par l'appartenance</h2>
+    <p class="lede">Pas de classement — un cercle. On entre par parrainage, on porte des couleurs, on organise ses sorties, on partage ses avantages.</p>
+  </div>
+  <div class="pull"><p>« Un cercle se mérite. »</p></div>
+  <div class="cards">
+    <div class="card"><span class="eyebrow">Naissance</span><h3>Parrainage et baptême</h3><p>On rejoint une écurie avec le code d'un membre. Le capitaine la baptise (nom validé côté serveur) et choisit son insigne. Un capitaine = une écurie.</p></div>
+    <div class="card"><span class="eyebrow">Identité</span><h3>L'insigne</h3><p>Six emblèmes au catalogue, ou une image téléversée — modérée avant toute visibilité publique. L'écurie porte ses couleurs dans l'annuaire.</p></div>
+    <div class="card"><span class="eyebrow">Visibilité</span><h3>L'annuaire public</h3><p>Une écurie n'apparaît qu'à partir de <strong>20 pilotes confirmés</strong> — un cercle se mérite. Tri par taille, sans rang affiché. Aucun chrono nulle part : c'est testé.</p></div>
+    <div class="card"><span class="eyebrow">Avantage</span><h3>Le pack Heritage partagé</h3><p>Une journée Heritage ouvre un pack de 4 séances. Un membre <strong>invité par son écurie</strong> règle sa place avec une séance du pack — décompté côté serveur, jamais deux fois le même crédit.</p></div>
+  </div>
+  <figure>
+    <svg viewBox="0 0 760 140" role="img" aria-label="Le trajet d'une sortie d'écurie : point de rendez-vous géocodé, étape restaurant optionnelle chez un partenaire, arrivée au circuit — itinéraire par les routes, jamais l'autoroute.">
+      <defs><marker id="fe" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6.5" markerHeight="6.5" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="#474C57"/></marker></defs>
+      <g font-family="Hanken Grotesk,sans-serif" font-size="12.5" text-anchor="middle">
+        <g fill="#fff" stroke-width="1.4">
+          <circle cx="95" cy="58" r="32" stroke="#474C57"/>
+          <circle cx="380" cy="58" r="32" stroke="#B98A00" stroke-dasharray="4 4"/>
+          <circle cx="665" cy="58" r="32" stroke="#C8102E" stroke-width="1.8"/>
+        </g>
+        <g fill="#14151A" font-weight="700">
+          <text x="95" y="55">Rendez-</text><text x="95" y="69">vous</text>
+          <text x="380" y="62">Table</text>
+          <text x="665" y="62">Circuit</text>
+        </g>
+        <g stroke="#474C57" stroke-width="1.3" marker-end="url(#fe)" fill="none">
+          <path d="M 130 48 C 200 26 300 26 342 46"/>
+          <path d="M 415 48 C 485 26 585 26 627 46"/>
+        </g>
+        <g fill="#878D99" font-size="9.5" font-family="JetBrains Mono,monospace">
+          <text x="237" y="22">routes sinueuses</text>
+          <text x="522" y="22">jamais l'autoroute</text>
+          <text x="95"  y="112">adresse réelle, géocodée (UE)</text>
+          <text x="380" y="112">étape optionnelle · partenaire</text>
+          <text x="665" y="112">Haute Saintonge</text>
+        </g>
+        <text x="380" y="132" font-size="9.5" fill="#878D99" font-family="JetBrains Mono,monospace">le trajet s'affiche sans durée ni distance : l'écurie ne chronomètre pas ses membres</text>
+      </g>
+    </svg>
+    <figcaption><b>La sortie d'écurie.</b> Le capitaine organise et convie ; chacun répond pour soi, un refus reste réversible.</figcaption>
+  </figure>
+  <figure>
+    <svg viewBox="0 0 760 118" role="img" aria-label="Modération d'un insigne d'écurie : une image téléversée passe en attente, visible de sa seule écurie ; après validation humaine elle devient publique ; refusée, elle reste visible de l'écurie avec le motif.">
+      <defs><marker id="fm" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6.5" markerHeight="6.5" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="#474C57"/></marker></defs>
+      <g font-family="Hanken Grotesk,sans-serif" font-size="11.5" text-anchor="middle">
+        <rect x="20"  y="30" width="158" height="52" rx="9" fill="#fff" stroke="#C9CDD6" stroke-width="1.3"/>
+        <text x="99" y="52" fill="#14151A" font-weight="700">Image téléversée</text>
+        <text x="99" y="68" fill="#878D99" font-size="9.5">formats image · ≤ 1 Mo</text>
+        <rect x="240" y="30" width="180" height="52" rx="9" fill="#FDF6E7" stroke="#B98A00" stroke-width="1.4"/>
+        <text x="330" y="52" fill="#8F6400" font-weight="700">EN ATTENTE</text>
+        <text x="330" y="68" fill="#8F6400" font-size="9.5">visible de sa seule écurie</text>
+        <rect x="486" y="8"  width="254" height="44" rx="9" fill="#EAF6EF" stroke="#188A50" stroke-width="1.4"/>
+        <text x="613" y="27" fill="#188A50" font-weight="700">VALIDÉ → public</text>
+        <text x="613" y="42" fill="#188A50" font-size="9.5">annuaire des écuries</text>
+        <rect x="486" y="64" width="254" height="44" rx="9" fill="#FDF2F3" stroke="#C8102E" stroke-width="1.3"/>
+        <text x="613" y="83" fill="#C8102E" font-weight="700">REFUSÉ</text>
+        <text x="613" y="98" fill="#878D99" font-size="9.5">l'écurie voit lequel et pourquoi</text>
+        <g stroke="#474C57" stroke-width="1.2" marker-end="url(#fm)" fill="none">
+          <line x1="178" y1="56" x2="236" y2="56"/>
+          <line x1="420" y1="48" x2="482" y2="32"/>
+          <line x1="420" y1="66" x2="482" y2="84"/>
+        </g>
+        <text x="452" y="18" font-size="9" fill="#878D99" font-family="JetBrains Mono,monospace">modération humaine</text>
+      </g>
+    </svg>
+    <figcaption><b>Fermé par défaut.</b> Rien de téléversé n'est public avant validation — le serveur est l'autorité, pas l'application.</figcaption>
+  </figure>
+</section>
+
+<!-- 11 -->
+<section id="club" class="pb">
+  <div class="shead">
+    <span class="eyebrow"><span class="n">11</span> · Le club et le territoire</span>
+    <h2>Le circuit déborde de la piste</h2>
+    <p class="lede">Entre deux journées : la carte du territoire, les belles routes, les amis, la galerie. L'engagement hors-piste remplit les journées suivantes.</p>
+  </div>
+  <div class="cards">
+    <div class="card"><span class="eyebrow">La carte OXV</span><h3>Le territoire vivant</h3><p>Circuits, points communautaires proposés par les pilotes, points partenaires validés, départs de routes certifiées. Fond de carte 100 % OXV — stylé à la charte, hébergé par OXV.</p></div>
+    <div class="card"><span class="eyebrow">Belles routes</span><h3>Composer, certifier, partager</h3><p>Un composeur d'itinéraires <strong>sinueux</strong> (recherche d'adresse, préférence de sinuosité, étapes) ; les plus belles reçoivent la certification OXV — badge or, découvrables par tous. Import d'un tracé OpenStreetMap possible.</p></div>
+    <div class="card"><span class="eyebrow">Les amis</span><h3>Rouler à plusieurs, comparer à deux</h3><p>Demandes d'amis, roulages organisés entre amis, convois vers le circuit. Comparer ses séances avec un ami exige un <strong>double consentement</strong> — jamais de comparaison subie.</p></div>
+    <div class="card"><span class="eyebrow">La galerie</span><h3>Les images de la communauté</h3><p>Mosaïque des médias de séance — les photos du circuit, celles des pilotes. Chaque séance garde ses images ; le partage reste un choix.</p></div>
+  </div>
+</section>
+
+<!-- 12 -->
+<section id="coach">
+  <div class="shead">
+    <span class="eyebrow"><span class="n">12</span> · Le mode coach</span>
+    <h2>Un métier outillé, dans le même cadre</h2>
+    <p class="lede">35 écrans, du studio d'analyse à la facture — et la garantie que même le coaching reste de l'observation.</p>
+  </div>
+  <figure>
+    <div class="scroll">
+    <svg viewBox="0 0 1060 150" role="img" aria-label="Le flux de travail du coach : la séance du pilote arrive dans sa file de lecture, il l'étudie dans le studio télémétrique et annote virage par virage, fixe des priorités et des objectifs mesurables, puis produit un rapport PDF et sa facture." style="min-width:880px">
+      <defs><marker id="fc" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6.5" markerHeight="6.5" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="#474C57"/></marker></defs>
+      <g font-family="JetBrains Mono,monospace" font-size="9.5" text-anchor="middle">
+        <g stroke="#C9CDD6" fill="#fff" stroke-width="1.3">
+          <rect x="8"   y="42" width="180" height="58" rx="10"/>
+          <rect x="228" y="42" width="180" height="58" rx="10"/>
+          <rect x="448" y="42" width="180" height="58" rx="10" stroke="#14151A" stroke-width="1.5"/>
+          <rect x="668" y="42" width="180" height="58" rx="10"/>
+          <rect x="888" y="42" width="164" height="58" rx="10"/>
+        </g>
+        <g fill="#14151A" font-family="Hanken Grotesk,sans-serif" font-size="12" font-weight="700">
+          <text x="98"   y="66">Séance du pilote</text>
+          <text x="318"  y="66">File de lecture</text>
+          <text x="538"  y="66">Studio · annotations</text>
+          <text x="758"  y="66">Priorités · objectifs</text>
+          <text x="970"  y="66">Rapport · facture</text>
+        </g>
+        <g fill="#878D99" font-size="9">
+          <text x="98"  y="84">avec son consentement</text>
+          <text x="318" y="84">chaque séance à lire</text>
+          <text x="538" y="84">virage par virage (7 ou 14)</text>
+          <text x="758" y="84">mesurables, datés</text>
+          <text x="970" y="84">PDF prêts à envoyer</text>
+        </g>
+        <g stroke="#474C57" stroke-width="1.2" marker-end="url(#fc)">
+          <line x1="188" y1="71" x2="224" y2="71"/>
+          <line x1="408" y1="71" x2="444" y2="71"/>
+          <line x1="628" y1="71" x2="664" y2="71"/>
+          <line x1="848" y1="71" x2="884" y2="71"/>
+        </g>
+        <text x="530" y="132" fill="#878D99" font-size="9.5">Le filtre doctrinal s'applique aussi au coach : tout texte généré est contrôlé — une consigne de pilotage est bloquée avant d'atteindre le pilote.</text>
+      </g>
+    </svg>
+    </div>
+    <figcaption><b>De la lecture au rapport.</b> Chaque relation coach–pilote est consentie et révocable ; le coach ne voit que ses pilotes.</figcaption>
+  </figure>
+  <div class="cards">
+    <div class="card"><span class="eyebrow">Studio</span><h3>Le studio télémétrique</h3><p>Les mêmes vues que le pilote — tracé, canaux, appuis, écarts — plus le contexte de séance, la fiche pilote (lecture seule), les gabarits de commentaire réutilisables et les <strong>programmes adaptatifs</strong> sur plusieurs séances.</p></div>
+    <div class="card"><span class="eyebrow">Bord de piste</span><h3>En direct, et lunettes connectées</h3><p>Vue temps réel du plateau, et vue expérimentale sur lunettes Ray-Ban Display : des <strong>faits</strong> dans le verre — chrono, écart à la référence du pilote — jamais une consigne. Réservée au coach : le pilote roule en silence.</p></div>
+    <div class="card"><span class="eyebrow">Assistant</span><h3>Une IA sous surveillance</h3><p>Un assistant aide le coach à rédiger. L'IA accélère, la doctrine décide. Au sens du règlement européen sur l'IA, l'usage relève du risque limité : transparence et humain dans la boucle — déjà en place.</p></div>
+    <div class="card"><span class="eyebrow">Activité</span><h3>Calendrier, demandes, facturation</h3><p>Disponibilités publiées, demandes reçues et acceptées dans l'app, fiche publique, messagerie <strong>sans échange de coordonnées</strong>, facture PDF à numérotation propre. Avis en citations — zéro note étoilée.</p></div>
+  </div>
+</section>
+
+<!-- 13 -->
+<section id="partenaires">
+  <div class="shead">
+    <span class="eyebrow"><span class="n">13</span> · Les partenaires</span>
+    <h2>Le tissu local, sur la carte et dans le parcours</h2>
+    <p class="lede">Restaurants, hébergements, préparateurs — dans le parcours du pilote, sous une règle unique : <strong>il consent, ou rien ne circule</strong>.</p>
+  </div>
+  <figure>
+    <svg viewBox="0 0 760 196" role="img" aria-label="Deux circuits partenaires : en haut, une offre publiée n'atteint le partenaire qu'après le consentement explicite du pilote, et seules ses coordonnées sont transmises, jamais sa télémétrie ; en bas, un point créé par le partenaire n'apparaît sur la carte OXV qu'après validation par l'équipe du circuit.">
+      <defs><marker id="fp" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6.5" markerHeight="6.5" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="#474C57"/></marker></defs>
+      <g font-family="Hanken Grotesk,sans-serif" font-size="11.5" text-anchor="middle">
+        <text x="24" y="22" text-anchor="start" font-family="JetBrains Mono,monospace" font-size="10" letter-spacing="2" fill="#878D99">LES OFFRES</text>
+        <rect x="24"  y="34" width="200" height="48" rx="9" fill="#fff" stroke="#C9CDD6" stroke-width="1.3"/>
+        <text x="124" y="54" fill="#14151A" font-weight="700">Offre publiée</text>
+        <text x="124" y="70" fill="#878D99" font-size="9.5">catalogue dans l'app pilote</text>
+        <rect x="280" y="34" width="200" height="48" rx="9" fill="#FDF6E7" stroke="#B98A00" stroke-width="1.4"/>
+        <text x="380" y="54" fill="#8F6400" font-weight="700">Consentement explicite</text>
+        <text x="380" y="70" fill="#8F6400" font-size="9.5">une phrase, mot pour mot</text>
+        <rect x="536" y="34" width="200" height="48" rx="9" fill="#EAF6EF" stroke="#188A50" stroke-width="1.4"/>
+        <text x="636" y="54" fill="#188A50" font-weight="700">Mise en relation</text>
+        <text x="636" y="70" fill="#188A50" font-size="9.5">coordonnées seules — jamais la télémétrie</text>
+        <g stroke="#474C57" stroke-width="1.2" marker-end="url(#fp)"><line x1="224" y1="58" x2="276" y2="58"/><line x1="480" y1="58" x2="532" y2="58"/></g>
+        <text x="24" y="122" text-anchor="start" font-family="JetBrains Mono,monospace" font-size="10" letter-spacing="2" fill="#878D99">LA CARTE OXV</text>
+        <rect x="24"  y="134" width="200" height="48" rx="9" fill="#fff" stroke="#C9CDD6" stroke-width="1.3"/>
+        <text x="124" y="154" fill="#14151A" font-weight="700">Point créé</text>
+        <text x="124" y="170" fill="#878D99" font-size="9.5">titre, catégorie, position</text>
+        <rect x="280" y="134" width="200" height="48" rx="9" fill="#FDF6E7" stroke="#B98A00" stroke-width="1.4"/>
+        <text x="380" y="154" fill="#8F6400" font-weight="700">Validation OXV</text>
+        <text x="380" y="170" fill="#8F6400" font-size="9.5">toute modification y repasse</text>
+        <rect x="536" y="134" width="200" height="48" rx="9" fill="#EAF6EF" stroke="#188A50" stroke-width="1.4"/>
+        <text x="636" y="154" fill="#188A50" font-weight="700">Publié sur la carte</text>
+        <text x="636" y="170" fill="#188A50" font-size="9.5">avec les points communautaires</text>
+        <g stroke="#474C57" stroke-width="1.2" marker-end="url(#fp)"><line x1="224" y1="158" x2="276" y2="158"/><line x1="480" y1="158" x2="532" y2="158"/></g>
+      </g>
+    </svg>
+    <figcaption><b>Deux règles simples.</b> Une mise en relation transmet uniquement les coordonnées du pilote. Un point n'apparaît sur la carte qu'après validation humaine.</figcaption>
+  </figure>
+  <div class="cards">
+    <div class="card"><span class="eyebrow">Dans le parcours</span><h3>L'étape à table</h3><p>Les restaurants partenaires sont proposés comme étape du trajet d'écurie, triés par proximité du circuit. Le tissu local entre dans le parcours du pilote, naturellement.</p></div>
+    <div class="card"><span class="eyebrow">Mesure</span><h3>Rapports B2B et événements</h3><p>Par événement, l'équipe d'exploitation produit des rapports d'audience et de retombées pour les partenaires — depuis les données réelles de la plateforme. Les événements sont gérés dans l'app, en commun avec le site.</p></div>
+    <div class="card"><span class="eyebrow">Rayonnement</span><h3>Les ambassadeurs</h3><p>Les pilotes qui portent les couleurs OXV candidatent depuis l'app ; l'équipe les suit depuis l'espace admin. Le bouche-à-oreille, structuré.</p></div>
+  </div>
+</section>
+
+<!-- 14 -->
+<section id="admin" class="pb">
+  <div class="shead">
+    <span class="eyebrow"><span class="n">14</span> · L'exploitation du circuit</span>
+    <h2>32 écrans pour opérer une journée sans friction</h2>
+    <p class="lede">OXV Mirror n'est pas qu'une app grand public : c'est l'outil de travail conçu pour l'équipe du circuit. Tout ce qui se passe un jour de roulage est prévu pour passer par lui.</p>
+  </div>
+  <div class="cards">
+    <div class="card"><span class="eyebrow">Le jour J</span><h3>Tour de contrôle</h3><p>Pilotes inscrits, présences pointées au QR, plateau en piste en temps réel, incidents déclarés et suivis. L'équipe voit sa journée d'un seul écran.</p></div>
+    <div class="card"><span class="eyebrow">Le matériel</span><h3>Parc de boîtiers</h3><p>Chaque boîtier RaceBox est inventorié, affecté, suivi. La qualité des données est surveillée séance par séance — une session aux mesures manquantes est repérée et son traitement peut être relancé.</p></div>
+    <div class="card"><span class="eyebrow">Le contenu</span><h3>Modération et certification</h3><p>Signalements communautaires, insignes d'écurie, points de la carte, routes en attente de certification, médias de séance : tout ce qui devient public passe par une validation humaine.</p></div>
+    <div class="card"><span class="eyebrow">La plateforme</span><h3>Piloter sans redéployer</h3><p>Interrupteurs de fonctionnalités, versions d'algorithmes, coupure d'urgence à distance, comptes aux rôles <strong>audités</strong>, double authentification pour l'équipe, mises à jour à distance bornées (ch. 18).</p></div>
+  </div>
+</section>
+
+<!-- 15 -->
+<section id="modele">
+  <div class="shead">
+    <span class="eyebrow"><span class="n">15</span> · Le modèle</span>
+    <h2>Quatre offres, un cercle fondateur, un patrimoine</h2>
+  </div>
+  <div class="tblwrap"><table>
+    <tr><th>Offre</th><th>Contenu data</th><th>Position</th></tr>
+    <tr><td><b>Access</b></td><td>Radar QDI (vue simple)</td><td>l'entrée dans la méthode</td></tr>
+    <tr><td><b>Signature</b></td><td>Radar + détail des cinq branches</td><td>le cœur de gamme</td></tr>
+    <tr><td style="box-shadow:inset 3px 0 0 var(--heritage)"><b>Heritage</b></td><td>Pack 4 séances + Carnet PDF gravé + insigne or</td><td class="num">2 490 € · le pack de 4 séances</td></tr>
+    <tr><td><b>Promotion</b></td><td>Offre événementielle</td><td>selon calendrier</td></tr>
+  </table></div>
+  <div class="cards">
+    <div class="card"><span class="eyebrow">Le cercle</span><h3>« 30 membres. Jamais plus. »</h3><p>Le cercle des Membres fondateurs est borné <strong>dans le code</strong> — la jauge x/30 lit le compte réel. La rareté n'est pas un discours : c'est une constante.</p></div>
+    <div class="card"><span class="eyebrow">Le patrimoine</span><h3>Le Carnet Heritage</h3><p>Un livret PDF qui grave chaque séance Heritage réelle : chrono, tracé or, piliers, photo, page d'évolution — soi contre soi. Jamais une page fabriquée. L'objet que l'on montre, des années après.</p></div>
+    <div class="card"><span class="eyebrow">La donnée comme gamme</span><h3>Monter en offre, pas en pression</h3><p>Ce que les offres débloquent, c'est de la <strong>profondeur de lecture</strong> — jamais du temps de piste au rabais ni un avantage compétitif. La montée en gamme reste alignée avec la doctrine.</p></div>
+  </div>
+</section>
+
+<!-- ════════════════════ ACTE D ════════════════════ -->
+<div class="part" data-act="D">
+  <div class="k">Acte D · chapitres 16–18</div>
+  <h2>La preuve</h2>
+  <p class="hook">Promettre est facile. Voici ce qui se vérifie : où vivent les données, ce que gardent les tests, ce que pèse le produit.</p>
+</div>
+
+<!-- 16 -->
+<section id="rgpd">
+  <div class="shead">
+    <span class="eyebrow"><span class="n">16</span> · Souveraineté et conformité</span>
+    <h2>Des traces GPS traitées comme des données sensibles</h2>
+  </div>
+  <figure>
+    <div class="scroll">
+    <svg viewBox="0 0 880 268" role="img" aria-label="Architecture : l'application et le site oxvehicle.fr partagent une base unique en Irlande, protégée ligne à ligne ; le routage passe par GraphHopper en Europe et le fond de carte par des tuiles auto-hébergées par OXV. Aucune position de pilote ne part chez un tiers." style="min-width:740px">
+      <defs><marker id="fa" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6.5" markerHeight="6.5" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="#474C57"/></marker></defs>
+      <g font-family="Hanken Grotesk,sans-serif" font-size="12.5">
+        <rect x="300" y="14" width="564" height="240" rx="14" fill="none" stroke="#B0B5BF" stroke-dasharray="6 5"/>
+        <text x="836" y="36" text-anchor="end" fill="#878D99" font-family="JetBrains Mono,monospace" font-size="10" letter-spacing="2">UNION EUROPÉENNE</text>
+        <g fill="#fff" stroke-width="1.4">
+          <rect x="16"  y="48"  width="180" height="56" rx="10" stroke="#C8102E" stroke-width="1.7"/>
+          <rect x="16"  y="164" width="180" height="56" rx="10" stroke="#C9CDD6"/>
+        </g>
+        <g fill="#14151A" font-weight="700" text-anchor="middle">
+          <text x="106" y="71">App OXV Mirror</text>
+          <text x="106" y="187">Site oxvehicle.fr</text>
+        </g>
+        <g fill="#878D99" font-size="10" text-anchor="middle">
+          <text x="106" y="88">iOS · Android</text>
+          <text x="106" y="204">réservation · compte</text>
+        </g>
+        <rect x="352" y="92" width="224" height="86" rx="10" fill="#EAF6EF" stroke="#188A50" stroke-width="1.5"/>
+        <g text-anchor="middle">
+          <text x="464" y="118" fill="#14151A" font-weight="700">Base unique</text>
+          <text x="464" y="136" fill="#474C57" font-size="10">PostgreSQL 17 · Irlande (UE)</text>
+          <text x="464" y="152" fill="#474C57" font-size="10">117 tables · 80+ règles d'accès ligne à ligne</text>
+          <text x="464" y="168" fill="#878D99" font-size="9.5">purge RGPD auditée colonne par colonne</text>
+        </g>
+        <g fill="#fff" stroke="#C9CDD6" stroke-width="1.3">
+          <rect x="656" y="60"  width="190" height="50" rx="10"/>
+          <rect x="656" y="142" width="190" height="50" rx="10"/>
+        </g>
+        <g text-anchor="middle">
+          <text x="751" y="81"  fill="#14151A" font-weight="700" font-size="12">GraphHopper (UE)</text>
+          <text x="751" y="97"  fill="#878D99" font-size="10">itinéraires · adresses</text>
+          <text x="751" y="163" fill="#14151A" font-weight="700" font-size="12">Tuiles carto OXV</text>
+          <text x="751" y="179" fill="#878D99" font-size="10">auto-hébergées · © OSM</text>
+        </g>
+        <g stroke="#474C57" stroke-width="1.2" marker-end="url(#fa)" fill="none">
+          <line x1="196" y1="76"  x2="348" y2="112"/>
+          <line x1="196" y1="192" x2="348" y2="156"/>
+          <line x1="576" y1="112" x2="652" y2="88"/>
+          <line x1="576" y1="156" x2="652" y2="164"/>
+        </g>
+        <g fill="#878D99" font-size="9" font-family="JetBrains Mono,monospace">
+          <text x="252" y="82">tokens chiffrés</text>
+          <text x="600" y="82">sans position pilote</text>
+        </g>
+      </g>
+    </svg>
+    </div>
+    <figcaption><b>Aucune position de pilote ne part chez un tiers.</b> Apple Maps et Google Maps ont été retirés au profit de tuiles auto-hébergées ; la liste des serveurs que l'app peut contacter est un inventaire déclaré, vérifié par un test.</figcaption>
+  </figure>
+  <div class="cards">
+    <div class="card"><span class="eyebrow">Accès</span><h3>Sécurité ligne à ligne</h3><p>Chaque pilote ne lit que ses lignes ; un coach, ses seuls pilotes consentis ; une comparaison entre amis exige un <strong>double consentement</strong>. 18 bancs de test vérifient ces règles rôle par rôle.</p></div>
+    <div class="card"><span class="eyebrow">Défaut sûr</span><h3>Fermé par défaut, partout</h3><p>Paiements, biométrie, insignes, facturation : fermé par défaut, ouvert sur drapeau + consentement + données. Le motif apparaît dans plus de cent fichiers du code.</p></div>
+    <div class="card"><span class="eyebrow">Effacement</span><h3>Purge auditée</h3><p>Matrice vérifiable par requête ; données de santé (art. 9) confirmées effacées ; conservations justifiées. Une table hors purge a été trouvée et corrigée — <strong>avant</strong> tout exercice réel du droit.</p></div>
+    <div class="card"><span class="eyebrow">Consentements</span><h3>Explicites, horodatés</h3><p>CGU/RGPD en 3 cases, biométrie sur écran dédié, Pacte signé in-app et consultable à tout moment, notifications réglables finement (bilan, veille de session, records, offres partenaires).</p></div>
+    <div class="card"><span class="eyebrow">AIPD</span><h3>L'analyse d'impact, assumée</h3><p>Géolocalisation systématique et données de santé (art. 9) placent le traitement dans les critères CNIL de l'analyse d'impact obligatoire : elle est inscrite au programme de travail (chapitre 21), avant toute ouverture publique.</p></div>
+  </div>
+</section>
+
+<!-- 17 -->
+<section id="qualite" class="pb">
+  <div class="shead">
+    <span class="eyebrow"><span class="n">17</span> · La preuve par la méthode</span>
+    <h2>Des tests qui gardent la doctrine, pas seulement le code</h2>
+  </div>
+  <div class="stats">
+    <div class="stat"><div class="v">3 564</div><div class="l">tests verts (24/08/2026) sur 302 fichiers</div></div>
+    <div class="stat"><div class="v">44</div><div class="l">gardes qui verrouillent une décision produit</div></div>
+    <div class="stat"><div class="v">70<small> %</small></div><div class="l">couverture minimale exigée par la configuration</div></div>
+    <div class="stat"><div class="v">240</div><div class="l">migrations tracées — « aucun changement de schéma sans fichier »</div></div>
+  </div>
+  <div class="tblwrap"><table>
+    <tr><th>Garde (exemples réels)</th><th>Ce qu'elle empêche</th></tr>
+    <tr><td><b>Doctrine</b> — 36 tournures scannées</td><td>qu'un écran dise un jour « freinez plus tôt » ou « bravo »</td></tr>
+    <tr><td><b>Accessibilité stricte</b></td><td>qu'une commande soit muette pour un lecteur d'écran (rôle ET nom exigés, tous les écrans)</td></tr>
+    <tr><td><b>Contraste mesuré</b></td><td>qu'un texte repasse sous le seuil d'accessibilité — la luminance est calculée dans le test</td></tr>
+    <tr><td><b>Collisions de couleurs</b></td><td>que deux couleurs porteuses de sens deviennent indiscernables — l'écart perçu est mesuré</td></tr>
+    <tr><td><b>Rampes monotones</b></td><td>qu'une échelle de vitesse fasse paraître 85 km/h plus sombre que 70 (bug réel, verrouillé)</td></tr>
+    <tr><td><b>Carte sans donnée</b></td><td>qu'une couleur de télémétrie s'invite sur le fond de carte — et réciproquement</td></tr>
+    <tr><td><b>Code orphelin · serveurs déclarés</b></td><td>du code sans appelant, ou un appel réseau vers un domaine non déclaré</td></tr>
+  </table></div>
+  <p style="font-size:12.5px">Quand une erreur est trouvée, le code garde la trace chiffrée de ce qu'elle coûtait — puis un test la rend <strong>non reproductible</strong>.</p>
+</section>
+
+<!-- 18 -->
+<section id="chiffres">
+  <div class="shead">
+    <span class="eyebrow"><span class="n">18</span> · Le produit en chiffres</span>
+    <h2>142 écrans, cinq espaces, une plateforme</h2>
+  </div>
+  <figure>
+    <svg viewBox="0 0 760 128" role="img" aria-label="Répartition des 142 écrans : 47 pour le pilote, 35 pour le coach, 32 pour l'administration du circuit, 13 pour l'accueil et la connexion, 8 pour les partenaires, 7 pour les pilotes professionnels.">
+      <g font-family="JetBrains Mono,monospace" font-size="10" text-anchor="middle">
+        <g stroke="#fff" stroke-width="2">
+          <rect x="28"    y="34" width="231.7" height="40" fill="#C8102E"/>
+          <rect x="259.7" y="34" width="172.5" height="40" fill="#14151A"/>
+          <rect x="432.2" y="34" width="157.7" height="40" fill="#6E7480"/>
+          <rect x="589.9" y="34" width="64.1"  height="40" fill="#B0B5BF"/>
+          <rect x="654"   y="34" width="39.4"  height="40" fill="#B98A00"/>
+          <rect x="693.4" y="34" width="34.5"  height="40" fill="#0E93A8"/>
+        </g>
+        <g fill="#fff" font-weight="600" font-size="12">
+          <text x="143" y="59">47</text><text x="346" y="59">35</text><text x="511" y="59">32</text><text x="622" y="59" font-size="10.5">13</text><text x="673" y="59" font-size="10.5">8</text><text x="710" y="59" font-size="10.5">7</text>
+        </g>
+        <g fill="#474C57" font-size="9.5">
+          <text x="143" y="92">PILOTE</text>
+          <text x="346" y="92">COACH</text>
+          <text x="511" y="92">ADMIN CIRCUIT</text>
+          <text x="622" y="92">ACCUEIL</text>
+          <text x="673" y="110">PARTENAIRE</text>
+          <text x="710" y="92">PRO</text>
+        </g>
+      </g>
+    </svg>
+    <figcaption><b>Cinq espaces métier</b>, plus l'onboarding et la connexion. L'accueil pilote se fait en six étapes — philosophie, doctrine en 4 phrases, méthode VOIR / COMPRENDRE / QUESTIONNER, niveau, CGU horodatées, signature du Pacte sur fond noir.</figcaption>
+  </figure>
+  <div class="cards">
+    <div class="card"><span class="eyebrow">Pilote Pro · 7 écrans</span><h3>Les professionnels aussi</h3><p>Bibliothèque de sessions multi-critères, lecture comparée descriptive, équipe déclarée (coach, préparateur, assistant), vitrine publique opt-in par lien révocable — tout privé par défaut.</p></div>
+    <div class="card"><span class="eyebrow">Multi-circuits</span><h3>Prêt à s'étendre</h3><p>Trois circuits déjà modélisés — Haute Saintonge, Bouteville, Valence — avec leurs tracés, virages et repères. Ajouter un circuit est une donnée, pas un développement.</p></div>
+    <div class="card"><span class="eyebrow">Sous le capot</span><h3>Une stack choisie pour durer</h3><p>Chaque brique est open source ou hébergée dans l'UE — le détail est dans le tableau ci-dessous.</p></div>
+  </div>
+  <div class="tblwrap"><table>
+    <tr><th>Couche</th><th>Choix</th></tr>
+    <tr><td><b>Interface</b></td><td>React Native + Expo — un seul code pour iOS et Android, nouvelle architecture</td></tr>
+    <tr><td><b>Rendu des données</b></td><td>Skia — tracés, radars et diagrammes dessinés à 60 images/s</td></tr>
+    <tr><td><b>Cartes</b></td><td>MapLibre + tuiles vectorielles auto-hébergées — zéro dépendance Apple/Google Maps</td></tr>
+    <tr><td><b>Langage</b></td><td>TypeScript strict de bout en bout — le typage est une exigence, pas une option</td></tr>
+    <tr><td><b>Base de données</b></td><td>PostgreSQL 17 managé (Irlande), sécurité ligne à ligne</td></tr>
+    <tr><td><b>Hors-ligne</b></td><td>files d'attente sur fichiers, reprise sans doublon — l'app est née pour un paddock sans réseau</td></tr>
+    <tr><td><b>Sécurité locale</b></td><td>session scellée dans le coffre matériel du téléphone, déverrouillage Face ID</td></tr>
+    <tr><td><b>Livraison</b></td><td>compilation et livraison automatisées, trois canaux · mise à jour à distance <b>uniquement en reprise d'erreur</b> — jamais pendant un roulage</td></tr>
+  </table></div>
+</section>
+
+<!-- ════════════════════ ACTE E ════════════════════ -->
+<div class="part" data-act="E">
+  <div class="k">Acte E · chapitres 19–25</div>
+  <h2>La candidature</h2>
+  <p class="hook">Quatre actes prouvent que nous savons construire. Le cinquième nomme ce qui reste incertain — et le programme qui le dérisque.</p>
+</div>
+
+<div class="grille5" role="note" aria-label="Correspondance avec la grille d'instruction Bpifrance">
+  <span class="glabel">Les cinq axes de la grille d'instruction, chapitre par chapitre</span>
+  <span><b>Innovation</b>ch. 19</span>
+  <span><b>Marché</b>ch. 20</span>
+  <span><b>Programme</b>ch. 21</span>
+  <span><b>Impact</b>ch. 22</span>
+  <span><b>Équipe</b>ch. 23</span>
+</div>
+
+<!-- 19 -->
+<section id="etatdelart">
+  <div class="shead">
+    <span class="eyebrow"><span class="n">19</span> · L'état de l'art</span>
+    <h2>Les outils existent. Le parti pris, non.</h2>
+    <p class="lede">La télémétrie amateur est un marché équipé — et tous ses produits partagent le même paradigme : le chiffre en temps réel, sous les yeux du pilote. C'est précisément ce que Mirror refuse.</p>
+  </div>
+  <div class="tblwrap"><table>
+    <tr><th>Référence du marché</th><th>Paradigme</th><th>Le renversement Mirror</th></tr>
+    <tr><td><b>Garmin Catalyst</b></td><td>coaching audio et « tour optimal » en temps réel, écran en piste</td><td>zéro écran, zéro son en piste — codé, pas promis</td></tr>
+    <tr><td><b>AiM Solo 2 · RaceStudio</b></td><td>chrono prédictif embarqué, analyse experte en courbes</td><td>restitution a posteriori, en français, un chiffre par écran</td></tr>
+    <tr><td><b>RaceChrono · Harry's LapTimer · TrackAddict</b></td><td>applications chrono/vidéo, temps réel au téléphone</td><td>le chrono subordonné — la marge comme chiffre roi</td></tr>
+    <tr><td><b>Apex Pro</b></td><td>barre LED temps réel dans le champ de vision</td><td>silence en piste vérifié par la machine à états</td></tr>
+  </table></div>
+  <div class="note">
+    <h4>Trois barrières qui se cumulent</h4>
+    <p><strong>Le positionnement</strong> — aucun d'eux ne peut subordonner le chrono sans se renier, et le parti pris est opposable dans le code (ch. 03 et 17). <strong>La donnée</strong> — le jeu de calibration multi-pilotes que produira la campagne terrain (ch. 21) : l'actif qu'une mise à jour concurrente ne peut pas répliquer. <strong>Le coût de bascule</strong> — un circuit équipé (exploitation, écurie, coachs intégrés) ne repart pas sur un chrono autonome.</p>
+  </div>
+</section>
+
+<!-- 20 -->
+<section id="marche">
+  <div class="shead">
+    <span class="eyebrow"><span class="n">20</span> · Le marché et le modèle</span>
+    <h2>Deux étages de revenus</h2>
+    <p class="lede">Le track day est un loisir récurrent, à clientèle équipée et premium. Mirror gagne sa vie à deux étages : l'exploitation d'abord, la licence ensuite.</p>
+  </div>
+  <div class="deux">
+    <div>
+      <h4 style="color:var(--rouge)">ÉTAGE 1 — L'ACTIF D'EXPLOITATION</h4>
+      <ul>
+        <li>La profondeur de lecture EST la gamme : Access → Signature → Heritage (chapitre 15)</li>
+        <li>L'app différencie et monétise chaque journée OXV</li>
+        <li>32 écrans d'exploitation : les journées s'opèrent par le produit</li>
+        <li>Rétention : écurie, club, coachs, partenaires (acte C)</li>
+      </ul>
+    </div>
+    <div>
+      <h4 style="color:var(--or-txt)">ÉTAGE 2 — LA LICENCE MULTI-CIRCUITS</h4>
+      <ul>
+        <li>« Ajouter un circuit est une donnée, pas un développement » (chapitre 18)</li>
+        <li>Exploitation + restitution pilote licenciables à d'autres circuits</li>
+        <li>Trois circuits déjà modélisés — la preuve technique existe</li>
+        <li>C'est le relais de croissance B2B que le dispositif cherche</li>
+      </ul>
+    </div>
+  </div>
+  <div class="note rouge">
+    <h4>La relation au circuit, sans fard</h4>
+    <p>OXV organise et vend les journées via oxvehicle.fr ; le Circuit de Haute Saintonge les accueille. La convention est <strong>en négociation, accord visé décembre 2026</strong> — l'étage 1 en dépend, et le dossier ne le cache pas. Le repli est structurel : l'architecture est multi-circuits (trois circuits déjà modélisés, ch. 18) et l'étage 2 — la licence — ne dépend d'aucun site en particulier. Le produit n'est pas captif d'un terrain.</p>
+  </div>
+  <figure>
+    <svg viewBox="0 0 720 238" role="img" aria-label="Prévisionnel arrondi du modèle v17 : chiffre d'affaires d'environ 158 mille euros en 2027, 251 en 2028, 387 en 2029 ; résultat net d'environ moins 8, plus 11 et plus 59 mille euros.">
+      <g font-family="JetBrains Mono,monospace" font-size="10">
+        <text x="24" y="20" fill="#8B8F98" letter-spacing="2">PRÉVISIONNEL v17 (ARRONDI) — CHIFFRE D'AFFAIRES</text>
+        <line x1="24" y1="185" x2="696" y2="185" stroke="#E5E6EA" stroke-width="1.5"/>
+        <rect x="95"  y="124" width="110" height="61"  fill="#45484F"/>
+        <rect x="305" y="88"  width="110" height="97"  fill="#45484F"/>
+        <rect x="515" y="35"  width="110" height="150" fill="#C8102E"/>
+        <g fill="#17181C" font-family="Archivo,sans-serif" font-weight="700" font-size="14" text-anchor="middle">
+          <text x="150" y="114">≈ 158 k€</text>
+          <text x="360" y="78">≈ 251 k€</text>
+          <text x="570" y="25">≈ 387 k€</text>
+        </g>
+        <g fill="#45484F" font-size="11" text-anchor="middle" font-family="Hanken Grotesk,sans-serif" font-weight="700">
+          <text x="150" y="205">2027</text>
+          <text x="360" y="205">2028</text>
+          <text x="570" y="205">2029</text>
+        </g>
+        <g font-size="10" text-anchor="middle">
+          <text x="150" y="226" fill="#D8383F">résultat ≈ −8 k€</text>
+          <text x="360" y="226" fill="#188A50">résultat ≈ +11 k€</text>
+          <text x="570" y="226" fill="#188A50">résultat ≈ +59 k€</text>
+        </g>
+      </g>
+    </svg>
+    <figcaption><b>Rentable dès la deuxième année pleine.</b> La première année absorbe le lancement ; la croissance vient des deux étages — journées, puis licence.</figcaption>
+  </figure>
+  <div class="placeholder">
+    <h4>À REPRENDRE DES MODÈLES EXISTANTS AVANT DÉPÔT</h4>
+    <p>De l'étude de marché : taille et dynamique du track day en France, segment premium, bassin Nouvelle-Aquitaine, consentement à payer. Du modèle v17 : les <strong>hypothèses du prévisionnel</strong> — journées par an, pilotes par journée, prix des quatre offres, ventilation du chiffre d'affaires par flux (journées, offres data, licence, coaching).</p>
+  </div>
+</section>
+
+<!-- 21 -->
+<section id="programme" class="pb">
+  <div class="shead">
+    <span class="eyebrow"><span class="n">21</span> · Le programme de travail</span>
+    <h2>Ce qui reste à prouver — et comment on le prouve</h2>
+    <p class="lede">Un programme de 12 à 18 mois, où chaque ligne adresse une incertitude nommée.</p>
+  </div>
+  <div class="pull"><p>La Bourse finance l'incertain. Le certain est déjà construit.</p></div>
+  <div class="deux">
+    <div>
+      <h4 style="color:var(--or-txt)">LES INCERTITUDES RESTANTES</h4>
+      <ul>
+        <li>Les seuils QDI tiennent-ils sur données réelles, multi-véhicules et multi-conducteurs ?</li>
+        <li>La fenêtre de silence tient-elle un vrai jour de roulage, téléphone en poche ?</li>
+        <li>Les capteurs restent-ils fiables en conditions dégradées (paddock saturé, GPS masqué) ?</li>
+        <li>La marge affichée change-t-elle le comportement des pilotes ?</li>
+        <li>Consentement à payer et licence B2B : à valider, pas à supposer</li>
+      </ul>
+    </div>
+    <div>
+      <h4 style="color:var(--q-accel)">LES DEUX RÈGLES DE L'ASSIETTE</h4>
+      <ul>
+        <li>Rien de commercial : site, communication et Membres Fondateurs restent hors programme</li>
+        <li>Aucune dépense engagée avant l'accusé de dépôt — boîtiers compris ; l'antérieur est définitivement inéligible</li>
+      </ul>
+    </div>
+  </div>
+  <div class="tblwrap"><table style="min-width:720px">
+    <tr><th>Ligne du programme</th><th>Incertitude adressée</th><th>Livrable et critère de sortie</th><th>Période*</th><th>Budget*</th><th>Nature</th></tr>
+    <tr><td><b>Campagne de validation terrain</b> — saison alpha, pilotes tests, boîtiers</td><td>seuils QDI et marge sur données réelles</td><td>rapport de campagne — ≥ 10 pilotes × 3 séances, jeu de données multi-véhicules</td><td class="num">M1–M9</td><td class="num">10–14 k€</td><td>équipement + frais</td></tr>
+    <tr><td><b>Calibration et versionnage des algorithmes</b></td><td>transférabilité inter-circuits, inter-véhicules</td><td>seuils recalibrés et versionnés — reproductibilité vérifiée sur les 3 circuits modélisés</td><td class="num">M3–M12</td><td class="num">6–8 k€</td><td>R&amp;D / sous-traitance</td></tr>
+    <tr><td><b>Audit de sécurité / test d'intrusion</b></td><td>« fermé par défaut » résiste-t-il à un tiers ?</td><td>rapport d'audit + correctifs vérifiés</td><td class="num">M6–M9</td><td class="num">5–7 k€</td><td>sous-traitance</td></tr>
+    <tr><td><b>AIPD et conformité</b> — RGPD art. 9, règlement IA</td><td>conformité opposable avant ouverture publique</td><td>AIPD documentée + registre à jour</td><td class="num">M1–M6</td><td class="num">3–5 k€</td><td>juridique</td></tr>
+    <tr><td><b>Marque</b> — dépôt INPI (classes 9, 41, 42)</td><td>actif protégé au nom de la candidate</td><td>marque enregistrée</td><td class="num">M1–M3</td><td class="num">1–2 k€</td><td>PI</td></tr>
+    <tr><td><b>Étude consentement à payer / licence circuits</b></td><td>modèle B2B réplicable</td><td>rapport d'étude + grille de licence</td><td class="num">M3–M9</td><td class="num">4–6 k€</td><td>étude</td></tr>
+    <tr><td><b>Passage en production grand public</b> — stores, accessibilité, push dans la fenêtre de silence</td><td>robustesse en conditions réelles</td><td>apps publiées + accessibilité auditée</td><td class="num">M9–M18</td><td class="num">7–8 k€</td><td>R&amp;D</td></tr>
+  </table></div>
+  <span class="fine">* périodes et fourchettes indicatives, calées sur la date d'accusé de dépôt (M1) — aucune ligne ne démarre avant. Total : 36 000 à 50 000 €.</span>
+  <figure>
+    <svg viewBox="0 0 740 246" role="img" aria-label="Calendrier du programme sur dix-huit mois : la campagne terrain ouvre la période et sert d'épine dorsale, la calibration la chevauche, l'audit de sécurité et l'étude arrivent au milieu, le passage en production ferme la marche des mois neuf à dix-huit.">
+      <g font-family="JetBrains Mono,monospace" font-size="9.5">
+        <text x="24" y="20" fill="#8B8F98" letter-spacing="2">LE PROGRAMME SUR 18 MOIS — M1 = ACCUSÉ DE DÉPÔT</text>
+        <g stroke="#F0F1F4" stroke-width="1">
+          <line x1="296.4" y1="36" x2="296.4" y2="218"/>
+          <line x1="382.8" y1="36" x2="382.8" y2="218"/>
+          <line x1="469.2" y1="36" x2="469.2" y2="218"/>
+          <line x1="555.6" y1="36" x2="555.6" y2="218"/>
+          <line x1="642"   y1="36" x2="642"   y2="218"/>
+          <line x1="728.4" y1="36" x2="728.4" y2="218"/>
+        </g>
+        <g fill="#8B8F98" text-anchor="middle">
+          <text x="296.4" y="232">M3</text><text x="382.8" y="232">M6</text><text x="469.2" y="232">M9</text><text x="555.6" y="232">M12</text><text x="642" y="232">M15</text><text x="726" y="232">M18</text>
+        </g>
+        <g font-family="Hanken Grotesk,sans-serif" font-size="10.5" fill="#45484F" text-anchor="end">
+          <text x="200" y="56">Validation terrain</text>
+          <text x="200" y="82">Calibration algorithmes</text>
+          <text x="200" y="108">Audit de sécurité</text>
+          <text x="200" y="134">AIPD et conformité</text>
+          <text x="200" y="160">Marque INPI</text>
+          <text x="200" y="186">Étude licence</text>
+          <text x="200" y="212">Production grand public</text>
+        </g>
+        <g rx="3">
+          <rect x="210"   y="46"  width="259.2" height="13" rx="3" fill="#C8102E"/>
+          <rect x="267.6" y="72"  width="288"   height="13" rx="3" fill="#45484F"/>
+          <rect x="354"   y="98"  width="115.2" height="13" rx="3" fill="#45484F"/>
+          <rect x="210"   y="124" width="172.8" height="13" rx="3" fill="#45484F"/>
+          <rect x="210"   y="150" width="86.4"  height="13" rx="3" fill="#45484F"/>
+          <rect x="267.6" y="176" width="201.6" height="13" rx="3" fill="#45484F"/>
+          <rect x="440.4" y="202" width="288"   height="13" rx="3" fill="#45484F"/>
+        </g>
+      </g>
+    </svg>
+    <figcaption><b>La campagne terrain est l'épine dorsale</b> — en rouge : c'est elle qui produit le jeu de données de calibration, l'actif du chapitre 19. Tout le reste s'y adosse.</figcaption>
+  </figure>
+  <div class="note">
+    <h4>Enveloppe et chiffrage</h4>
+    <p><strong>36 000 à 50 000 €</strong> de dépenses éligibles pour une aide de 25 000 € à 50–70 %. Le chiffrage ferme sera arrêté au rendez-vous Bpifrance Bordeaux — qui tranchera aussi le plafond du dispositif (30 000 € ou 50 000 € selon les sources 2025-2026). La cession de propriété intellectuelle NADIR → OXV est volontairement <strong>hors assiette</strong> (ch. 23).</p>
+  </div>
+</section>
+
+<!-- 22 -->
+<section id="impact">
+  <div class="shead">
+    <span class="eyebrow"><span class="n">22</span> · L'impact</span>
+    <h2>Sécurité, territoire, souveraineté</h2>
+  </div>
+  <div class="cards">
+    <div class="card"><span class="eyebrow">Sécurité</span><h3>La thèse du produit EST l'impact</h3><p>Réduire la prise de risque des amateurs sur circuit — c'est la doctrine entière. Indicateur proposé dès l'alpha : l'évolution des marges séance après séance, qui deviendra la preuve d'impact à mi-parcours du programme.</p></div>
+    <div class="card"><span class="eyebrow">Territoire</span><h3>Ancrage rural, emplois induits</h3><p>Haute Saintonge — zone France Ruralités Revitalisation. Le tissu local est DANS le produit (restaurants, hébergements, préparateurs — chapitre 13), et l'exploitation du circuit crée l'activité autour.</p></div>
+    <div class="card"><span class="eyebrow">Souveraineté</span><h3>Numérique européen, démontré</h3><p>Données 100 % UE, cartes auto-hébergées, aucun tiers hors UE sur la position d'un pilote — la chapitre 16 en est la démonstration technique ; c'est aussi un impact.</p></div>
+  </div>
+</section>
+
+<!-- 23 -->
+<section id="equipe">
+  <div class="shead">
+    <span class="eyebrow"><span class="n">23</span> · L'équipe et les entités</span>
+    <h2>Un fondateur, une structure lisible, un actif à formaliser</h2>
+    <p class="lede">Gabin Fillat porte le projet de bout en bout : la doctrine, le produit, son développement et l'écosystème du circuit.</p>
+  </div>
+  <figure>
+    <svg viewBox="0 0 720 168" role="img" aria-label="La structure : NADIR, entreprise individuelle de développement, cède la propriété intellectuelle à la SASU OXV, candidate ; une structure d'accompagnement conventionnée porte l'éligibilité ; la SASU dépose la demande de Bourse French Tech auprès de Bpifrance.">
+      <defs><marker id="fq" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6.5" markerHeight="6.5" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="#45484F"/></marker></defs>
+      <g font-family="Hanken Grotesk,sans-serif" font-size="12" text-anchor="middle">
+        <rect x="24" y="54" width="190" height="64" rx="9" fill="#fff" stroke="#C9CDD6" stroke-width="1.4"/>
+        <text x="119" y="80" fill="#17181C" font-weight="700">NADIR — EI</text>
+        <text x="119" y="98" fill="#8B8F98" font-size="10">développement · PI d'origine</text>
+        <rect x="286" y="54" width="188" height="64" rx="9" fill="#FDF2F3" stroke="#C8102E" stroke-width="1.8"/>
+        <text x="380" y="80" fill="#C8102E" font-weight="800">SASU OXV</text>
+        <text x="380" y="98" fill="#45484F" font-size="10">candidate · exploitation, actifs</text>
+        <rect x="536" y="14" width="180" height="56" rx="9" fill="#fff" stroke="#C9CDD6" stroke-width="1.4"/>
+        <text x="626" y="37" fill="#17181C" font-weight="700" font-size="11">Structure d'accompagnement</text>
+        <text x="626" y="54" fill="#8B8F98" font-size="10">convention = éligibilité</text>
+        <rect x="536" y="98" width="180" height="56" rx="9" fill="#fff" stroke="#C9CDD6" stroke-width="1.4"/>
+        <text x="626" y="121" fill="#17181C" font-weight="700" font-size="11">Bpifrance</text>
+        <text x="626" y="138" fill="#8B8F98" font-size="10">Bourse French Tech · dépôt</text>
+        <g stroke="#45484F" stroke-width="1.3" fill="none" marker-end="url(#fq)">
+          <line x1="214" y1="86" x2="282" y2="86"/>
+          <line x1="536" y1="52" x2="478" y2="70"/>
+          <line x1="474" y1="102" x2="532" y2="118"/>
+        </g>
+        <text x="248" y="44" font-family="JetBrains Mono,monospace" font-size="9" fill="#8B8F98">cession PI</text>
+        <text x="248" y="56" font-family="JetBrains Mono,monospace" font-size="9" fill="#8B8F98">hors assiette</text>
+      </g>
+    </svg>
+    <figcaption><b>Une structure lisible.</b> La candidate possède son actif, l'accompagnement porte l'éligibilité, le dépôt part propre.</figcaption>
+  </figure>
+  <div class="cards">
+    <div class="card"><span class="eyebrow">Développement</span><h3>NADIR (entreprise individuelle)</h3><p>La structure de développement du fondateur — c'est elle qui a construit l'application présentée aux actes A à D.</p></div>
+    <div class="card"><span class="eyebrow">Candidate</span><h3>SASU OXV, à immatriculer</h3><p>L'entité qui porte l'exploitation et la candidature. L'arbitrage de domiciliation (Gironde / Charente-Maritime) est en cours ; il conditionne la structure d'accompagnement et l'écosystème d'adhésion.</p></div>
+    <div class="card"><span class="eyebrow">Propriété intellectuelle</span><h3>La cession NADIR → OXV</h3><p>Le code naît chez NADIR : la cession vers la candidate sera formalisée <strong>au plus tard à l'immatriculation de la SASU, hors assiette</strong> — avec un engagement de cession joint au dépôt si la voie « personne physique » est retenue. Un financeur ne subventionne pas une société qui ne possède pas son actif : le dossier le sait et le traite.</p></div>
+    <div class="card"><span class="eyebrow">Éligibilité</span><h3>La voie « personne physique accompagnée »</h3><p>Si le dépôt précède l'immatriculation, l'éligibilité passe par une convention signée avec une structure d'accompagnement reconnue. Contacts en cours : pépinière du Pôle Mécanique, UNITEC, Pépite ECA La Rochelle, French Tech Bordeaux.</p></div>
+    <div class="card"><span class="eyebrow">Moyens</span><h3>Comment un fondateur seul a construit cela</h3><p>Une chaîne d'ingénierie assistée par IA, sous spécification et revue du fondateur — c'est ce qui explique la productivité constatée, et les 3 564 tests, 44 gardes et 240 migrations tracées en sont le contrepoids de rigueur. C'est aussi la mitigation du risque personne-clé : tout est testé, tracé, documenté. Sur le programme, le fondateur pilote et mène le terrain ; le pentest, le juridique et l'étude sont sous-traités (ch. 21).</p></div>
+  </div>
+  <div class="placeholder">
+    <h4>À COMPLÉTER — ÉQUIPE</h4>
+    <p>Parcours et compétences du fondateur (reprendre le CV au dossier projet) ; expertise pilotage associée au programme OXV (sans en faire un membre de l'équipe sans engagement formel) ; accompagnements signés à la date du dépôt.</p>
+  </div>
+</section>
+
+<!-- 24 -->
+<section id="etat">
+  <div class="shead">
+    <span class="eyebrow"><span class="n">24</span> · Où en est le produit</span>
+    <h2>État d'avancement, sans enjolivement</h2>
+  </div>
+  <div class="deux">
+    <div>
+      <h4 style="color:var(--q-accel)">CONSTRUIT ET VÉRIFIÉ</h4>
+      <ul>
+        <li>Le détail est aux actes A à D : 142 écrans, capture bout en bout, 3 564 tests</li>
+        <li>Base partagée app + site déjà en production</li>
+      </ul>
+    </div>
+    <div>
+      <h4 style="color:var(--or-txt)">PROCHAINES MARCHES — autofinancées, hors assiette</h4>
+      <ul>
+        <li>Mise en service du fond de carte auto-hébergé</li>
+        <li>Builds de validation sur appareils (fenêtre iOS : sept.)</li>
+        <li>Bancs de sécurité par rôle branchés en continu</li>
+        <li>Ouverture des paiements in-app</li>
+      </ul>
+    </div>
+  </div>
+  <p style="font-size:12px">Aucune de ces marches n'entre dans l'assiette du programme : le programme (ch. 21) ne commence qu'à l'accusé de dépôt — y compris la couverture du push distant, qui y figure en M9–M18.</p>
+  <div class="note rouge">
+    <h4>Pourquoi cette transparence figure dans un dossier de candidature</h4>
+    <p>C'est la méthode du projet : l'app elle-même documente ses limites au pilote (capteurs, confiance de chaque séance). Un dossier qui ferait l'inverse trahirait le produit qu'il présente. Les marches techniques ci-dessus sont l'embryon du programme de travail — leur version jalonnée et chiffrée est la chapitre 21.</p>
+  </div>
+</section>
+
+<!-- 25 -->
+<section id="identite">
+  <div class="shead">
+    <span class="eyebrow"><span class="n">25</span> · Fiche d'identité et plan de financement</span>
+    <h2>Le projet, son porteur, ses moyens</h2>
+  </div>
+  <figure aria-label="Identité visuelle OXV : l'emblème et les couleurs de la charte, telles qu'elles sont codées dans l'application.">
+    <div style="display:flex;align-items:center;gap:20px;flex-wrap:wrap;padding:4px 6px">
+      <img src="data:image/png;base64,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" alt="Emblème OXV" style="width:70px;height:70px;flex:0 0 auto">
+      <div class="charte">
+        <div class="chip"><i style="background:#0B0B0D"></i><b>Nuit</b><small>#0B0B0D · fond</small></div>
+        <div class="chip"><i style="background:#F5F5F7;border-bottom:1px solid #E5E6EA"></i><b>Crème</b><small>#F5F5F7 · texte</small></div>
+        <div class="chip"><i style="background:#C8102E"></i><b>Rouge OXV</b><small>#C8102E · marque</small></div>
+        <div class="chip"><i style="background:#FFB703"></i><b>Or chrono</b><small>#FFB703 · record</small></div>
+        <div class="chip"><i style="background:#C4A459"></i><b>Or héritage</b><small>#C4A459 · offre</small></div>
+        <div class="chip"><i style="background:linear-gradient(90deg,#2E6FD8 0 20%,#D8383F 20% 40%,#188A50 40% 60%,#B98A00 60% 80%,#0E93A8 80% 100%)"></i><b>Données QDI</b><small>5 teintes mesurées</small></div>
+      </div>
+    </div>
+    <figcaption><b>La charte, telle qu'elle est codée.</b> L'or est réservé au chrono et au patrimoine — jamais à une donnée. Le rouge de donnée est distinct du rouge de marque. Ces règles ne sont pas un guide de style : des tests mesurent l'écart perçu entre chaque paire de couleurs et échouent si deux sens se rapprochent.</figcaption>
+  </figure>
+  <div class="tblwrap"><table>
+    <tr><th>Champ</th><th>Valeur</th></tr>
+    <tr><td>Produit</td><td><b>OXV Mirror</b> — application compagnon de track day (iOS &amp; Android)</td></tr>
+    <tr><td>Plateforme</td><td><b>OXV — Only Xtreme Vehicle</b> · oxvehicle.fr</td></tr>
+    <tr><td>Terrain</td><td>Circuit de Haute Saintonge (La Genétouze, Charente-Maritime) — partenariat en cours de contractualisation, accord visé décembre 2026 ; architecture multi-circuits déjà en place</td></tr>
+    <tr><td>Fondateur</td><td><b>Gabin Fillat</b></td></tr>
+    <tr><td>Entités</td><td>SASU OXV (candidate, à immatriculer) · NADIR, EI (développement) — cession de PI à formaliser, chapitre 23</td></tr>
+    <tr><td>Dispositif visé</td><td><b>Bourse French Tech</b> — Bpifrance Nouvelle-Aquitaine (Bordeaux), dépôt au fil de l'eau</td></tr>
+    <tr><td>Marché</td><td>Track days premium — pilotes amateurs, coachs, partenaires locaux ; licence multi-circuits en relais (chapitre 20)</td></tr>
+  </table></div>
+  <figure>
+    <svg viewBox="0 0 720 132" role="img" aria-label="Plan de financement de quatre-vingt-dix mille euros : cinq mille d'apport fondateur, trente mille de prêt d'honneur AQUITI, trente mille de prêt bancaire garanti, et vingt-cinq mille de Bourse French Tech — l'objet du présent dossier.">
+      <g font-family="JetBrains Mono,monospace" font-size="10">
+        <text x="24" y="20" fill="#8B8F98" letter-spacing="2">PLAN DE FINANCEMENT v17 — 90 k€</text>
+        <g stroke="#fff" stroke-width="2">
+          <rect x="24"    y="42" width="37.3"  height="36" fill="#17181C"/>
+          <rect x="61.3"  y="42" width="224"   height="36" fill="#6E7480"/>
+          <rect x="285.3" y="42" width="224"   height="36" fill="#B0B5BF"/>
+          <rect x="509.3" y="42" width="186.7" height="36" fill="#C8102E"/>
+        </g>
+        <g fill="#fff" font-family="Archivo,sans-serif" font-weight="700" font-size="12" text-anchor="middle">
+          <text x="173.3" y="65">30 k€</text>
+          <text x="397.3" y="65">30 k€</text>
+          <text x="602.6" y="65">25 k€</text>
+        </g>
+        <g fill="#8B8F98" font-size="9.5" text-anchor="middle">
+          <text x="42" y="98">5 k€</text>
+          <text x="42" y="110">apport</text>
+          <text x="173.3" y="98">prêt d'honneur AQUITI</text>
+          <text x="397.3" y="98">prêt bancaire garanti</text>
+          <text x="602.6" y="98" fill="#C8102E" font-weight="600">Bourse French Tech</text>
+          <text x="602.6" y="110" fill="#C8102E">l'objet du présent dossier</text>
+        </g>
+      </g>
+    </svg>
+    <figcaption><b>90 k€ pour dix-huit mois</b> — chaque brique conditionne la suivante : l'apport ouvre le prêt d'honneur, qui fait levier bancaire ; la Bourse finance ce qu'aucun prêt ne couvre, le dérisquage.</figcaption>
+  </figure>
+  <p style="font-size:12px">L'exposition est assumée : dans le scénario où la Bourse n'est pas notifiée et le prêt d'honneur refusé, la trésorerie fin 2027 tombe à 1 488 € — et un refus du prêt d'honneur fragiliserait aussi le levier bancaire. C'est la mesure exacte de ce que cette candidature pèse.</p>
+  <div class="placeholder">
+    <h4>À COMPLÉTER AVANT DÉPÔT</h4>
+    <ul>
+      <li>Structure juridique, SIREN, siège (arbitrage Gironde/Charente-Maritime), date de création</li>
+      <li>Titularité de la propriété intellectuelle : cession NADIR → OXV formalisée au plus tard à l'immatriculation — engagement de cession joint au dépôt (chapitre 23)</li>
+      <li>Convention signée avec la structure d'accompagnement — condition d'éligibilité si le dépôt précède l'immatriculation</li>
+      <li>Chiffrage ligne à ligne du programme (chapitre 21) après le rendez-vous Bpifrance Bordeaux — plafond 30 000 € ou 50 000 € à confirmer</li>
+      <li>Chiffres de l'étude de marché (chapitre 20) · CV détaillé du fondateur (chapitre 23)</li>
+      <li>Traction datée : statut du contrat circuit, pilotes alpha, lettres d'intention partenaires</li>
+      <li>Dépôt de marque INPI (classes 9, 41, 42 a minima) — éligible au programme si postérieur au dépôt</li>
+      <li>Contacts et calendrier de dépôt</li>
+    </ul>
+  </div>
+</section>
+
+<footer>
+  <div class="damier-foot" aria-hidden="true"></div>
+  <div class="qr-vivant">
+    <img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAMYAAADGAQAAAACh4MLwAAABq0lEQVR4nO1YQWrEMAwc2YY9OtAHOT/ok5Y+rGBDP7IPKCh3BRXJyfbSXnqJDg1LvCSXYaQZjUKKn689/fIC+H8DQNnuWTvQ7F4nkU1CsNNUj8LKds+MrGqA0+XYoNycMbtQu3IzeByBt3L+GQ1DAap8PEqXY0vfKLf7s/1iYIOy9VtmK6vULlW93yLU9NSptdnx88cxsB1XzzxxGo2qGgIbN6k9z8qeZY2BLc1DMAqGbHRj3HhgW2NoAe63fZYV8H6rEXhzbC7Mp/FK1UDY2IjyAQFjT7uE0SlMmwbJtHAqV0Jg6+633V3O6ivVMomEmfXKk65pJoZWQmCD5zcDpgyBaSEKNvUB6pltkjYFK9djS9jWnVZaxuFs2z0/7vsSI4dYpDR5WsJ07zUDCaGFgu1VCmVepECgexkFuGmMPasetlYsXlJxze4UYZ4mbERExbTZxS2umFR7pNyLs/GMtxi7TAJAtKJ2WuAZadDSTBopzA7IPh1sYBmHMXJIOs765gNieM5EfkTQgi2jeq6pux3rx2d7f+E90p4Fi5Q+rXxlkOux0f83LvyFty/WpU0+6BwSwQAAAABJRU5ErkJggg==" alt="Code QR vers la version vivante du dossier">
+    <p><b>La version vivante de ce dossier</b>Mêmes chapitres, même exigence — plus une démonstration interactive sur les données réelles du banc d'essai.<br><span class="mono">oxvehicle.fr/dossier-mirror</span></p>
+  </div>
+  <img class="embleme" alt="" src="data:image/png;base64,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">
+  <p><strong>Méthode d'établissement.</strong> Les actes A à D ont été construits exclusivement à partir de l'application elle-même — code source, base de données et documents internes — le 24 août 2026, chaque chiffre et chaque formule ayant fait l'objet d'une double vérification indépendante. L'acte E ajoute les seules données prévisionnelles du document : elles proviennent du modèle financier v17 (18/08/2026) et sont signalées comme telles. Ce qui n'a pas pu être vérifié est marqué « à compléter ».</p>
+  <div class="sig"><b>OXV</b> MIRROR · DOSSIER FRENCH TECH · 2026</div>
+</footer>
+
+</div>
