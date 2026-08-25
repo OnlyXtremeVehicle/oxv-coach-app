@@ -48,7 +48,13 @@
 import { entreesOptionnellesJamaisRenseignees } from '@/test-utils/entreesOptionnelles';
 
 /**
- * L'inventaire au 15/08/2026 — 78 entrées (83 la veille).
+ * L'inventaire au 25/08/2026 — 82 entrées (78 au 15/08).
+ *
+ * Quatre de plus, lots du cahier veille : `nbZones?` (découpage de confiance)
+ * et `tailleFenetre?` (appariement avant/après) sont des réglages dont le
+ * défaut ne fabrique aucun chiffre montré ; `contexte?` et sa réserve
+ * `conditionsChangees?` portent les réserves du coach — absents, la lecture
+ * dit simplement moins, elle n'invente rien.
  *
  * Cinq de moins : la consolidation des générateurs de tracé a donné de vrais
  * appelants à `polylineToPathD` et `polylineLength`, et supprimé les deux
@@ -67,6 +73,10 @@ const INVENTAIRE = [
   '/src/circuit/circuitCorners.ts::cornersForCircuit(fetchCenterline?)',
   '/src/circuit/circuitGenerator.ts::fetchOsmWay(fetchImpl?)',
   '/src/features/club/clubHubLogic.ts::messagePreview(max?)',
+  '/src/features/coach/avantApresLogic.ts::litEffetAvantApres(ContexteAvantApres.conditionsChangees?)',
+  '/src/features/coach/avantApresLogic.ts::litEffetAvantApres(ContexteAvantApres.tailleFenetre?)',
+  '/src/features/coach/avantApresLogic.ts::litEffetAvantApres(contexte?)',
+  '/src/features/data/confianceLogic.ts::decouperZones(nbZones?)',
   '/src/features/data/horsLigneLogic.ts::messageHorsLigne(maintenantMs?)',
   '/src/features/data/saison/petitsMultiplesLogic.ts::dernieresSeances(max?)',
   '/src/features/rec/biometryCaptureBuffer.ts::toBiometryInput(windowMs?)',
