@@ -161,7 +161,7 @@ en quelle qualité il reçoit.
 
 | Prestataire | Rôle | Localisation des données |
 |---|---|---|
-| **Supabase** | Hébergement de la base de données et stockage de fichiers | Frankfurt, Allemagne (UE) |
+| **Supabase** | Hébergement de la base de données et stockage de fichiers | Dublin, Irlande (UE) |
 | **Vercel** | Hébergement du site oxvehicle.fr | Infrastructure globale, données techniques principalement en Europe |
 | **Resend** | Envoi des emails transactionnels (confirmations, factures) | Infrastructure Europe |
 | **Brevo** | Envoi d'emails (chemin secondaire) | Union européenne |
@@ -354,7 +354,7 @@ Si une violation de vos données venait à survenir (accès non autorisé, fuite
 
 ## 10. Transferts hors Union européenne
 
-L'essentiel de vos données est traité au sein de l'Union européenne, principalement en Allemagne (Frankfurt) chez notre hébergeur Supabase.
+L'essentiel de vos données est traité au sein de l'Union européenne, principalement en Irlande (Dublin) chez notre hébergeur Supabase.
 
 Deux exceptions concernent des prestataires américains, pour lesquels OXV s'est assurée des garanties suivantes :
 

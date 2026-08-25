@@ -203,7 +203,7 @@ Les finalités sont :
 
 ### 8.3 — Hébergement et localisation
 
-Les données sont hébergées sur l'infrastructure technique de Supabase (Frankfurt, Union européenne).
+Les données sont hébergées sur l'infrastructure technique de Supabase (Dublin, Irlande, Union européenne).
 
 Une exception : si vous laissez actif le debrief assisté par IA, des données de roulage **non nominatives** (sans prénom ni identifiant) sont transmises à OpenAI (États-Unis) pour générer le texte de votre debrief, sous clauses contractuelles types validées par la Commission européenne. Vous pouvez désactiver cette fonction à tout moment dans vos paramètres. Le détail figure dans la Politique de confidentialité (transferts hors Union européenne).
 

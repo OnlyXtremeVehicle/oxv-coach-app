@@ -341,7 +341,7 @@ Les principales caractéristiques sont :
 
 - **Responsable du traitement** : OXV (SASU)
 - **Bases légales** : exécution contractuelle, consentement, intérêt légitime
-- **Hébergement** : Supabase, Frankfurt (Union européenne)
+- **Hébergement** : Supabase, Dublin, Irlande (Union européenne)
 - **Conservation** : trois ans après dernière interaction, cinq ans en cas de litige
 - **Droits du Pilote** : accès, rectification, effacement, portabilité, opposition (à exercer à contact@oxvehicle.fr)
 - **Recours** : Commission Nationale de l'Informatique et des Libertés (CNIL)
@@ -399,7 +399,7 @@ Conformément à l'article L612-1 du Code de la consommation, le Pilote consomma
 **Directeur de la publication** : [à compléter]
 
 **Hébergeur du site oxvehicle.fr** : Vercel Inc., 340 S Lemon Ave #4133, Walnut, CA 91789, USA
-**Hébergeur des données** : Supabase Inc., infrastructure située à Frankfurt, Allemagne
+**Hébergeur des données** : Supabase Inc., infrastructure située à Dublin, Irlande
 
 **Contact général** : contact@oxvehicle.fr
 **Contact B2B** : corporate@oxvehicle.fr
