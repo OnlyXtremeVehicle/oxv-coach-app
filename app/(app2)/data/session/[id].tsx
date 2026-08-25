@@ -69,6 +69,7 @@ import {
   ChronoHero,
   Chip,
   CondensingHeaderBar,
+  Field,
   ListRow,
   PressScale,
   SectionHeader,
@@ -110,6 +111,18 @@ import {
   type TourEvalue,
   type TourMesure,
 } from '@/features/data/validationToursLogic';
+import {
+  LIBELLE_GENRE_MARQUE,
+  composerLecturesTours,
+  type LectureTour,
+} from '@/features/data/marquesTourLogic';
+import {
+  listerMarquesSeance,
+  poserMarque,
+  retirerMarque,
+  type GenreMarqueTour,
+  type MarqueTourPosee,
+} from '@/services/lapMarksService';
 import {
   lireChevauchement,
   lireRotation,
@@ -558,6 +571,21 @@ function ligneMarques(tour: TourEvalue | undefined): string | null {
   return `Tour ${tour.index} · ${LIBELLE_CLASSEMENT[tour.classement]} — ${faits}`;
 }
 
+/**
+ * Les six déclarations proposées, DÉRIVÉES de la table de libellés — jamais
+ * recopiées. `LIBELLE_GENRE_MARQUE` est un `Record` sur l'énumération complète :
+ * ses clés SONT l'énumération, dans l'ordre de la base. Une septième valeur
+ * ajoutée un jour au type apparaîtra donc ici d'elle-même, tandis qu'une liste
+ * écrite à la main l'aurait tue.
+ *
+ * Longueur maximale du motif libre. La base n'en impose aucune — elle exige
+ * seulement que la chaîne ne soit pas vide. Ce plafond est une commodité
+ * d'écran : au-delà, le mot cesse d'être un mot et la ligne devient illisible
+ * partout où elle se relit.
+ */
+const GENRES_MARQUE = Object.keys(LIBELLE_GENRE_MARQUE) as GenreMarqueTour[];
+const MOTIF_MAX = 160;
+
 // ═══════════════════════════════════════════════════════════════════════════
 // Écran.
 // ═══════════════════════════════════════════════════════════════════════════
@@ -608,6 +636,15 @@ export default function SeanceScreen() {
    */
   const role = useAuthStore((s) => s.profile?.role ?? null);
   const peutAnnoter = role === 'coach' || role === 'admin';
+
+  /**
+   * Le LECTEUR — pas le pilote de la séance. Il ne sert qu'à distinguer « ma
+   * déclaration » de « celle d'un tiers » sur un tour : aucune lecture, aucun
+   * calcul ne s'y adosse (ce serait le défaut D-20, rappelé en tête de
+   * fichier). `null` tant que le profil n'est pas chargé — rien n'est alors
+   * « à moi », ce qui est le sens prudent.
+   */
+  const lecteurId = useAuthStore((s) => s.profile?.id ?? s.user?.id ?? null);
 
   const headerH = insets.top + HEADER_BASE;
   const railTop = headerH;
@@ -778,6 +815,8 @@ export default function SeanceScreen() {
             selectedLap={selectedLap}
             onSelect={setSelectedLap}
             onRetry={reload}
+            sessionId={data.session.id}
+            lecteurId={lecteurId}
           />
           {/*
             Au-delà du seuil, les traces individuelles cessent de se distinguer :
@@ -1274,12 +1313,17 @@ function ToursSection({
   selectedLap,
   onSelect,
   onRetry,
+  sessionId,
+  lecteurId,
 }: {
   laps: Lap[];
   failed: boolean;
   selectedLap: number | null;
   onSelect: (n: number | null) => void;
   onRetry: () => void;
+  sessionId: string;
+  /** L'utilisateur courant, ou `null` : il distingue MA marque de celle d'un tiers. */
+  lecteurId: string | null;
 }) {
   const [width, setWidth] = useState(0);
 
@@ -1292,10 +1336,68 @@ function ToursSection({
    * l'histogramme n'en montre qu'une partie, mais un tour non chronométré reste
    * un fait de la séance. La correspondance se fait par `lap_number`.
    */
-  const verdictParTour = useMemo(() => {
-    const validation = evaluerTours(versToursMesure(laps));
-    return new Map(validation.tours.map((t) => [t.index, t]));
-  }, [laps]);
+  const validation = useMemo(() => evaluerTours(versToursMesure(laps)), [laps]);
+  const verdictParTour = useMemo(
+    () => new Map(validation.tours.map((t) => [t.index, t])),
+    [validation]
+  );
+
+  /**
+   * LA DEUXIÈME VOIX — ce que le pilote ou son coach a DÉCLARÉ sur un tour
+   * (`lap_marks`, migration du 25/08/2026).
+   *
+   * Elle ne corrige pas la première. Un tour peut porter à la fois « 8,4 s
+   * au-dessus de la médiane » (la machine doute) et « Gêné par le trafic »
+   * (l'humain nomme) : ce sont deux informations, pas deux versions d'une
+   * seule. `marquesTourLogic` les assemble sans jamais qu'une efface l'autre.
+   *
+   * Un échec de lecture rend une liste vide : l'écran montre alors les faits de
+   * la machine seuls — ce qui reste vrai — plutôt que de tomber en panne.
+   */
+  const [marques, setMarques] = useState<MarqueTourPosee[]>([]);
+  const [declarationOuverte, setDeclarationOuverte] = useState(false);
+  const [genreChoisi, setGenreChoisi] = useState<GenreMarqueTour | null>(null);
+  const [motifSaisi, setMotifSaisi] = useState('');
+  const [enCours, setEnCours] = useState(false);
+  const [refusDeclaration, setRefusDeclaration] = useState<string | null>(null);
+
+  /**
+   * Le registre se relit après chaque écriture. Un compteur plutôt qu'un appel
+   * direct : la relecture passe par l'effet, qui porte déjà le garde-fou de
+   * démontage — un écran quitté pendant la requête ne réveille pas un état mort.
+   */
+  const [relecture, setRelecture] = useState(0);
+  const rechargerMarques = useCallback(() => setRelecture((n) => n + 1), []);
+
+  useEffect(() => {
+    let vivant = true;
+    void listerMarquesSeance(sessionId).then((m) => {
+      if (vivant) setMarques(m);
+    });
+    return () => {
+      vivant = false;
+    };
+  }, [sessionId, relecture]);
+
+  /**
+   * La correspondance numéro de tour ↔ ligne en base. M05 raisonne en
+   * `lap_number`, `lap_marks` pointe un `lap_id` : sans cette table, aucune
+   * marque ne retrouve son tour.
+   */
+  const lectures = useMemo(
+    () =>
+      composerLecturesTours({
+        tours: validation.tours,
+        identites: laps.map((l) => ({ index: l.lap_number, lapId: l.id })),
+        marques,
+        lecteurId,
+      }),
+    [validation, laps, marques, lecteurId]
+  );
+  const lectureParTour = useMemo(
+    () => new Map<number, LectureTour>(lectures.tours.map((t) => [t.index, t])),
+    [lectures]
+  );
 
   const bars = useMemo(() => {
     const valid = laps.filter((l) => l.duration_seconds > 0);
@@ -1337,6 +1439,80 @@ function ToursSection({
   const marquesSelection = ligneMarques(verdictSelection);
   const desToursMarques = bars.some((b) => estAttenue(b.lapNumber));
 
+  /**
+   * La lecture humaine du tour isolé. Elle s'affiche SOUS la ligne de la
+   * machine, jamais à sa place : les deux voix se lisent ensemble.
+   */
+  const lectureSelection = selectedLap !== null ? lectureParTour.get(selectedLap) : undefined;
+  const declarationsSelection = lectureSelection?.ligneDeclarations ?? null;
+  const lapIdSelection = lectureSelection?.lapId ?? null;
+
+  /**
+   * Ouvrir, c'est repartir d'une feuille blanche. Un brouillon conservé d'une
+   * ouverture à l'autre finirait posé sur un AUTRE tour que celui pour lequel
+   * il a été écrit — le genre d'erreur qu'on ne voit qu'une fois enregistrée.
+   */
+  const ouvrirDeclaration = () => {
+    setGenreChoisi(null);
+    setMotifSaisi('');
+    setRefusDeclaration(null);
+    setDeclarationOuverte(true);
+  };
+
+  /**
+   * Poser : un genre choisi, un mot facultatif, un geste explicite. Le genre ne
+   * s'envoie pas au simple toucher de sa ligne — une déclaration se relit six
+   * mois plus tard, elle ne doit pas partir d'un doigt qui défile.
+   *
+   * Le refus vient du serveur et se lit tel quel : marque déjà posée, séance
+   * d'autrui, tour disparu. L'écran n'en devine aucun — la RLS arbitre, et le
+   * seul geste qu'on ne propose jamais est celui qu'on SAIT refusé (le retrait
+   * de la déclaration d'un tiers).
+   */
+  const poser = () => {
+    if (genreChoisi === null || lapIdSelection === null || enCours) return;
+    const motif = motifSaisi.trim();
+    setEnCours(true);
+    setRefusDeclaration(null);
+    void poserMarque({
+      lapId: lapIdSelection,
+      sessionId,
+      genre: genreChoisi,
+      motif: motif.length > 0 ? motif : null,
+    }).then((r) => {
+      setEnCours(false);
+      if (!r.ok) {
+        setRefusDeclaration(r.erreur ?? 'La déclaration n’a pas pu être posée.');
+        return;
+      }
+      haptic('tap');
+      setGenreChoisi(null);
+      setMotifSaisi('');
+      rechargerMarques();
+    });
+  };
+
+  /**
+   * RETIRER, JAMAIS MODIFIER. La table n'a aucune politique UPDATE : une
+   * déclaration ne se corrige pas, elle se retire et se repose. La commande
+   * n'est offerte que sur ses propres marques — la RLS n'en autorise pas
+   * d'autres, et proposer le geste serait promettre un refus.
+   */
+  const retirer = (marqueId: string) => {
+    if (enCours) return;
+    setEnCours(true);
+    setRefusDeclaration(null);
+    void retirerMarque(marqueId).then((r) => {
+      setEnCours(false);
+      if (!r.ok) {
+        setRefusDeclaration(r.erreur ?? 'La déclaration n’a pas pu être retirée.');
+        return;
+      }
+      haptic('tap');
+      rechargerMarques();
+    });
+  };
+
   const onTapX = (x: number) => {
     if (slot <= 0) return;
     const idx = clamp(Math.floor(x / slot), 0, bars.length - 1);
@@ -1370,6 +1546,31 @@ function ToursSection({
         */}
         {marquesSelection !== null ? (
           <Text style={styles.toursMarques}>{marquesSelection}</Text>
+        ) : null}
+        {/*
+          LA DEUXIÈME VOIX, SOUS LA PREMIÈRE — jamais à sa place. Ce que la
+          machine a relevé reste au-dessus, mot pour mot, même quand un humain
+          a nommé la cause : la déclaration s'ajoute, elle ne corrige pas.
+        */}
+        {declarationsSelection !== null ? (
+          <Text style={styles.toursDeclarations}>{declarationsSelection}</Text>
+        ) : null}
+        {/*
+          UNE LIGNE, PAS UN BOUTON. Déclarer n'est pas l'action de l'écran —
+          l'écran sert à LIRE la séance. La commande se tient à hauteur de la
+          lecture, discrète, et n'appelle personne : celui qui n'a rien à dire
+          d'un tour n'a rien à faire ici.
+        */}
+        {selectedLap !== null && lapIdSelection !== null ? (
+          <ListRow
+            label="Déclarer"
+            sublabel="Ce que vous, vous en dites"
+            divider={false}
+            disabled={enCours}
+            onPress={ouvrirDeclaration}
+            accessibilityLabel={`Déclarer sur le tour ${selectedLap}`}
+            style={styles.toursDeclarerLigne}
+          />
         ) : null}
       </View>
 
@@ -1465,6 +1666,123 @@ function ToursSection({
           Tour atténué : mesure douteuse — le détail au toucher.
         </Text>
       ) : null}
+      {/*
+        Les déclarations qu'aucun tour affiché ne réclame. Elles existent en
+        base — un tour non chargé, une détection rejouée — et les taire les
+        rendrait introuvables. On dit qu'il y en a, sans prétendre les situer.
+      */}
+      {lectures.orphelines.length > 0 ? (
+        <Text style={styles.legendMono}>
+          {`${lectures.orphelines.length} déclaration(s) rattachée(s) à un tour absent de cette lecture.`}
+        </Text>
+      ) : null}
+
+      <Sheet
+        visible={declarationOuverte}
+        onClose={() => setDeclarationOuverte(false)}
+        snapHeight={560}
+      >
+        {/* DÉFILEMENT OBLIGATOIRE — la `Sheet` rend ses enfants dans une hauteur
+            fixe, et le clavier du champ de motif mange la moitié de l'écran.
+            `keyboardShouldPersistTaps` : sans lui, le premier toucher sur le
+            bouton de pose ne fait que refermer le clavier. */}
+        <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+          <SectionHeader
+            eyebrow="DÉCLARER"
+            title={selectedLap !== null ? `Tour ${selectedLap}` : 'Tour'}
+          />
+          {/*
+            Le rappel de la règle, à l'endroit exact où on pourrait croire
+            l'inverse : déclarer n'efface pas la mesure. Et juste dessous, le
+            fait de la machine, mot pour mot — la cohabitation se voit AVANT
+            même que la déclaration soit posée.
+          */}
+          <Text style={styles.sheetNote}>
+            Ce que vous déclarez s’ajoute au relevé de la séance. Le fait mesuré reste affiché tel
+            quel.
+          </Text>
+          {lectureSelection !== undefined && lectureSelection.ligneMachine !== null ? (
+            <Text style={styles.toursMarques}>{lectureSelection.ligneMachine}</Text>
+          ) : null}
+
+          {/*
+            Les six motifs. Un toucher CHOISIT, il ne pose pas : le second
+            toucher sur la même ligne défait le choix, et rien ne part tant que
+            le bouton du bas n'est pas pressé.
+          */}
+          {GENRES_MARQUE.map((genre) => (
+            <ListRow
+              key={genre}
+              label={LIBELLE_GENRE_MARQUE[genre]}
+              value={genreChoisi === genre ? 'choisi' : undefined}
+              chevron={false}
+              disabled={enCours}
+              onPress={() => setGenreChoisi(genreChoisi === genre ? null : genre)}
+              accessibilityLabel={`${LIBELLE_GENRE_MARQUE[genre]}${
+                genreChoisi === genre ? ', choisi' : ''
+              }`}
+            />
+          ))}
+
+          {/*
+            Le mot libre est FACULTATIF et le dit. Le champ ne pose aucune
+            question, ne suggère aucune formulation : la personne écrit ce
+            qu'elle veut, ou rien.
+          */}
+          <Field
+            label="Votre mot, si vous voulez"
+            optional
+            value={motifSaisi}
+            onChangeText={setMotifSaisi}
+            multiline
+            maxLength={MOTIF_MAX}
+            showCounter
+            editable={!enCours}
+            containerStyle={styles.champMotif}
+          />
+
+          <Button
+            label="Poser la déclaration"
+            variant="primary"
+            disabled={genreChoisi === null || lapIdSelection === null || enCours}
+            onPress={poser}
+          />
+          {refusDeclaration !== null ? (
+            <Text style={styles.toursRefus}>{refusDeclaration}</Text>
+          ) : null}
+
+          {/*
+            LE REGISTRE DU TOUR — dans l'ordre où les déclarations ont été
+            dites. Celles d'un tiers s'y lisent sans commande de retrait : la
+            RLS n'autorise que l'auteur, et proposer le geste serait promettre
+            un refus.
+          */}
+          <SectionHeader eyebrow="DÉJÀ DÉCLARÉ" />
+          {lectureSelection !== undefined && lectureSelection.declarations.length > 0 ? (
+            lectureSelection.declarations.map((d) => (
+              <ListRow
+                key={d.id}
+                label={d.libelle}
+                sublabel={d.motif !== null ? `${d.motif} — ${d.origine}` : d.origine}
+                divider
+                right={
+                  d.retirable ? (
+                    <Button
+                      label="Retirer"
+                      variant="ghost"
+                      disabled={enCours}
+                      onPress={() => retirer(d.id)}
+                      accessibilityLabel={`Retirer la déclaration ${d.libelle}`}
+                    />
+                  ) : undefined
+                }
+              />
+            ))
+          ) : (
+            <Text style={styles.sheetNote}>Aucune déclaration sur ce tour.</Text>
+          )}
+        </ScrollView>
+      </Sheet>
     </View>
   );
 }
@@ -3568,6 +3886,37 @@ const styles = StyleSheet.create({
     lineHeight: 16,
     color: colors.text.low,
     marginTop: space.xs,
+  },
+  /**
+   * Les déclarations humaines : même rythme que les faits qu'elles
+   * accompagnent, mais en corps de texte — c'est quelqu'un qui parle, pas un
+   * relevé. La nuance typographique dit la cohabitation sans ajouter de
+   * couleur ni de pictogramme.
+   */
+  toursDeclarations: {
+    fontFamily: typo.body,
+    fontSize: fontSize.micro,
+    lineHeight: 16,
+    color: colors.text.mid,
+    marginTop: space.xs,
+  },
+  /**
+   * La ligne « Déclarer » : sans séparateur et collée à la lecture qu'elle
+   * prolonge. Elle ne se présente pas comme l'action de l'écran — l'écran sert
+   * à lire une séance, déclarer n'est qu'une possibilité offerte au passage.
+   */
+  toursDeclarerLigne: {
+    marginTop: space.xs,
+  },
+  /** Le mot libre, détaché des six lignes de motifs qui le précèdent. */
+  champMotif: {
+    marginTop: space.lg,
+  },
+  toursRefus: {
+    fontFamily: typo.body,
+    fontSize: fontSize.small,
+    color: colors.text.mid,
+    marginTop: space.sm,
   },
   legendMono: {
     fontFamily: typo.mono,

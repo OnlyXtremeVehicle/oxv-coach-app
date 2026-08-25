@@ -4792,6 +4792,79 @@ export type Database = {
           },
         ]
       }
+      lap_marks: {
+        Row: {
+          author_id: string
+          created_at: string
+          id: string
+          kind: Database["public"]["Enums"]["lap_mark_kind_enum"]
+          lap_id: string
+          motif: string | null
+          session_id: string
+        }
+        Insert: {
+          author_id: string
+          created_at?: string
+          id?: string
+          kind: Database["public"]["Enums"]["lap_mark_kind_enum"]
+          lap_id: string
+          motif?: string | null
+          session_id: string
+        }
+        Update: {
+          author_id?: string
+          created_at?: string
+          id?: string
+          kind?: Database["public"]["Enums"]["lap_mark_kind_enum"]
+          lap_id?: string
+          motif?: string | null
+          session_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lap_marks_author_id_fkey"
+            columns: ["author_id"]
+            isOneToOne: false
+            referencedRelation: "admin_ritual_dispatches_view"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "lap_marks_author_id_fkey"
+            columns: ["author_id"]
+            isOneToOne: false
+            referencedRelation: "coach_pilots_view"
+            referencedColumns: ["pilot_id"]
+          },
+          {
+            foreignKeyName: "lap_marks_author_id_fkey"
+            columns: ["author_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lap_marks_lap_id_fkey"
+            columns: ["lap_id"]
+            isOneToOne: false
+            referencedRelation: "laps"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lap_marks_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "day_rollups"
+            referencedColumns: ["best_session_id"]
+          },
+          {
+            foreignKeyName: "lap_marks_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "telemetry_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       laps: {
         Row: {
           avg_speed_kmh: number | null
@@ -9278,6 +9351,13 @@ export type Database = {
       heritage_pack_status_enum: "active" | "completed" | "expired"
       insurance_option_enum: "personal" | "oxv"
       kyc_status_enum: "pending" | "validated" | "rejected" | "expired"
+      lap_mark_kind_enum:
+        | "gene_par_le_trafic"
+        | "tour_de_chauffe"
+        | "essai_reglage"
+        | "incident"
+        | "representatif"
+        | "ecarte"
       media_type_enum:
         | "photo"
         | "video_drone"
@@ -9502,6 +9582,14 @@ export const Constants = {
       heritage_pack_status_enum: ["active", "completed", "expired"],
       insurance_option_enum: ["personal", "oxv"],
       kyc_status_enum: ["pending", "validated", "rejected", "expired"],
+      lap_mark_kind_enum: [
+        "gene_par_le_trafic",
+        "tour_de_chauffe",
+        "essai_reglage",
+        "incident",
+        "representatif",
+        "ecarte",
+      ],
       media_type_enum: [
         "photo",
         "video_drone",
