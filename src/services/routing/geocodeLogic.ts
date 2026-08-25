@@ -64,7 +64,7 @@ export interface HitGeocode {
 export function validerRecherche(q: string): string | null {
   const propre = q.trim();
   if (propre.length === 0) return 'Saisissez une adresse ou un lieu.';
-  if (propre.length < RECHERCHE_MIN) return `Il faut au moins ${RECHERCHE_MIN} caractères.`;
+  if (propre.length < RECHERCHE_MIN) return `${RECHERCHE_MIN} caractères au minimum.`;
   return null;
 }
 

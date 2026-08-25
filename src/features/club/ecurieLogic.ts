@@ -54,7 +54,7 @@ export const SEUIL_ANNUAIRE = 20;
 export function validerNomEcurie(nom: string): string | null {
   const propre = nom.trim();
   if (propre.length === 0) return 'Le nom de votre écurie ne peut pas être vide.';
-  if (propre.length < NOM_MIN) return `Il faut au moins ${NOM_MIN} caractères.`;
+  if (propre.length < NOM_MIN) return `${NOM_MIN} caractères au minimum.`;
   if (propre.length > NOM_MAX) return `${NOM_MAX} caractères au maximum.`;
   return null;
 }
