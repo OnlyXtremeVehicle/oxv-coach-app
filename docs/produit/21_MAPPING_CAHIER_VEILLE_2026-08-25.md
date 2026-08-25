@@ -90,7 +90,21 @@ arbitrage du fondateur avant toute ligne de code (voir § Conflits).
 
 | 6 « Tours » | M05 | `validationToursLogic` (classement propre / hors chrono / suspect, chaque marque portant son **fait** chiffré, écart net robuste par MAD **dans les deux sens**, référence = meilleur tour PROPRE avec réserve factuelle si le meilleur brut ne l'est pas) + section Tours (tours douteux atténués, détail au toucher, réserve près du chrono de référence) — 28 tests dont un **verrou lexical** : aucune sortie ne peut prononcer « trafic », « drapeau » ni une faute |
 
-**Décision de schéma en attente (M05, marquage manuel).** Le recensement de
+| 6b « Déclaration » | M05 (humain) | Table **`lap_marks` appliquée en production** le 25/08 + types, `lapMarksService`, `marquesTourLogic`, et la Sheet « Déclarer » de la section Tours — 17 tests dont six verrouillent la **cohabitation** : le fait de la machine survit à la déclaration humaine, aucun genre ne retouche le classement |
+
+**Décision de schéma — RENDUE le 25/08 : table dédiée `lap_marks`.** Appliquée
+et vérifiée (7 colonnes, 3 politiques select/insert/delete, **aucune UPDATE** —
+une marque se retire, elle ne se réécrit pas ; RLS active, trigger de cohérence
+séance, zéro grant `anon`, zéro alerte de sécurité). Trois faits dictés par
+l'inspection des politiques réelles plutôt que supposées : `laps` n'a pas la
+politique « ami » de `telemetry_sessions` ; le coach écrit *sa* ligne à côté
+sans toucher le tour ; et surtout **`purge_user_data` anonymise la ligne `users`
+au lieu de la supprimer** — le cascade ne se serait jamais déclenché, la purge
+est donc patchée à l'ancre avec échec bruyant si l'ancre bouge. Au passage, le
+registre `APPLIQUEES_EN_PRODUCTION.txt` avait 19 versions de retard : remis en
+phase.
+
+**Historique de la décision (conservé) :** Le recensement de
 `database.types.ts` est formel : `laps` n'a ni `tags`, ni `status`, ni `jsonb`,
 ni auteur, ni motif — ses trois booléens (`is_outlap`, `is_inlap`,
 `is_best_lap`) sont des calculs, pas des déclarations. Aucune table
