@@ -238,3 +238,30 @@
 20260804174727|registrations_revoke_update_etape1_correctif (idem — liste corrigée)
 20260811232100|j3_21f_pilot_notes_ressenti_structure   (.sql déposé le 12/08)
 20260811232130|j3_21d_eligibility_declared_at_et_rpc    (.sql déposé le 12/08)
+
+# --- Remise en phase du 25/08/2026 -------------------------------------------
+# Ce registre s'était arrêté au 11/08 alors que la production avait avancé de
+# dix-neuf versions. Les lignes ci-dessous sont recopiées de la chaîne
+# schema_migrations réelle (source faisant autorité, relevée le 25/08) — elles
+# constatent, elles ne décident rien.
+20260812162916|sec_pavillon_fonction_fermee_a_anon
+20260812171100|rgpd_purge_tables_oubliees_v2
+20260812171211|rgpd_retention_resend_events
+20260812190102|rgpd_resend_events_minimisation_retroactive
+20260812193052|rgpd_founding_members_effacement_possible
+20260812193156|rgpd_registrations_vehicle_on_delete_set_null
+20260812193307|rgpd_debloquer_effacement_quatre_verrous
+20260813034729|gamme_partenaire_plans_engagements
+20260813034747|gamme_partenaire_correctif_grants_admin
+20260813142457|a13_registrations_garde_pilote
+20260813202604|j6_note_de_seance
+20260813202914|j6_reprise_analyses_fabriquees
+20260813202927|j6_coach_activity_facts
+20260813202938|j6_w_regularity_vers_w_consistency
+20260813203047|j6_drop_users_is_admin
+20260814210000|j6_w_regularity_vers_w_consistency        (rejeu daté — deux versions, même nom)
+20260817021552|ecurie_insigne_sorties_pack
+20260819130759|grant_execute_is_my_coach_to_anon
+20260819130916|grant_execute_policy_helpers_to_anon
+
+20260825140000|m05_lap_marks_declarations_humaines       (déclarations humaines sur un tour ; patche aussi purge_user_data)
