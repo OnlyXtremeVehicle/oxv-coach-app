@@ -9,17 +9,22 @@
 
 import { useCallback, useState } from 'react';
 import { Text, View } from 'react-native';
+import { Image } from 'expo-image';
 import { router, useFocusEffect } from 'expo-router';
 import Toast from 'react-native-toast-message';
 
 import {
+  type InsigneAModerer,
   type ModerationReport,
   type ModerationStatus,
+  listInsignesAModerer,
   listReports,
   reasonLabel,
   resolveReport,
+  reviewInsigne,
   takeReport,
 } from '@/services/moderationService';
+import { urlInsigne } from '@/features/club/insigneService';
 import { theme } from '@/theme/v2';
 import { AppBar } from '@/ui/AppBar';
 import { Button } from '@/ui/Button';
@@ -54,6 +59,13 @@ export default function AdminModerationScreen() {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [resolution, setResolution] = useState('');
   const [busy, setBusy] = useState(false);
+  /**
+   * Les insignes en attente. Une file DISTINCTE des signalements : un
+   * signalement est une plainte, un insigne est une demande. Les mélanger
+   * ferait lire un capitaine comme un fautif.
+   */
+  const [insignes, setInsignes] = useState<InsigneAModerer[]>([]);
+  const [apercus, setApercus] = useState<Record<string, string>>({});
 
   const reload = useCallback(() => {
     let cancelled = false;
@@ -75,12 +87,46 @@ export default function AdminModerationScreen() {
           setLoading(false);
         }
       });
+    // La file des insignes se charge en parallèle et ne peut PAS faire échouer
+    // l'écran : un signalement non traité coûte plus qu'un insigne non vu.
+    listInsignesAModerer()
+      .then(async (rows) => {
+        if (cancelled) return;
+        setInsignes(rows);
+        // Le bucket n'est pas public : chaque aperçu demande une URL signée.
+        const urls: Record<string, string> = {};
+        for (const i of rows) {
+          const u = await urlInsigne(i.chemin);
+          if (u) urls[i.crewId] = u;
+        }
+        if (!cancelled) setApercus(urls);
+      })
+      .catch(() => {
+        if (!cancelled) setInsignes([]);
+      });
+
     return () => {
       cancelled = true;
     };
   }, []);
 
   useFocusEffect(reload);
+
+  /**
+   * Trancher sur un insigne. Un refus n'efface PAS le fichier : le capitaine
+   * doit pouvoir lire « votre insigne a été refusé » en voyant lequel, sans quoi
+   * il retéléversera la même image.
+   */
+  async function onInsigne(crewId: string, valide: boolean) {
+    setBusy(true);
+    const res = await reviewInsigne(crewId, valide);
+    setBusy(false);
+    if (!res.ok) {
+      Toast.show({ type: 'error', text1: res.error ?? "La décision n'a pas été enregistrée." });
+      return;
+    }
+    reload();
+  }
 
   /**
    * Prendre en charge un signalement : l'échec se disait par le silence.
@@ -128,6 +174,59 @@ export default function AdminModerationScreen() {
         <View style={{ marginBottom: theme.spacing.md }}>
           <RoleBadge role="admin" />
         </View>
+        {/* ── LES INSIGNES ────────────────────────────────────────────────
+            Cette file n'existait pas, et c'est ce qui rendait la voie
+            « téléversement » morte : le fail-closed marchait, mais rien ne
+            pouvait publier une image. Aucun capitaine n'aurait vu la sienne.
+
+            Le bloc DISPARAÎT quand la file est vide — un « aucun insigne en
+            attente » permanent ferait du bruit sur l'écran des signalements,
+            qui est le travail quotidien du modérateur. */}
+        {insignes.length > 0 ? (
+          <View style={{ marginBottom: theme.spacing.xl }}>
+            <Text style={s.eyebrow}>INSIGNES EN ATTENTE</Text>
+            <View style={{ marginTop: theme.spacing.md, gap: theme.spacing.sm }}>
+              {insignes.map((i) => (
+                <Card
+                  key={i.crewId}
+                  accessibilityLabel={`Insigne de ${i.nom ?? 'une écurie sans nom'}`}
+                >
+                  <View style={s.head}>
+                    <Text style={s.reason}>{i.nom ?? 'Écurie sans nom'}</Text>
+                  </View>
+                  {apercus[i.crewId] ? (
+                    <Image
+                      source={{ uri: apercus[i.crewId] }}
+                      style={{ width: 96, height: 96, marginTop: theme.spacing.sm }}
+                      contentFit="contain"
+                      accessibilityLabel="Aperçu de l’insigne proposé"
+                    />
+                  ) : (
+                    // Une URL signée peut ne pas revenir. On le DIT : trancher
+                    // sur une image qu'on n'a pas vue est exactement ce que
+                    // cette file existe pour empêcher.
+                    <Text style={s.meta}>L’aperçu n’a pas pu être chargé.</Text>
+                  )}
+                  <View style={{ marginTop: theme.spacing.md, gap: theme.spacing.sm }}>
+                    <Button
+                      label="Valider"
+                      onPress={() => onInsigne(i.crewId, true)}
+                      loading={busy}
+                      disabled={!apercus[i.crewId]}
+                    />
+                    <Button
+                      label="Refuser"
+                      variant="ghost"
+                      onPress={() => onInsigne(i.crewId, false)}
+                      loading={busy}
+                    />
+                  </View>
+                </Card>
+              ))}
+            </View>
+          </View>
+        ) : null}
+
         <Text style={s.eyebrow}>FILE DES SIGNALEMENTS</Text>
         <Text style={s.title} accessibilityRole="header">
           Signalements.

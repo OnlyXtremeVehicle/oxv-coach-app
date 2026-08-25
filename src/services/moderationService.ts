@@ -204,3 +204,78 @@ export function reasonLabel(r: ModerationReason): string {
       return 'Autre';
   }
 }
+
+// ---------------------------------------------------------------------------
+// INSIGNES D'ÉCURIE — la file qui n'existait pas
+// ---------------------------------------------------------------------------
+
+/**
+ * La modération des insignes manquait, et c'est ce qui rendait la voie
+ * « téléversement » morte en pratique.
+ *
+ * La migration du 17/08 a posé le fail-closed : une image part en `en_attente`
+ * et n'est visible que de son écurie. Correct — mais rien ne pouvait la faire
+ * passer à `valide`, donc AUCUN capitaine n'aurait jamais vu son insigne publié.
+ * La fonctionnalité était livrée à moitié.
+ *
+ * Aucune migration ici : `crews_admin_all` autorise déjà l'admin à écrire, et
+ * ajouter un RPC pour ce que la RLS permet déjà serait une couche de plus sans
+ * garantie de plus.
+ */
+export interface InsigneAModerer {
+  crewId: string;
+  /** Nom de l'écurie, ou `null` si elle n'a pas encore été baptisée. */
+  nom: string | null;
+  chemin: string;
+  soumisLe: string | null;
+}
+
+/** Les insignes en attente, les plus anciens d'abord — une file, pas une pile. */
+export async function listInsignesAModerer(): Promise<InsigneAModerer[]> {
+  const { data, error } = await supabase
+    .from('crews')
+    .select('id, name, insigne_image_path, insigne_updated_at')
+    .eq('insigne_status', 'en_attente')
+    .not('insigne_image_path', 'is', null)
+    .order('insigne_updated_at', { ascending: true });
+
+  if (error) {
+    console.warn('[OXV][moderation] listInsignesAModerer :', error.message);
+    return [];
+  }
+  return (data ?? [])
+    .filter((c) => typeof c.insigne_image_path === 'string')
+    .map((c) => ({
+      crewId: c.id,
+      nom: c.name ?? null,
+      chemin: c.insigne_image_path as string,
+      soumisLe: c.insigne_updated_at ?? null,
+    }));
+}
+
+/**
+ * Tranche sur un insigne. `valide: false` REFUSE sans effacer le fichier.
+ *
+ * Le chemin est conservé volontairement : le capitaine doit pouvoir lire
+ * « votre insigne a été refusé » en voyant lequel. Effacer la ligne le laisserait
+ * devant une absence muette, et il retéléverserait la même image.
+ */
+export async function reviewInsigne(
+  crewId: string,
+  valide: boolean
+): Promise<{ ok: boolean; error?: string }> {
+  const { data: auth } = await supabase.auth.getUser();
+  const uid = auth?.user?.id ?? null;
+
+  const { error } = await supabase
+    .from('crews')
+    .update({
+      insigne_status: valide ? 'valide' : 'refuse',
+      insigne_reviewed_at: new Date().toISOString(),
+      insigne_reviewed_by: uid,
+    })
+    .eq('id', crewId);
+
+  if (error) return { ok: false, error: error.message };
+  return { ok: true };
+}
