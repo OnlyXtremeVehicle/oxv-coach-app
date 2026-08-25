@@ -46,6 +46,13 @@ function baseDepuisBreakdown(brut: unknown): 'complete' | 'pilote-seul' | 'aucun
 export interface SessionSnapshot {
   sessionId: string;
   startedAt: string;
+  /**
+   * Circuit et véhicule de la séance, tels que la ligne les porte — `null` si
+   * non renseignés. Servent au score de comparabilité (M09) : l'inconnu y coûte
+   * des points et une raison, jamais assimilé à « identique ».
+   */
+  circuitId: string | null;
+  vehicleId: string | null;
   marginGlobal: number | null;
   /**
    * SUR QUOI LA MARGE REPOSE — `null` pour les lignes antérieures au 14/08/2026.
@@ -80,7 +87,7 @@ export async function loadSessionSnapshot(sessionId: string): Promise<SessionSna
     supabase
       .from('telemetry_sessions')
       .select(
-        'id, started_at, best_lap_seconds, lap_count, app_session_analyses(margin_global, margin_zone, margin_breakdown)'
+        'id, started_at, circuit_id, vehicle_id, best_lap_seconds, lap_count, app_session_analyses(margin_global, margin_zone, margin_breakdown)'
       )
       .eq('id', sessionId)
       .maybeSingle(),
@@ -128,6 +135,10 @@ export async function loadSessionSnapshot(sessionId: string): Promise<SessionSna
   return {
     sessionId: row.id as string,
     startedAt: row.started_at as string,
+    circuitId:
+      typeof row.circuit_id === 'string' && row.circuit_id.length > 0 ? row.circuit_id : null,
+    vehicleId:
+      typeof row.vehicle_id === 'string' && row.vehicle_id.length > 0 ? row.vehicle_id : null,
     marginGlobal:
       firstAnalysis?.margin_global !== null && firstAnalysis?.margin_global !== undefined
         ? Number(firstAnalysis.margin_global)

@@ -31,10 +31,18 @@ import { useEffect, useMemo, useState } from 'react';
 import { StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import Animated from 'react-native-reanimated';
 
+import { fontSize } from '@/theme/v2';
 import { colors, radius, space, typo, useFirstViewport, useReduceMotion } from '@/ui/v2';
 import { CourbeDelta } from '@/components/telemetry/CourbeDelta';
 import { choisitPaireTours, type TourCandidat } from '@/features/data/choixPaireTours';
+import { formatDeltaMs } from '@/features/data/comparerLogic';
+import {
+  calculeOpportunites,
+  type OpportunitesTour,
+  type SegmentEcart,
+} from '@/features/data/opportunitesLogic';
 import { reperesDepuisSegments, type SegmentSituable } from '@/features/data/reperesVirages';
+import type { Repere } from '@/telemetry/courbeDelta';
 import { loadDeltaEntreTours, TEXTE_ABSENCE, type DeltaEntreTours } from '@/services/deltaService';
 
 export interface SectionDeltaProps {
@@ -104,6 +112,19 @@ export function SectionDelta({
     return reperesDepuisSegments(segments, grille[grille.length - 1]);
   }, [resultat, segments]);
 
+  /**
+   * Les écarts locaux par segment (module M07), calculés sur LE MÊME delta que
+   * la courbe — jamais un second calcul qui pourrait diverger d'elle. Les
+   * entrées de virages servent de frontières quand elles existent ; sinon la
+   * découpe régulière de 100 m du module.
+   */
+  const opportunites = useMemo(() => {
+    const delta = resultat?.delta ?? null;
+    if (!delta) return null;
+    const bornesM = reperes.map((r) => r.distanceM);
+    return calculeOpportunites(delta, bornesM.length > 0 ? { bornesM } : undefined);
+  }, [resultat, reperes]);
+
   // Moins de deux tours chronométrés : rien à comparer, et on le dit.
   if (!paire) {
     return (
@@ -139,6 +160,13 @@ export function SectionDelta({
               fait.
             </Text>
           ) : null}
+          {opportunites && resultat.delta ? (
+            <BlocOpportunites
+              opportunites={opportunites}
+              reperes={reperes}
+              step={resultat.delta.step}
+            />
+          ) : null}
         </>
       ) : (
         <View style={styles.carteVide}>
@@ -152,6 +180,69 @@ export function SectionDelta({
         </View>
       )}
     </Animated.View>
+  );
+}
+
+/**
+ * Nom d'un segment d'écart : le virage dont l'entrée est sa frontière de
+ * départ, sinon ses bornes en mètres. La correspondance se fait par INDEX de
+ * grille — c'est ainsi que le module rabat les bornes (`round(borne / pas)`),
+ * et refaire la même conversion est le seul moyen de retomber juste.
+ */
+function nomSegment(seg: SegmentEcart, reperes: readonly Repere[], step: number): string {
+  if (step > 0) {
+    const idxDebut = Math.round(seg.debutM / step);
+    const repere = reperes.find((r) => Math.round(r.distanceM / step) === idxDebut);
+    if (repere) return repere.nom;
+  }
+  return `${Math.round(seg.debutM)}–${Math.round(seg.finM)} m`;
+}
+
+/**
+ * Les deux-trois segments à plus forte perte locale, sous la courbe — l'ordre
+ * du potentiel, jamais un classement de fautes : aucune cause n'est attribuée.
+ * La ligne de réconciliation dit d'où viennent les chiffres : la somme des
+ * segments retombe sur le delta du tour, et l'écran affiche l'écart mesuré.
+ */
+function BlocOpportunites({
+  opportunites,
+  reperes,
+  step,
+}: {
+  opportunites: OpportunitesTour;
+  reperes: readonly Repere[];
+  /** Pas de la grille du delta, en mètres — celui-là même du calcul amont. */
+  step: number;
+}) {
+  // Positif = temps rendu par le tour courant. Les segments arrivent déjà triés
+  // par écart décroissant : les trois premiers positifs sont les plus fortes
+  // pertes locales.
+  const pertes = opportunites.segments.filter((s) => s.ecartLocalS > 0).slice(0, 3);
+
+  return (
+    <View style={styles.opportunites}>
+      <Text style={styles.opportunitesTitre}>OÙ LE TEMPS SE REND LE PLUS</Text>
+      {pertes.length > 0 ? (
+        pertes.map((seg) => (
+          <Text key={`${seg.debutM}-${seg.finM}`} style={styles.opportunitesLigne}>
+            {`${nomSegment(seg, reperes, step)} · ${formatDeltaMs(seg.ecartLocalS * 1000)}`}
+          </Text>
+        ))
+      ) : (
+        <Text style={styles.note}>
+          Aucun segment où le tour lu rend du temps sur cette comparaison.
+        </Text>
+      )}
+      <Text style={styles.note}>
+        {`Écarts lus segment par segment sur la courbe ci-dessus.${
+          opportunites.ecartReconciliationS !== null
+            ? ` Somme des segments = delta du tour à ±${Math.round(
+                opportunites.ecartReconciliationS * 1000
+              )} ms.`
+            : ''
+        }`}
+      </Text>
+    </View>
   );
 }
 
@@ -191,5 +282,24 @@ const styles = StyleSheet.create({
     color: colors.text.low,
     marginTop: space.sm,
     paddingHorizontal: space.xs,
+  },
+  // ── Écarts locaux par segment (M07), sous la courbe ──
+  opportunites: {
+    marginTop: space.md,
+    paddingHorizontal: space.xs,
+  },
+  opportunitesTitre: {
+    fontFamily: typo.mono,
+    fontSize: fontSize.eyebrow,
+    letterSpacing: 1.2,
+    color: colors.text.low,
+    marginBottom: space.sm,
+  },
+  opportunitesLigne: {
+    fontFamily: typo.mono,
+    fontSize: fontSize.small,
+    color: colors.text.hi,
+    fontVariant: ['tabular-nums'],
+    paddingVertical: 2,
   },
 });

@@ -52,6 +52,11 @@ import { StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 
 import {
+  type TourMetrique,
+  libelleStatut,
+  litEffetAvantApres,
+} from '@/features/coach/avantApresLogic';
+import {
   type EvenementFil,
   type FilSeance,
   type RegistreFil,
@@ -61,6 +66,8 @@ import {
 import { CarteSeanceFreinage } from '@/features/coach/CarteSeanceFreinage';
 import { chargerFilSeance } from '@/features/coach/filSeanceService';
 import { COACH_CONSOLE_MIN_WIDTH } from '@/lib/coachNav';
+import { fetchSessionLaps } from '@/services/sessionsService';
+import { type Lap } from '@/types/telemetry';
 import { theme } from '@/theme/v2';
 import { AppBar } from '@/ui/AppBar';
 import { Screen } from '@/ui/Screen';
@@ -115,6 +122,93 @@ function quand(ms: number | null): string | null {
   }
 }
 
+/**
+ * Un tour de `laps` → la forme que `litEffetAvantApres` consomme (M27).
+ *
+ * `valeur` est le TEMPS AU TOUR (`laps.duration_seconds`) — `null` si non
+ * mesuré, JAMAIS zéro. `valide` écarte sorties et rentrées : un tour d'entrée
+ * n'est pas un tour de référence, il n'entre dans aucune fenêtre.
+ */
+function tourMetriqueDepuisLap(lap: Lap): TourMetrique | null {
+  if (typeof lap.lap_number !== 'number' || !Number.isFinite(lap.lap_number)) return null;
+  const fin = Date.parse(lap.ended_at);
+  // NUMERIC PostgREST : peut arriver en chaîne au runtime malgré le type.
+  const duree = Number(lap.duration_seconds);
+  return {
+    tour: lap.lap_number,
+    instantMs: Number.isFinite(fin) ? fin : null,
+    valeur: Number.isFinite(duree) && duree > 0 ? duree : null,
+    valide: lap.is_outlap !== true && lap.is_inlap !== true,
+  };
+}
+
+/** « 1,23 s » (fr virgule), « — » si non calculable. */
+function secondes(v: number | null): string {
+  return v === null ? '—' : `${v.toFixed(2).replace('.', ',')} s`;
+}
+
+/** Effet médian SIGNÉ — le signe est un fait (la médiane a monté ou baissé). */
+function secondesSignees(v: number | null): string {
+  if (v === null) return '—';
+  const abs = Math.abs(v).toFixed(2).replace('.', ',');
+  return v < 0 ? `−${abs} s` : v > 0 ? `+${abs} s` : `${abs} s`;
+}
+
+/**
+ * Le bloc AVANT / APRÈS d'une intervention marquée (M27). LECTURE SEULE :
+ * aucun bouton, rien n'écrit chez le pilote. L'effet est une OBSERVATION —
+ * le statut et les réserves du module sont affichés tels quels.
+ */
+function BlocAvantApres({ e, tours }: { e: EvenementFil; tours: readonly TourMetrique[] }) {
+  // Le tour ancre l'intervention ; `created_at` (instant d'ÉCRITURE de la
+  // note, souvent des jours plus tard) n'est pas un instant de séance — on ne
+  // le passe pas au module.
+  const effet = litEffetAvantApres({ tour: e.tour, instantMs: null }, tours);
+
+  const avant = [...effet.fenetres.toursAvant].sort((a, b) => a - b);
+  const apres = [...effet.fenetres.toursApres].sort((a, b) => a - b);
+  const chiffres =
+    effet.effetMedian !== null
+      ? `Effet médian ${secondesSignees(effet.effetMedian)} · dispersion ${secondes(
+          effet.dispersionAvant
+        )} avant, ${secondes(effet.dispersionApres)} après`
+      : null;
+  const provenance =
+    effet.effetMedian !== null
+      ? `Médianes des temps au tour (laps) — tours ${avant.join(' · ')} contre ${apres.join(' · ')}.`
+      : null;
+
+  return (
+    <View
+      style={s.ligne}
+      accessible
+      accessibilityLabel={[
+        `Avant après, tour ${e.tour}`,
+        e.titre,
+        libelleStatut(effet.statut),
+        chiffres,
+        provenance,
+        ...effet.reserves,
+      ]
+        .filter(Boolean)
+        .join('. ')}
+    >
+      <View style={[s.trait, { backgroundColor: COULEUR_REGISTRE.coach }]} />
+      <View style={s.ligneCorps}>
+        <Text style={s.ligneMeta}>{`Tour ${e.tour} · ${e.titre}`}</Text>
+        <Text style={[s.ligneTitre, { color: palette.cream }]}>{libelleStatut(effet.statut)}</Text>
+        {chiffres !== null && <Text style={s.aaChiffres}>{chiffres}</Text>}
+        {provenance !== null && <Text style={s.ligneTexte}>{provenance}</Text>}
+        {effet.reserves.map((reserve) => (
+          <Text key={reserve} style={s.ligneTexte}>
+            · {reserve}
+          </Text>
+        ))}
+      </View>
+    </View>
+  );
+}
+
 /** Une ligne du fil. Le trait de gauche porte le registre — pas d'étiquette. */
 function LigneFil({ e, avecHeure }: { e: EvenementFil; avecHeure: boolean }) {
   const couleur = COULEUR_REGISTRE[e.registre];
@@ -164,6 +258,7 @@ function CorpsFil({
   sessionId,
   isConsole,
   panne,
+  tours,
 }: {
   fil: FilSeance;
   /** Passé jusqu'ici pour la carte : le fil lui-même n'en a pas besoin. */
@@ -171,7 +266,16 @@ function CorpsFil({
   isConsole: boolean;
   /** Vrai si une source au moins n'a pas répondu — le fil est incomplet. */
   panne: boolean;
+  /** Les tours et leur temps, pour l'avant/après (M27). Best-effort. */
+  tours: readonly TourMetrique[];
 }) {
+  // Les interventions MARQUÉES : ce que le coach a posé ET que la mesure (ou
+  // sa saisie) rattache à un tour. Sans tour, pas de fenêtres appariées — le
+  // bloc n'invente pas un ancrage.
+  const interventions = [...fil.entete, ...fil.chronologie].filter(
+    (e) => e.registre === 'coach' && typeof e.tour === 'number' && Number.isFinite(e.tour)
+  );
+
   if (filEstVide(fil)) {
     return (
       <View style={s.vide}>
@@ -233,6 +337,22 @@ function CorpsFil({
         </View>
       )}
 
+      {/*
+        AVANT / APRÈS (M27) — un bloc par intervention marquée d'un tour.
+        Section MASQUÉE quand aucune intervention n'est ancrée : un fil sans
+        marqueur n'a rien à observer, on ne fabrique pas de fenêtre. Lecture
+        seule — l'effet est une observation du coach pour le coach, rien
+        n'écrit chez le pilote.
+      */}
+      {interventions.length > 0 && (
+        <View style={s.bande}>
+          <SectionLabel>AVANT / APRÈS VOS INTERVENTIONS</SectionLabel>
+          {interventions.map((e) => (
+            <BlocAvantApres key={`avant-apres-${e.id}`} e={e} tours={tours} />
+          ))}
+        </View>
+      )}
+
       {fil.chronologie.length === 0 && fil.entete.length > 0 && (
         // On CONSTATE l'absence, on n'en donne pas la cause : une première
         // rédaction affirmait « les tours n'ont pas été enregistrés », ce que
@@ -255,6 +375,10 @@ export default function CoachFilScreen() {
   const [chargement, setChargement] = useState(true);
   const [echec, setEchec] = useState(false);
   const [cleRecharge, setCleRecharge] = useState(0);
+  // Tours + temps pour l'avant/après (M27). Best-effort : un échec rend une
+  // liste vide et le module dit alors honnêtement « non testée », il ne bloque
+  // pas le fil.
+  const [tours, setTours] = useState<readonly TourMetrique[]>([]);
 
   useEffect(() => {
     if (!sessionId) {
@@ -277,6 +401,23 @@ export default function CoachFilScreen() {
         setEchec(true);
         setChargement(false);
       });
+    return () => {
+      annule = true;
+    };
+  }, [sessionId, cleRecharge]);
+
+  // Les tours de la capture, pour les fenêtres avant/après. `fetchSessionLaps`
+  // rend déjà [] sur erreur (mode non strict) : pas d'état d'échec dédié ici.
+  useEffect(() => {
+    if (!sessionId) return;
+    let annule = false;
+    setTours([]);
+    fetchSessionLaps(sessionId)
+      .then((laps) => {
+        if (annule) return;
+        setTours(laps.map(tourMetriqueDepuisLap).filter((t): t is TourMetrique => t !== null));
+      })
+      .catch(() => undefined);
     return () => {
       annule = true;
     };
@@ -310,7 +451,13 @@ export default function CoachFilScreen() {
           onRetry={relancer}
         >
           {fil !== null ? (
-            <CorpsFil fil={fil} sessionId={sessionId ?? null} isConsole={isConsole} panne={panne} />
+            <CorpsFil
+              fil={fil}
+              sessionId={sessionId ?? null}
+              isConsole={isConsole}
+              panne={panne}
+              tours={tours}
+            />
           ) : null}
         </StateWrapper>
       </View>
@@ -381,6 +528,15 @@ const s = StyleSheet.create({
     fontSize: fontSize.small,
     lineHeight: 20,
     color: palette.creamMute,
+    marginTop: spacing.xs,
+  },
+  // Chiffres de l'avant/après (M27) — mono tabulaire, comme tout chiffre mesuré.
+  aaChiffres: {
+    fontFamily: fonts.mono,
+    fontSize: fontSize.small,
+    letterSpacing: 0.3,
+    color: palette.cream,
+    fontVariant: ['tabular-nums'],
     marginTop: spacing.xs,
   },
   note: {

@@ -93,7 +93,7 @@ export function ressentiSaison(themes: readonly (string | null)[]): RessentiSais
       total,
       comptes,
       phrase: null,
-      raison: `Il faut au moins ${MINIMUM_REPONSES} retours d'après-run pour que cette lecture ait un sens. Vous en avez ${total}.`,
+      raison: `Cette lecture demande au moins ${MINIMUM_REPONSES} retours d'après-run. Vous en avez ${total}.`,
     };
   }
 

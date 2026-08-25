@@ -88,10 +88,29 @@ import {
   useFirstViewport,
   useReduceMotion,
 } from '@/ui/v2';
+import { fontSize } from '@/theme/v2';
 import { couleurTexteSure } from '@/ui/v2/couleurTexte';
 import { domaineGradue, domaineSymetrique, graduations } from '@/ui/v2/courbeCanalLogic';
 import { raisonsResume } from '@/features/data/raisonAbsence';
 import { formatDeltaMs } from '@/features/data/comparerLogic';
+import {
+  decouperZones,
+  evaluerConfianceTour,
+  VERSION_CONFIANCE_ZONE,
+  type ConfianceTour,
+  type NiveauConfiance,
+} from '@/features/data/confianceLogic';
+import { longueurDerivee, versTramesQualite } from '@/features/data/confianceSource';
+import { calculeTendanceSession } from '@/features/data/progressionLogic';
+import {
+  lireChevauchement,
+  lireRotation,
+  type EchantillonRotation,
+  type EchantillonVirage,
+  type ResultatChevauchement,
+  type ResultatRotation,
+} from '@/features/data/virageFinLogic';
+import { DEG_VERS_RAD } from '@/services/sessionTelemetryMapping';
 import { polylineToPathD } from '@/components/motion/pathMath';
 import { AnatomieViz } from '@/components/insights/AnatomieViz';
 import { DispersionViz } from '@/components/insights/DispersionViz';
@@ -129,6 +148,7 @@ import {
   loadSessionTrajectory,
   loadSpeedTracePoints,
   loadThrottleBrakePoints,
+  loadTramesQualiteTour,
 } from '@/services/sessionTelemetryService';
 import type { SessionFrame } from '@/services/sessionTelemetryMapping';
 import { loadWeatherCorrelation } from '@/services/weatherCorrelationService';
@@ -645,6 +665,21 @@ export default function SeanceScreen() {
     );
   }
 
+  /**
+   * Tour de référence de la séance : celui que la base désigne, sinon le
+   * meilleur tour chronométré lu. `null` quand rien n'est chronométré — la
+   * confiance de mesure et les constats de fin de virage n'inventent alors
+   * aucun tour à lire.
+   */
+  const tourReference = (() => {
+    if (data.session.best_lap_number !== null && data.session.best_lap_number !== undefined) {
+      return data.session.best_lap_number;
+    }
+    const valides = data.laps.filter((l) => !l.is_outlap && !l.is_inlap && l.duration_seconds > 0);
+    if (valides.length === 0) return null;
+    return valides.reduce((a, b) => (lapMs(a) <= lapMs(b) ? a : b)).lap_number;
+  })();
+
   return (
     <View style={styles.root}>
       <Animated.ScrollView
@@ -667,6 +702,13 @@ export default function SeanceScreen() {
           <View style={styles.niveaux}>
             <NiveauxRestitution seance={data.etatSeance} />
           </View>
+          {/*
+            La confiance de MESURE du tour de référence (module M03+) : une
+            note par la pire zone, jamais sans ses motifs — la feuille les
+            détaille. Elle vit sous « ce que la séance permet de lire » parce
+            qu'elle en est le prolongement : à quel point la lecture est solide.
+          */}
+          <ConfianceMesure sessionId={data.session.id} lapNumber={tourReference} />
         </View>
 
         {/* ── 2 · TOURS ───────────────────────────────────────────────── */}
@@ -689,6 +731,12 @@ export default function SeanceScreen() {
             debutSeanceIso={data.session.started_at}
             laps={data.laps}
           />
+          {/*
+            La tendance de la séance (module M06) : temps en baisse, stables ou
+            en hausse — le fait, jamais la cause. Elle vient APRÈS les barres :
+            on lit d'abord les tours un à un, puis ce qu'ils dessinent ensemble.
+          */}
+          <TendanceTours laps={data.laps} />
         </View>
 
         {/* ── 3 · DELTA ───────────────────────────────────────────────── */}
@@ -757,6 +805,9 @@ export default function SeanceScreen() {
             ggPoints={data.ggPoints}
             flowPoints={data.flowPoints}
             insightsFailed={data.failed.constats === true}
+            sessionId={data.session.id}
+            tourReference={tourReference}
+            segments={data.segments}
           />
         </View>
 
@@ -938,6 +989,199 @@ function ResumeSection({ session, laps }: { session: TelemetrySession; laps: Lap
           style={styles.hairlineCell}
         />
       </View>
+    </View>
+  );
+}
+
+/** Libellés UI des niveaux de confiance — vocabulaire unique de l'écran. */
+const LIBELLE_CONFIANCE: Record<NiveauConfiance, string> = {
+  haute: 'Confiance haute',
+  moyenne: 'Confiance moyenne',
+  faible: 'Confiance faible',
+};
+
+/**
+ * Confiance de MESURE du tour de référence (module M03+, `confianceLogic`).
+ *
+ * Une ligne : la note (la PIRE zone mesurée, jamais une moyenne) et sa
+ * couverture — et une feuille qui donne les MOTIFS, zone par zone. Jamais une
+ * note seule : un score opaque n'apprend rien et ne se conteste pas.
+ *
+ * La position curviligne des trames est DÉRIVÉE (∫ v dt, `confianceSource`) ;
+ * une trame sans vitesse est « non située », comptée, jamais placée.
+ */
+function ConfianceMesure({
+  sessionId,
+  lapNumber,
+}: {
+  sessionId: string;
+  /** Tour de référence. null = rien de chronométré, rien à noter. */
+  lapNumber: number | null;
+}) {
+  const [etat, setEtat] = useState<'charge' | 'pret' | 'erreur'>('charge');
+  const [confiance, setConfiance] = useState<ConfianceTour | null>(null);
+  const [ouvert, setOuvert] = useState(false);
+
+  useEffect(() => {
+    if (lapNumber === null) return;
+    let annule = false;
+    setEtat('charge');
+    loadTramesQualiteTour(sessionId, lapNumber)
+      .then((lignes) => {
+        if (annule) return;
+        const trames = versTramesQualite(lignes);
+        const longueur = longueurDerivee(trames);
+        // Sans trame située, il n'y a rien à découper ni à noter : l'absence
+        // se dit en clair, elle ne devient pas une « confiance faible ».
+        setConfiance(
+          trames.length > 0 && longueur !== null
+            ? evaluerConfianceTour(trames, decouperZones(longueur))
+            : null
+        );
+        setEtat('pret');
+      })
+      .catch(() => {
+        if (!annule) setEtat('erreur');
+      });
+    return () => {
+      annule = true;
+    };
+  }, [sessionId, lapNumber]);
+
+  // Pas de tour de référence : le Résumé dit déjà pourquoi. Rien à noter ici.
+  if (lapNumber === null) return null;
+  // Pas de spinner (doctrine) : la ligne apparaît quand elle sait.
+  if (etat === 'charge') return null;
+
+  if (etat === 'erreur' || confiance === null) {
+    return (
+      <Text style={styles.confianceAbsence}>
+        {etat === 'erreur'
+          ? 'Confiance de mesure non évaluée — les trames n’ont pas pu être lues.'
+          : `Confiance de mesure non évaluée — aucune trame exploitable sur le tour ${lapNumber}.`}
+      </Text>
+    );
+  }
+
+  const libelle = LIBELLE_CONFIANCE[confiance.confiance];
+  // Les zones qui expliquent la note : celles en confiance réduite ou sans
+  // trame. Les zones hautes n'ont rien à dire — leur silence est la norme.
+  const zonesReduites = confiance.zones.filter((z) => z.niveau !== 'haute');
+
+  return (
+    <View style={styles.confianceBloc}>
+      <ListRow
+        label="Confiance de mesure"
+        sublabel={`Tour ${lapNumber} · couverture ${Math.round(confiance.couverturePct)} %`}
+        value={libelle}
+        divider={false}
+        onPress={() => {
+          haptic('tap');
+          setOuvert(true);
+        }}
+        accessibilityLabel={`Confiance de mesure du tour ${lapNumber} : ${libelle.toLowerCase()}. Voir les motifs.`}
+      />
+      <Sheet visible={ouvert} onClose={() => setOuvert(false)} snapHeight={520}>
+        <ScrollView showsVerticalScrollIndicator={false}>
+          <SectionHeader eyebrow="CONFIANCE DE MESURE" title={libelle} />
+          <Text style={styles.sheetNote}>
+            {`Tour ${lapNumber} · couverture ${Math.round(
+              confiance.couverturePct
+            )} %. La note du tour est celle de sa zone la plus fragile — jamais une moyenne.`}
+          </Text>
+          {confiance.motifs.length > 0 ? (
+            confiance.motifs.map((m) => (
+              <Text key={m} style={styles.confianceMotif}>{`— ${m}`}</Text>
+            ))
+          ) : (
+            <Text style={styles.confianceMotif}>
+              Aucun motif de réserve sur les zones mesurées.
+            </Text>
+          )}
+          {zonesReduites.length > 0 ? (
+            <>
+              <SectionHeader eyebrow="ZONE PAR ZONE" />
+              {zonesReduites.map((z) => (
+                <View key={z.zone.nom} style={styles.confianceZone}>
+                  <Text style={styles.confianceZoneTitre}>
+                    {`${z.zone.nom} · ${
+                      z.niveau !== null ? LIBELLE_CONFIANCE[z.niveau] : 'non mesurée'
+                    }`}
+                  </Text>
+                  {z.motifs.map((m) => (
+                    <Text key={m} style={styles.confianceMotif}>{`— ${m}`}</Text>
+                  ))}
+                </View>
+              ))}
+            </>
+          ) : null}
+          <Text style={styles.sheetNote}>
+            {`Note calculée sur les canaux de qualité du boîtier (précision GPS, géométrie satellitaire, satellites, trous de liaison), le tour étant découpé en zones de distance. Seuils v${VERSION_CONFIANCE_ZONE}, à valider sur piste.`}
+          </Text>
+        </ScrollView>
+      </Sheet>
+    </View>
+  );
+}
+
+/** Motifs d'écart du module M06, rendus en français accentué à l'écran. */
+const LIBELLE_MOTIF_ECARTE: Record<string, string> = {
+  'non chronometre': 'non chronométré',
+  invalide: 'invalide',
+  'tour de stand': 'tour de stand',
+  chauffe: 'chauffe',
+};
+
+/**
+ * Tendance de la séance (module M06, `progressionLogic`) : le libellé factuel
+ * du module, l'amplitude estimée et le compte des tours retenus — et ce qui a
+ * été écarté, avec ses motifs. Le fait, jamais la cause.
+ */
+function TendanceTours({ laps }: { laps: Lap[] }) {
+  const tendance = useMemo(
+    () =>
+      calculeTendanceSession(
+        laps.map((l) => ({
+          index: l.lap_number,
+          tempsMs: l.duration_seconds > 0 ? lapMs(l) : null,
+          valide: true,
+          tags: [...(l.is_outlap ? ['outlap'] : []), ...(l.is_inlap ? ['inlap'] : [])],
+        }))
+      ),
+    [laps]
+  );
+
+  // Aucun tour : la section Tours affiche déjà son vide honnête.
+  if (laps.length === 0) return null;
+
+  const amplitude =
+    tendance.amplitudeMs !== null
+      ? `amplitude ${tendance.amplitudeMs >= 0 ? '+' : ''}${Math.round(tendance.amplitudeMs)} ms`
+      : null;
+  const retenus = `${tendance.toursRetenus} ${
+    tendance.toursRetenus > 1 ? 'tours retenus' : 'tour retenu'
+  }`;
+  const motifsEcartes = [...new Set(tendance.toursEcartes.map((t) => t.motif))]
+    .map((m) => LIBELLE_MOTIF_ECARTE[m] ?? m)
+    .join(', ');
+  const ecartes =
+    tendance.toursEcartes.length > 0
+      ? `${tendance.toursEcartes.length} écarté${
+          tendance.toursEcartes.length > 1 ? 's' : ''
+        } (${motifsEcartes})`
+      : null;
+
+  return (
+    <View style={styles.tendanceBloc}>
+      <Text style={styles.legendMono}>TENDANCE DE LA SÉANCE</Text>
+      <Text style={styles.tendanceLibelle}>{tendance.libelle}</Text>
+      <Text style={styles.tendanceDetail}>
+        {[amplitude, retenus, ecartes].filter(Boolean).join(' · ')}
+      </Text>
+      <Text style={styles.tendanceNote}>
+        Tendance estimée sur les temps au tour retenus (médiane des pentes de paires) ; les tours de
+        stand et de chauffe n’entrent pas dans le calcul.
+      </Text>
     </View>
   );
 }
@@ -2331,14 +2575,40 @@ function ConstatsSection({
   ggPoints,
   flowPoints,
   insightsFailed,
+  sessionId,
+  tourReference,
+  segments,
 }: {
   insights: SessionInsights | null;
   ggPoints: GGPoint[];
   flowPoints: FlowPoint[];
   insightsFailed: boolean;
+  sessionId: string;
+  /** Tour de référence de la séance — le passage lu par les constats M14/M15. */
+  tourReference: number | null;
+  /** Découpage du tracé : les fenêtres de virages des deux constats fins. */
+  segments: SegmentAnalysisRow[];
 }) {
   const [open, setOpen] = useState<ReadingKey | null>(null);
+  const [openVirageFin, setOpenVirageFin] = useState<'chevauchement' | 'rotation' | null>(null);
   const reading = open ? (READINGS.find((r) => r.key === open) ?? null) : null;
+
+  /**
+   * Les deux constats de FIN DE VIRAGE (M14/M15) lisent un passage : il leur
+   * faut un tour de référence ET au moins un virage à fenêtre connue. Sans
+   * l'un ou l'autre, la ligne reste visible, éteinte, avec sa raison — le même
+   * contrat que les six lectures.
+   */
+  const viragesFenetres = segments.filter(
+    (s) => s.startProgress !== null && s.endProgress !== null
+  );
+  const virageFinRaison =
+    tourReference === null
+      ? 'Aucun tour chronométré sur cette séance.'
+      : viragesFenetres.length === 0
+        ? 'Aucun virage segmenté sur cette séance.'
+        : null;
+  const virageFinDispo = virageFinRaison === null;
 
   // Panne DB de la lecture insights : erreur honnête (distincte de « vide »).
   if (insightsFailed) {
@@ -2419,6 +2689,40 @@ function ConstatsSection({
             />
           );
         })}
+        {/*
+          Les deux constats de fin de virage (modules M14/M15) — même pattern
+          ListRow → Sheet que les lectures ci-dessus. « (estimé) » et
+          « (observé) » disent le statut de chaque lecture dès la liste.
+        */}
+        {(
+          [
+            { cle: 'chevauchement', label: 'Chevauchement décélération/rotation (estimé)' },
+            { cle: 'rotation', label: 'Rotation et corrections (observé)' },
+          ] as const
+        ).map((entree) => (
+          <ListRow
+            key={entree.cle}
+            label={entree.label}
+            sublabel={
+              virageFinDispo ? 'Fin de virage — tour de référence' : (virageFinRaison ?? undefined)
+            }
+            disabled={!virageFinDispo}
+            chevron={virageFinDispo}
+            onPress={
+              virageFinDispo
+                ? () => {
+                    haptic('tap');
+                    setOpenVirageFin(entree.cle);
+                  }
+                : undefined
+            }
+            accessibilityLabel={
+              virageFinDispo
+                ? `${entree.label} — lecture approfondie`
+                : `${entree.label} — ${virageFinRaison}`
+            }
+          />
+        ))}
       </View>
 
       <Sheet visible={open !== null} onClose={() => setOpen(null)} snapHeight={520}>
@@ -2429,6 +2733,292 @@ function ConstatsSection({
           </ScrollView>
         ) : null}
       </Sheet>
+
+      <Sheet
+        visible={openVirageFin !== null}
+        onClose={() => setOpenVirageFin(null)}
+        snapHeight={520}
+      >
+        {openVirageFin !== null && tourReference !== null && viragesFenetres.length > 0 ? (
+          <VirageFinSheet
+            mode={openVirageFin}
+            sessionId={sessionId}
+            tourReference={tourReference}
+            virages={viragesFenetres}
+          />
+        ) : null}
+      </Sheet>
+    </View>
+  );
+}
+
+/**
+ * Découpe les trames D'UN TOUR sur la fenêtre d'un virage, par le RANG de la
+ * trame (`i / (n − 1)`) — la même approximation, nommée, que `trancheVirage` :
+ * les trames ne portent pas leur progression. Valable sur un tour seulement,
+ * jamais sur une séance entière.
+ */
+function tranchePassage(
+  frames: readonly SessionFrame[],
+  fenetre: { start: number; end: number }
+): SessionFrame[] {
+  const n = frames.length;
+  if (n < 2) return [];
+  return frames.filter((_, i) => {
+    const p = i / (n - 1);
+    return p >= fenetre.start && p <= fenetre.end;
+  });
+}
+
+/**
+ * Trames du passage → échantillons M14. La convention est DÉJÀ alignée :
+ * `SessionFrame.gLong` est négatif en décélération (le mapping inverse
+ * `g_force_x` brut une fois pour toutes — ne pas reconvertir ici).
+ */
+function versEchantillonsVirage(passage: readonly SessionFrame[]): EchantillonVirage[] {
+  const t0 = passage[0].elapsedMs;
+  return passage.map((f) => ({
+    tMs: f.elapsedMs - t0,
+    gLong: f.gLong,
+    gLat: f.gLat,
+    vitesse: f.speedKmh !== null ? f.speedKmh / 3.6 : null,
+  }));
+}
+
+/**
+ * Trames du passage → échantillons M15. La base stocke le lacet en °/s,
+ * `SessionFrame` le rend en rad/s : on revient aux degrés que M15 attend.
+ */
+function versEchantillonsRotation(passage: readonly SessionFrame[]): EchantillonRotation[] {
+  const t0 = passage[0].elapsedMs;
+  return passage.map((f) => ({
+    tMs: f.elapsedMs - t0,
+    lacetDegParS: f.yawRateRadS !== null ? f.yawRateRadS / DEG_VERS_RAD : null,
+    gLat: f.gLat,
+  }));
+}
+
+/** Une ligne de fait — même dessin que la feuille virage (factRow). */
+function FaitRow({ label, value }: { label: string; value: string }) {
+  return (
+    <View style={styles.factRow}>
+      <Text style={styles.factLabel}>{label}</Text>
+      <Text style={styles.factValue}>{value}</Text>
+    </View>
+  );
+}
+
+/** Instant en secondes depuis le début du passage, virgule française. */
+function instantS(ms: number | null): string {
+  return ms !== null ? virgule(`${(ms / 1000).toFixed(2)} s`) : '—';
+}
+
+/**
+ * Feuille des deux constats de fin de virage (M14 chevauchement, M15 rotation).
+ *
+ * Elle lit le TOUR DE RÉFÉRENCE, virage par virage — le choix du virage se
+ * fait par les mêmes pastilles que partout ailleurs. Les trames ne sont
+ * chargées qu'à l'ouverture de la feuille, jamais au montage de l'écran.
+ */
+function VirageFinSheet({
+  mode,
+  sessionId,
+  tourReference,
+  virages,
+}: {
+  mode: 'chevauchement' | 'rotation';
+  sessionId: string;
+  tourReference: number;
+  /** Virages à fenêtre connue (startProgress/endProgress non nuls). */
+  virages: SegmentAnalysisRow[];
+}) {
+  const [virage, setVirage] = useState<SegmentAnalysisRow>(virages[0]);
+  const [frames, setFrames] = useState<SessionFrame[] | null>(null);
+  const [etat, setEtat] = useState<'charge' | 'pret' | 'erreur'>('charge');
+
+  useEffect(() => {
+    let annule = false;
+    setEtat('charge');
+    loadLapFrames(sessionId, tourReference)
+      .then((f) => {
+        if (annule) return;
+        setFrames(f);
+        setEtat('pret');
+      })
+      .catch(() => {
+        if (!annule) setEtat('erreur');
+      });
+    return () => {
+      annule = true;
+    };
+  }, [sessionId, tourReference]);
+
+  const passage = useMemo(() => {
+    if (!frames || virage.startProgress === null || virage.endProgress === null) return [];
+    return tranchePassage(frames, { start: virage.startProgress, end: virage.endProgress });
+  }, [frames, virage]);
+
+  const chevauchement = useMemo(
+    () =>
+      mode === 'chevauchement' && passage.length > 0
+        ? lireChevauchement(versEchantillonsVirage(passage))
+        : null,
+    [mode, passage]
+  );
+  const rotation = useMemo(
+    () =>
+      mode === 'rotation' && passage.length > 0
+        ? lireRotation(versEchantillonsRotation(passage))
+        : null,
+    [mode, passage]
+  );
+
+  const titre =
+    mode === 'chevauchement'
+      ? 'Chevauchement décélération/rotation (estimé)'
+      : 'Rotation et corrections (observé)';
+  const nomVirage = virage.segmentName ?? `Virage ${virage.segmentIndex}`;
+
+  return (
+    <ScrollView showsVerticalScrollIndicator={false}>
+      <SectionHeader eyebrow="FIN DE VIRAGE" title={titre} />
+      <Text style={styles.sheetNote}>{`Tour ${tourReference}, un passage à la fois.`}</Text>
+      <View style={styles.choixTours}>
+        {virages.map((v) => (
+          <Chip
+            key={v.segmentIndex}
+            label={v.segmentName ?? `V${v.segmentIndex}`}
+            active={v.segmentIndex === virage.segmentIndex}
+            onPress={() => setVirage(v)}
+          />
+        ))}
+      </View>
+      {etat === 'charge' ? (
+        <StateView state="loading" shape="hero" />
+      ) : etat === 'erreur' ? (
+        <StateView
+          state="error"
+          errorMessage="Les trames du tour de référence n'ont pas pu être lues."
+        />
+      ) : passage.length === 0 ? (
+        <StateView
+          state="empty"
+          emptyMessage={`Aucune trame du tour ${tourReference} ne tombe dans la fenêtre de ce virage.`}
+        />
+      ) : mode === 'chevauchement' && chevauchement ? (
+        <ChevauchementFaits resultat={chevauchement} nomVirage={nomVirage} />
+      ) : rotation ? (
+        <RotationFaits resultat={rotation} nomVirage={nomVirage} />
+      ) : null}
+    </ScrollView>
+  );
+}
+
+/** Les faits du constat M14 — chaque grandeur non mesurable reste « — ». */
+function ChevauchementFaits({
+  resultat,
+  nomVirage,
+}: {
+  resultat: ResultatChevauchement;
+  nomVirage: string;
+}) {
+  return (
+    <View>
+      {/* Le nom de la lecture est verrouillé par le module : rendu tel quel. */}
+      <Text style={styles.vfLecture}>{resultat.libelle}</Text>
+      <View style={styles.factCard}>
+        <FaitRow
+          label="Fenêtre de chevauchement"
+          value={
+            resultat.fenetre !== null
+              ? `${instantS(resultat.fenetre.debutMs)} → ${instantS(resultat.fenetre.finMs)}`
+              : '—'
+          }
+        />
+        <FaitRow
+          label="Durée"
+          value={resultat.dureeMs !== null ? `${Math.round(resultat.dureeMs)} ms` : '—'}
+        />
+        <FaitRow
+          label="Pente du relâché"
+          value={
+            resultat.penteRelacheGParS !== null
+              ? virgule(
+                  `${resultat.penteRelacheGParS >= 0 ? '+' : ''}${resultat.penteRelacheGParS.toFixed(2)} g/s`
+                )
+              : '—'
+          }
+        />
+        <FaitRow label="Bascule (latéral > longitudinal)" value={instantS(resultat.basculeMs)} />
+        <FaitRow label="Échantillons écartés" value={String(resultat.echantillonsIgnores)} />
+      </View>
+      {resultat.observations.map((o) => (
+        <Text key={o} style={styles.sheetNote}>
+          {o}
+        </Text>
+      ))}
+      <Text
+        style={styles.legendMono}
+      >{`Confiance ${resultat.confiance} · ${resultat.version}`}</Text>
+      <Text style={styles.sheetNote}>
+        {`${nomVirage} — estimé depuis les accélérations mesurées du tour de référence, jamais depuis les commandes. Fenêtre du virage approchée par le rang des trames dans le tour.`}
+      </Text>
+    </View>
+  );
+}
+
+/**
+ * Les faits du constat M15. Quand le signal ne suffit pas, la feuille montre
+ * les LECTURES POSSIBLES énoncées par le module — jamais un verdict forcé.
+ */
+function RotationFaits({ resultat, nomVirage }: { resultat: ResultatRotation; nomVirage: string }) {
+  return (
+    <View>
+      <Text style={styles.vfLecture}>{resultat.lecture}</Text>
+      {resultat.lecture === 'signal insuffisant' ? (
+        <>
+          {resultat.observations.map((o) => (
+            <Text key={o} style={styles.sheetNote}>
+              {o}
+            </Text>
+          ))}
+          {resultat.alternatives.map((a) => (
+            <Text key={a} style={styles.confianceMotif}>{`— ${a}`}</Text>
+          ))}
+        </>
+      ) : (
+        <>
+          <View style={styles.factCard}>
+            <FaitRow label="Début de rotation" value={instantS(resultat.debutMs)} />
+            <FaitRow
+              label="Pic de lacet"
+              value={
+                resultat.picDegParS !== null
+                  ? virgule(`${Math.round(resultat.picDegParS)} °/s`)
+                  : '—'
+              }
+            />
+            <FaitRow label="Instant du pic" value={instantS(resultat.picMs)} />
+            <FaitRow
+              label="Alternances comptées"
+              value={resultat.oscillations !== null ? String(resultat.oscillations) : '—'}
+            />
+            <FaitRow label="Stabilisation" value={instantS(resultat.stabilisationMs)} />
+            <FaitRow label="Échantillons écartés" value={String(resultat.echantillonsIgnores)} />
+          </View>
+          {resultat.observations.map((o) => (
+            <Text key={o} style={styles.sheetNote}>
+              {o}
+            </Text>
+          ))}
+        </>
+      )}
+      <Text
+        style={styles.legendMono}
+      >{`Confiance ${resultat.confiance} · ${resultat.version}`}</Text>
+      <Text style={styles.sheetNote}>
+        {`${nomVirage} — lecture du gyroscope (axe Z) sur le tour de référence. Fenêtre du virage approchée par le rang des trames dans le tour.`}
+      </Text>
     </View>
   );
 }
@@ -2679,6 +3269,66 @@ const styles = StyleSheet.create({
   },
   hairlineCell: {
     flex: 1,
+  },
+  // ── Confiance de mesure (M03+) ──
+  confianceBloc: {
+    marginTop: space.md,
+  },
+  confianceAbsence: {
+    fontFamily: typo.body,
+    fontSize: fontSize.small,
+    lineHeight: 17,
+    color: colors.text.low,
+    marginTop: space.md,
+  },
+  confianceMotif: {
+    fontFamily: typo.body,
+    fontSize: fontSize.small,
+    lineHeight: 17,
+    color: colors.text.mid,
+    marginTop: space.xs,
+  },
+  confianceZone: {
+    marginTop: space.md,
+  },
+  confianceZoneTitre: {
+    fontFamily: typo.mono,
+    fontSize: fontSize.small,
+    color: colors.text.hi,
+  },
+  // ── Tendance de la séance (M06) ──
+  tendanceBloc: {
+    marginTop: space.xl,
+  },
+  tendanceLibelle: {
+    fontFamily: typo.body,
+    fontSize: fontSize.body,
+    lineHeight: 20,
+    color: colors.text.hi,
+    marginTop: space.sm,
+  },
+  tendanceDetail: {
+    fontFamily: typo.mono,
+    fontSize: fontSize.small,
+    color: colors.text.mid,
+    fontVariant: ['tabular-nums'],
+    marginTop: space.xs,
+  },
+  tendanceNote: {
+    fontFamily: typo.body,
+    fontSize: fontSize.micro,
+    lineHeight: 16,
+    color: colors.text.low,
+    marginTop: space.sm,
+  },
+  // ── Fin de virage (M14/M15) ──
+  vfLecture: {
+    fontFamily: typo.mono,
+    fontSize: fontSize.small,
+    letterSpacing: 0.4,
+    color: colors.text.hi,
+    marginTop: space.sm,
+    marginBottom: space.md,
   },
   // ── Tours ──
   toursHead: {

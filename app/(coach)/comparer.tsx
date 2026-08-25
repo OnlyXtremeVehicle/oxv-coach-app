@@ -32,6 +32,12 @@ import { useEffect, useState } from 'react';
 import { StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 
+import {
+  type Comparabilite,
+  type MetadonneesSeance,
+  libelleVerdict,
+  litComparabilite,
+} from '@/features/coach/comparabiliteLogic';
 import { COACH_CONSOLE_MIN_WIDTH } from '@/lib/coachNav';
 import {
   type SessionSnapshot,
@@ -39,6 +45,9 @@ import {
   loadSessionSnapshot,
   logCoachView,
 } from '@/services/coachService';
+import { computeDataConfidence } from '@/services/dataConfidenceLogic';
+import { fetchSessionInsights } from '@/services/sessionInsightsService';
+import { fetchSessionWeather, trackConditions } from '@/services/weatherService';
 import { libelleLigneMarge } from '@/services/marginCalculator';
 import { computeRegularity } from '@/services/regularityService';
 import { fetchSessionLaps } from '@/services/sessionsService';
@@ -57,6 +66,55 @@ const SERIES_A = palette.gold; // #FFB703 — étiquette de la colonne A (pas un
 const SERIES_B = dataColors.trajectory; // #4F9DF7 — étiquette de la colonne B
 const REGUL = dataColors.regularity; // #66E4F3 — couleur QDI fixe de la régularité
 
+/**
+ * Métadonnées de comparabilité d'une séance (M09) — assemblées depuis des
+ * lectures EXISTANTES, best-effort :
+ *   - circuit / véhicule / date → le cliché déjà chargé (telemetry_sessions) ;
+ *   - météo → `weather_snapshots` via fetchSessionWeather, le verdict piste
+ *     passant par `trackConditions` (seuils du dépôt, jamais « sec » par
+ *     défaut : aucun relevé mesuré → null) ;
+ *   - qualité de mesure → `session_insights.data_quality` via
+ *     computeDataConfidence (le Data Confidence Score existant).
+ * Une source qui ne répond pas rend `null` : l'inconnu coûte des points au
+ * score et une raison — il n'est jamais assimilé à « identique ».
+ */
+async function metadonneesDeSeance(snap: SessionSnapshot): Promise<MetadonneesSeance> {
+  const [meteos, insights] = await Promise.all([
+    fetchSessionWeather(snap.sessionId).catch(() => []),
+    fetchSessionInsights(snap.sessionId).catch(() => null),
+  ]);
+
+  const conds = meteos.map(trackConditions).filter((c) => c.mesure);
+  const temperature = meteos.map((w) => w.temperatureC).find((t) => t !== null) ?? null;
+  const meteo =
+    conds.length === 0 && temperature === null
+      ? null
+      : {
+          pluie: conds.length > 0 ? conds.some((c) => c.isWet) : null,
+          temperatureC: temperature,
+        };
+
+  const dq = insights?.data_quality;
+  const confidence = computeDataConfidence(
+    dq
+      ? {
+          pctValid: dq.pct_valid,
+          framesUsed: dq.frames_used,
+          cornersDetected: dq.corners_detected,
+          lapsValid: dq.laps_detected,
+        }
+      : null
+  );
+
+  return {
+    circuitId: snap.circuitId,
+    vehiculeId: snap.vehicleId,
+    dateIso: snap.startedAt,
+    meteo,
+    qualiteMesure: confidence?.level ?? null,
+  };
+}
+
 export default function CoachComparerScreen() {
   const params = useLocalSearchParams<{
     pilotId?: string;
@@ -73,6 +131,9 @@ export default function CoachComparerScreen() {
   // (affiché « — »). N'influence pas l'état de l'écran (best-effort).
   const [stdA, setStdA] = useState<number | null>(null);
   const [stdB, setStdB] = useState<number | null>(null);
+  // Comparabilité (M09) : null = pas encore calculée (le bandeau n'apparaît
+  // qu'une fois le score posé — jamais un verdict partiel).
+  const [compar, setCompar] = useState<Comparabilite | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const [reloadKey, setReloadKey] = useState(0);
@@ -163,6 +224,29 @@ export default function CoachComparerScreen() {
     };
   }, [params.sessionA, params.sessionB, reloadKey]);
 
+  // Bandeau de comparabilité (M09) — calculé une fois les deux clichés là.
+  // Best-effort : il informe, il ne conditionne jamais l'affichage des chiffres
+  // (le coach juge, on ne bloque pas). En cas d'échec des lectures annexes, le
+  // score se calcule quand même sur ce que le cliché porte (circuit, véhicule,
+  // date) — les trous deviennent des raisons, pas un silence.
+  useEffect(() => {
+    if (!snapA || !snapB) {
+      setCompar(null);
+      return;
+    }
+    let cancelled = false;
+    setCompar(null);
+    Promise.all([metadonneesDeSeance(snapA), metadonneesDeSeance(snapB)])
+      .then(([gauche, droite]) => {
+        if (cancelled) return;
+        setCompar(litComparabilite(gauche, droite));
+      })
+      .catch(() => undefined);
+    return () => {
+      cancelled = true;
+    };
+  }, [snapA, snapB]);
+
   const state: ScreenState = loading
     ? 'loading'
     : error
@@ -199,6 +283,7 @@ export default function CoachComparerScreen() {
               firstName={firstName}
               stdA={stdA}
               stdB={stdB}
+              compar={compar}
               isConsole={isConsole}
             />
           ) : null}
@@ -218,6 +303,7 @@ function ComparerBody({
   firstName,
   stdA,
   stdB,
+  compar,
   isConsole,
 }: {
   snapA: SessionSnapshot;
@@ -225,6 +311,7 @@ function ComparerBody({
   firstName: string | null;
   stdA: number | null;
   stdB: number | null;
+  compar: Comparabilite | null;
   isConsole: boolean;
 }) {
   const eyebrow = `COMPARER${firstName ? ` · ${firstName.toUpperCase()}` : ''}`;
@@ -322,11 +409,50 @@ function ComparerBody({
   return (
     <View style={{ gap: isConsole ? spacing.xl : spacing.lg, marginTop: spacing.md }}>
       {header}
+      {/* EN TÊTE, AVANT LES CHIFFRES : ces deux séances parlent-elles de la
+          même chose ? Un verdict « non comparable » ne retire rien — les faits
+          restent affichés, le bandeau reste visible. Le coach juge. */}
+      <BandeauComparabilite compar={compar} />
       {headCards}
       {table}
       {noteMarge}
       {closing}
     </View>
+  );
+}
+
+// ── Bandeau de comparabilité (M09) — verdict + raisons, jamais un blocage ────
+
+function BandeauComparabilite({ compar }: { compar: Comparabilite | null }) {
+  // Pas encore calculée : rien — pas de squelette dédié, le bandeau informe,
+  // il ne conditionne pas la lecture des chiffres en dessous.
+  if (compar === null) return null;
+  const a11y = [
+    `Comparabilité : ${libelleVerdict(compar.verdict)}`,
+    `Score ${compar.score} sur 100, d'après les métadonnées des deux séances.`,
+    ...compar.raisons,
+  ].join(' ');
+  return (
+    <Card>
+      <View accessible accessibilityLabel={a11y}>
+        <Text style={s.comparEyebrow}>COMPARABILITÉ</Text>
+        <Text style={s.comparVerdict}>{libelleVerdict(compar.verdict)}</Text>
+        {/* Provenance du chiffre : le score ne sort pas des courbes, il sort
+            des métadonnées — et il le dit. */}
+        <Text style={s.comparProvenance}>
+          Score {compar.score} / 100 — d&apos;après les métadonnées des deux séances (circuit,
+          véhicule, date, météo, qualité de mesure).
+        </Text>
+        {compar.raisons.map((raison) => (
+          <Text key={raison} style={s.comparRaison}>
+            · {raison}
+          </Text>
+        ))}
+        {compar.raisons.length === 0 ? (
+          <Text style={s.comparRaison}>Aucune différence relevée dans les métadonnées.</Text>
+        ) : null}
+      </View>
+    </Card>
   );
 }
 
@@ -477,6 +603,35 @@ const s = StyleSheet.create({
     fontFamily: theme.fonts.body,
     fontSize: theme.fontSize.small,
     color: palette.eyebrow,
+  },
+
+  // Bandeau de comparabilité (M09) — texte descriptif, aucune couleur de verdict
+  comparEyebrow: {
+    fontFamily: theme.fonts.mono,
+    fontSize: theme.fontSize.eyebrow,
+    letterSpacing: 2,
+    textTransform: 'uppercase',
+    color: palette.creamMute,
+    marginBottom: spacing.xs,
+  },
+  comparVerdict: {
+    fontFamily: theme.fonts.display,
+    fontSize: theme.fontSize.body,
+    color: palette.cream,
+  },
+  comparProvenance: {
+    fontFamily: theme.fonts.body,
+    fontSize: theme.fontSize.small,
+    lineHeight: theme.fontSize.small * 1.5,
+    color: palette.creamMute,
+    marginTop: spacing.xs,
+  },
+  comparRaison: {
+    fontFamily: theme.fonts.body,
+    fontSize: theme.fontSize.small,
+    lineHeight: theme.fontSize.small * 1.5,
+    color: palette.creamMute,
+    marginTop: spacing.xs,
   },
 
   // Cartes-colonnes A / B

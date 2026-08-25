@@ -21,6 +21,7 @@ import {
   type FrameRow,
   type SessionFrame,
 } from '@/services/sessionTelemetryMapping';
+import type { LigneQualite } from '@/features/data/confianceSource';
 
 // Convention d'axes + mapper pur : src/services/sessionTelemetryMapping.ts
 // (source unique, testée). Ré-exportés ici pour les consommateurs existants.
@@ -128,6 +129,39 @@ export const PLAFOND_TRAMES_TOUR = 2000;
  * qui en tire une grandeur cumulée (distance, delta) doit le dire à l'écran.
  */
 export async function loadLapFrames(sessionId: string, lapNumber: number): Promise<SessionFrame[]> {
+  const fenetre = await fenetreElapsedTour(sessionId, lapNumber);
+  if (fenetre === null) return [];
+
+  // Filtre les frames sur la fenêtre du tour
+  const { data, error } = await supabase
+    .from('telemetry_frames')
+    .select(
+      'elapsed_ms, latitude, longitude, speed_kmh, g_force_x, g_force_y, g_force_z, rotation_z'
+    )
+    .eq('session_id', sessionId)
+    .gte('elapsed_ms', fenetre.debutMs)
+    .lte('elapsed_ms', fenetre.finMs)
+    .order('elapsed_ms', { ascending: true })
+    .limit(PLAFOND_TRAMES_TOUR);
+
+  if (error || !data) {
+    if (error) console.warn('[OXV][telemetry] loadLapFrames frames :', error.message);
+    return [];
+  }
+
+  return (data as FrameRow[]).map(frameRowToSessionFrame);
+}
+
+/**
+ * Bornes `elapsed_ms` d'un tour — le préambule commun de `loadLapFrames` et
+ * `loadTramesQualiteTour` (une seule conversion de fenêtre, pas deux copies).
+ *
+ * `null` quand le tour n'est pas retrouvé ou n'a pas de borne exploitable.
+ */
+async function fenetreElapsedTour(
+  sessionId: string,
+  lapNumber: number
+): Promise<{ debutMs: number; finMs: number } | null> {
   // 1. Récupère les bornes du tour
   const { data: laps, error: lapsError } = await supabase
     .from('laps')
@@ -138,7 +172,7 @@ export async function loadLapFrames(sessionId: string, lapNumber: number): Promi
 
   if (lapsError || !laps) {
     if (lapsError) console.warn('[OXV][telemetry] loadLapFrames lap :', lapsError.message);
-    return [];
+    return null;
   }
 
   // 2. Récupère la session pour avoir started_at de référence
@@ -148,7 +182,7 @@ export async function loadLapFrames(sessionId: string, lapNumber: number): Promi
     .eq('id', sessionId)
     .maybeSingle();
 
-  if (!session) return [];
+  if (!session) return null;
 
   const sessionStartMs = new Date(session.started_at as string).getTime();
   const lapStartMs = new Date(laps.started_at as string).getTime() - sessionStartMs;
@@ -172,27 +206,44 @@ export async function loadLapFrames(sessionId: string, lapNumber: number): Promi
     console.warn(
       `[OXV][telemetry] loadLapFrames : tour ${lapNumber} sans borne exploitable (started_at/ended_at).`
     );
-    return [];
+    return null;
   }
 
-  // 3. Filtre les frames sur la fenêtre du tour
+  return { debutMs: lapStartMs, finMs: lapEndMs };
+}
+
+/**
+ * Canaux de QUALITÉ DE MESURE d'un tour (LOT confiance par zone, M03+) :
+ * `gps_accuracy_m`, `pdop`, `satellites`, `fix_valid` — colonnes réelles de
+ * `telemetry_frames`, jamais relues jusqu'ici. La vitesse est demandée avec,
+ * parce que la position curviligne se DÉRIVE (∫ v dt, cf. `confianceSource`) :
+ * les trames ne portent pas leur distance.
+ *
+ * Même fenêtre et même plafond que `loadLapFrames` — un tour amputé au-delà de
+ * `PLAFOND_TRAMES_TOUR` rend une note partielle, que la couverture dira.
+ */
+export async function loadTramesQualiteTour(
+  sessionId: string,
+  lapNumber: number
+): Promise<LigneQualite[]> {
+  const fenetre = await fenetreElapsedTour(sessionId, lapNumber);
+  if (fenetre === null) return [];
+
   const { data, error } = await supabase
     .from('telemetry_frames')
-    .select(
-      'elapsed_ms, latitude, longitude, speed_kmh, g_force_x, g_force_y, g_force_z, rotation_z'
-    )
+    .select('elapsed_ms, speed_kmh, gps_accuracy_m, pdop, satellites, fix_valid')
     .eq('session_id', sessionId)
-    .gte('elapsed_ms', lapStartMs)
-    .lte('elapsed_ms', lapEndMs)
+    .gte('elapsed_ms', fenetre.debutMs)
+    .lte('elapsed_ms', fenetre.finMs)
     .order('elapsed_ms', { ascending: true })
     .limit(PLAFOND_TRAMES_TOUR);
 
   if (error || !data) {
-    if (error) console.warn('[OXV][telemetry] loadLapFrames frames :', error.message);
+    if (error) console.warn('[OXV][telemetry] loadTramesQualiteTour :', error.message);
     return [];
   }
 
-  return (data as FrameRow[]).map(frameRowToSessionFrame);
+  return data as LigneQualite[];
 }
 
 /**
