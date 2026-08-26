@@ -5,6 +5,9 @@
  *
  * Ce que la vue montre, et rien d'autre :
  *   1. la MESURE : jerk résiduel moyen, en g/s, nommée comme telle ;
+ *      — à l'écran depuis le 26/08 : « brusquerie moyenne non expliquée par la
+ *        trajectoire ». Même grandeur, même unité, mot du pilote (charte
+ *        anti-jargon §02). Le code, lui, garde `jerk` : c'est le nom juste ;
  *   2. sa trace dans le temps ;
  *   3. sa distribution — où la variation d'accélération se concentre.
  *
@@ -74,8 +77,8 @@ export function FlowViz({ points }: { points: readonly FlowPoint[] }) {
       <View style={styles.card}>
         <Text style={styles.statusLabel}>Cohérence du flow</Text>
         <Text style={styles.vide}>
-          Pas encore de mesure pour cette séance. Le jerk se calcule sur les trames de télémétrie :
-          il apparaîtra dès qu&apos;une séance en aura déposé.
+          Pas encore de mesure pour cette séance. La brusquerie des transitions se calcule sur les
+          trames enregistrées : elle apparaîtra dès qu’une séance en aura déposé.
         </Text>
       </View>
     );
@@ -92,15 +95,20 @@ export function FlowViz({ points }: { points: readonly FlowPoint[] }) {
       <View style={styles.card}>
         <View style={styles.status}>
           <Text style={styles.statusLabel}>Cohérence du flow</Text>
-          <Text style={styles.statusRight}>{`JERK RÉSIDUEL · ${points.length} POINTS`}</Text>
+          <Text style={styles.statusRight}>{`TRANSITIONS · ${points.length} POINTS`}</Text>
         </View>
 
-        {/* La mesure, nommée. Pas un score : une grandeur avec son unité. */}
+        {/* La mesure, nommée. Pas un score : une grandeur avec son unité.
+            « Jerk » → « transition plus ou moins brusque » (charte anti-jargon
+            §02). Le mot technique reste partout où il n'est pas lu — le service
+            `flowLogic`, les props, ce commentaire — et disparaît des deux
+            étiquettes que le pilote lit en premier. Le sens ne bouge pas : c'est
+            toujours la part de brusquerie que la trajectoire n'explique PAS. */}
         <View style={styles.hero}>
           <Text style={styles.heroNum}>{fmtGPerS(moyenne)}</Text>
           <Text style={styles.heroUnit}>g/s</Text>
         </View>
-        <Text style={styles.heroLabel}>JERK MOYEN NON EXPLIQUÉ PAR LA TRAJECTOIRE</Text>
+        <Text style={styles.heroLabel}>BRUSQUERIE MOYENNE NON EXPLIQUÉE PAR LA TRAJECTOIRE</Text>
 
         <Text style={styles.cap}>Sa trace au fil de la séance</Text>
         <Svg width="100%" height={TRACE_H + 10} viewBox={`0 0 ${TRACE_W} ${TRACE_H + 10}`}>

@@ -232,7 +232,11 @@ function computeAxes(turns: SignatureSegmentInput[]): SignatureAxis[] {
       key: 'cap',
       label: 'Cap',
       value: norm(latMean, 0.5, 1.3),
-      detail: latMean !== null ? `${fmtG(latMean)} g latéral` : null,
+      // « G latéral » → l'appui latéral (charte anti-jargon §02). Corrigé alors
+      // que `RadarEmpreinte` n'a AUCUN appelant de production : une chaîne
+      // fautive qui dort est une chaîne fautive qui se réveillera le jour où on
+      // montera cette vue.
+      detail: latMean !== null ? `${fmtG(latMean)} g d’appui latéral` : null,
     },
     {
       key: 'visee',
@@ -250,7 +254,10 @@ function computeAxes(turns: SignatureSegmentInput[]): SignatureAxis[] {
       key: 'trajectoire',
       label: 'Trajectoire',
       value: norm(carry, 0.6, 0.92),
-      detail: carry !== null ? `apex à ${Math.round(carry * 100)} % de l'entrée` : null,
+      // « Apex » → « point lent », avec la précaution du catalogue conservée :
+      // la vitesse mini n'est pas toujours l'apex géométrique, donc on ne
+      // promet pas la géométrie. Le champ mesure bien `apexSpeed / entrySpeed`.
+      detail: carry !== null ? `point lent à ${Math.round(carry * 100)} % de l'entrée` : null,
     },
     {
       key: 'anticipation',

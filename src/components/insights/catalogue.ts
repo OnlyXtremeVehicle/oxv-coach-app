@@ -63,6 +63,14 @@ export interface ReadingDef {
    * Descriptif, et **sans aucune valeur mesurée** — décrire un instrument n'est
    * pas afficher un résultat. La ligne de `dispersion` disait « 18 tours
    * alignés » : un chiffre de démonstration déguisé en méthode.
+   *
+   * LE SEUL CHAMP OÙ LE JARGON RESTE (arbitrage du fondateur, 26/08/2026).
+   * « G longitudinal et latéral », « jerk », « gyroscope » sont ici le mot
+   * juste : ce champ répond à « d'où vient ce chiffre ? », question que le
+   * pilote pose APRÈS avoir lu, et le §01 du catalogue d'expérience autorise la
+   * densité à ce moment-là. `name` et `eyebrow`, eux, sont lus en premier :
+   * ceux-là parlent pilote, et la garde `vocabulairePilote` les surveille en
+   * laissant `source` hors de sa liste de propriétés lues.
    */
   source: string;
 }
@@ -81,7 +89,16 @@ export const READINGS: ReadingDef[] = [
   },
   {
     key: 'gg',
-    name: 'Diagramme G-G',
+    // « G-G » → « les appuis », charte anti-jargon du catalogue d'expérience
+    // (§02). Le fondateur a tranché le 26/08 : ces six lectures ne sont montées
+    // que dans l'onglet Data DU PILOTE (`app/(app2)/data/session/[id].tsx`),
+    // jamais dans une console coach. Un « Lab » que seul le pilote ouvre est une
+    // surface pilote, et son nom est la première chose qu'il lit.
+    //
+    // Le mot technique n'a pas disparu du fichier : il vit dans `source`
+    // ci-dessous, qui est la MÉTHODE — nommer l'instrument n'est pas afficher un
+    // verdict, et le §01 autorise la densité à qui est allé la chercher.
+    name: 'Appuis combinés',
     badge: 'N2',
     tier: 'N2',
     dimension: 'brake',

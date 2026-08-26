@@ -206,7 +206,11 @@ const ANCHORS = [
   { key: 'tours', label: 'Tours' },
   { key: 'delta', label: 'Delta' },
   { key: 'trace', label: 'Tracé' },
-  { key: 'telemetrie', label: 'Télémétrie' },
+  // « Télémétrie » → « les mesures ». Ce libellé de puce a survécu au lot 9b
+  // parce que la garde ne lisait alors que les attributs JSX (`label=`), jamais
+  // les littéraux de propriété d'un objet (`label:`). La clé reste
+  // `telemetrie` : c'est une ancre de code, elle n'est jamais lue.
+  { key: 'telemetrie', label: 'Mesures' },
   { key: 'constats', label: 'Constats' },
   { key: 'coeur', label: 'Cœur' },
   { key: 'conditions', label: 'Conditions' },
@@ -3047,8 +3051,11 @@ function ChannelsChart({
               </>
             ) : null}
           </View>
+          {/* « G longitudinal » → l'appui, dit sur son axe. Chaîne restée
+              fautive après le lot 9b : elle court sur deux lignes, et la garde
+              lisait alors ligne à ligne — ni `>` ni `<` sur la sienne. */}
           <Text style={styles.chanLabel}>
-            G LONGITUDINAL (g) — bas : freinage · haut : accélération
+            APPUI AVANT-ARRIÈRE (g) — bas : freinage · haut : accélération
           </Text>
         </View>
       </GestureDetector>

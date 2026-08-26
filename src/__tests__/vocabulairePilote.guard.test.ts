@@ -29,9 +29,6 @@
  * étiquettes d'accessibilité, où le jargon est plus tenace parce qu'il ne se
  * voit pas.
  *
- * Et seulement dans `app/(app2)`, l'espace du pilote. Le coach et
- * l'administrateur sont des métiers : « télémétrie » y est le mot juste.
- *
  * ===========================================================================
  * LOT 9b — LA CHARTE ANTI-JARGON DU CATALOGUE D'EXPÉRIENCE
  * ===========================================================================
@@ -53,6 +50,33 @@
  *
  * Le tutoiement des exemples du catalogue (« ton placement », « tu freines »)
  * n'est pas le ton OXV : les remplacements retenus ci-dessous vouvoient.
+ *
+ * ===========================================================================
+ * LOT 10b — L'ARBITRAGE DU FONDATEUR SUR `src/components/insights`
+ * ===========================================================================
+ *
+ * Le lot 9b avait EXCLU `src/components/insights` du périmètre, au motif que
+ * ces lectures N2–N4 seraient « le Lab du § 01, densité autorisée ». Le relevé
+ * du même lot listait pourtant dix chaînes fautives à l'intérieur, sans les
+ * corriger, et laissait la question ouverte.
+ *
+ * La mesure tranche : **ces vues n'ont pas d'autre point de montage que
+ * `app/(app2)/data/session/[id].tsx`** — l'onglet Data DU PILOTE. Aucune
+ * console coach ne les rend. Un « Lab » qui n'est lu que par le pilote est une
+ * surface pilote. Le fondateur a tranché le 26/08 : elles entrent au périmètre.
+ *
+ * CE QUI RESTE TECHNIQUE, ET POURQUOI. Le champ `source` du catalogue n'est ni
+ * un titre ni une étiquette : c'est la MÉTHODE — d'où vient le chiffre, par
+ * quel capteur, avec quelle convention. Le § 01 autorise la densité quand le
+ * lecteur est allé la chercher, et nommer un instrument n'est pas afficher un
+ * verdict. `source` est donc volontairement HORS de la liste des propriétés
+ * lues ci-dessous : « G longitudinal et latéral » y reste le mot juste.
+ *
+ * Entre aussi `src/services/pilotSignatureService.ts`, dont les libellés
+ * d'axes et de détail sont de la copie pure rendue par `RadarEmpreinte`. Cette
+ * vue n'a aucun appelant de production aujourd'hui — raison pour laquelle le
+ * lot 9b n'avait pas touché ses deux chaînes fautives. Une chaîne fautive qui
+ * dort est une chaîne fautive qui se réveillera : elle est gardée quand même.
  */
 
 import { readFileSync, readdirSync, statSync } from 'fs';
@@ -99,39 +123,47 @@ function fichiers(chemin: string, acc: string[] = []): string[] {
 /**
  * OÙ LE PILOTE LIT.
  *
- * `app/(app2)` : ses écrans. Et un fichier de plus, nommé un par un comme le
- * fait déjà le registre des notifications — `bilanPdfExportService`, le PDF
- * que le pilote ouvre depuis `app/(app2)/bilan/[sessionId].tsx`. C'est de la
- * copie lue par un humain, écrite en `.ts` hors de `app/`, donc hors d'atteinte
- * du scanner doctrinal (qui ne lit que les `.tsx`) comme de cette garde.
+ * `app/(app2)` : ses écrans. Et trois entrées de plus, nommées une par une
+ * comme le fait déjà le registre des notifications :
  *
- * Ce qui n'y est PAS, et pourquoi : `src/components/insights` — le catalogue
- * des lectures N2 à N4 et leurs vues. C'est le Lab du § 01, densité autorisée.
+ *   • `bilanPdfExportService` — le PDF que le pilote ouvre depuis
+ *     `app/(app2)/bilan/[sessionId].tsx`. C'est de la copie lue par un humain,
+ *     écrite en `.ts` hors de `app/`, donc hors d'atteinte du scanner
+ *     doctrinal (qui ne lit que les `.tsx`) comme de cette garde.
+ *
+ *   • `src/components/insights` — les six lectures et leurs vues, montées dans
+ *     l'onglet Data du pilote et nulle part ailleurs (lot 10b, ci-dessus).
+ *
+ *   • `src/services/pilotSignatureService` — les cinq axes de l'empreinte,
+ *     dont les libellés et les détails sont rendus tels quels par
+ *     `RadarEmpreinte`.
  */
 const PERIMETRE = [
   join(RACINE, 'app', '(app2)'),
   join(RACINE, 'src', 'services', 'bilanPdfExportService.ts'),
+  join(RACINE, 'src', 'components', 'insights'),
+  join(RACINE, 'src', 'services', 'pilotSignatureService.ts'),
 ];
 
-/** Les propriétés dont la valeur atteint l'utilisateur. */
-const PROPS_AFFICHEES =
-  /\b(label|title|eyebrow|emptyMessage|errorMessage|accessibilityLabel|accessibilityHint|placeholder|caption|text1|text2)\s*=/;
-
 /**
- * LA VALEUR SEULE, PAS LA LIGNE.
+ * Les propriétés dont la valeur atteint l'utilisateur.
  *
- * Première écriture : chercher le mot n'importe où sur une ligne portant une
- * propriété d'affichage. Elle a accusé les chips CORRIGÉS —
- * `<Chip label="Sur le tracé" active={tab === 'heatmap'} />` — parce que le
- * nom de l'onglet reste `heatmap` dans le code, et doit le rester.
+ * `[=:]` et non `=` seul : hors JSX, la copie vit dans des objets — les six
+ * lectures du catalogue (`name:`, `eyebrow:`) et les cinq axes de l'empreinte
+ * (`label:`, `detail:`) sont des littéraux de propriété, jamais des attributs.
  *
- * Une garde qui condamne sa propre correction est pire qu'aucune garde : on
- * n'extrait donc que ce qui est ENTRE GUILLEMETS après la propriété.
+ * `source` n'y est PAS : c'est la méthode, pas une étiquette (voir l'en-tête).
  */
-const VALEURS = new RegExp(
-  `\\b(?:label|title|eyebrow|emptyMessage|errorMessage|accessibilityLabel|accessibilityHint|placeholder|caption|text1|text2)\\s*=\\s*(?:"([^"]*)"|'([^']*)'|\\{\`([^\`]*)\`\\})`,
-  'g'
-);
+const PROPS_AFFICHEES =
+  /\b(label|sublabel|title|name|eyebrow|emptyMessage|errorMessage|accessibilityLabel|accessibilityHint|placeholder|caption|detail|text1|text2)\s*[=:]/;
+
+const PROP_LISTE =
+  'label|sublabel|title|name|eyebrow|emptyMessage|errorMessage|accessibilityLabel|accessibilityHint|placeholder|caption|detail|text1|text2';
+
+const DEBUT_PROP = new RegExp(`\\b(?:${PROP_LISTE})\\s*[=:]\\s*`, 'g');
+
+/** Un littéral, quel que soit son guillemet. */
+const LITTERAL = /"([^"\n]*)"|'([^'\n]*)'|`([^`]*)`/g;
 
 /**
  * Les nœuds de TEXTE — `<Text>Apex</Text>`, `<th>Apex</th>`.
@@ -141,36 +173,132 @@ const VALEURS = new RegExp(
  * de ce que le pilote lit, et de la totalité de la copie du PDF de bilan, qui
  * est un gabarit HTML. `[^<>{}]` écarte les interpolations : `>{apex} km/h<`
  * n'est pas du texte, c'est une valeur mesurée qu'on affiche.
+ *
+ * Lot 10b : la lecture se fait désormais sur le FICHIER, plus ligne à ligne.
+ * Une phrase de deux lignes — l'état vide de `FlowViz`, « le jerk se calcule
+ * sur les trames de télémétrie » — n'avait ni `>` ni `<` sur sa propre ligne :
+ * elle passait entière sous le relevé.
  */
 const TEXTE_BALISE = />([^<>{}]{2,})</g;
 
 /**
+ * ET LE PRIX DE CETTE PORTÉE : un `>` de code peut s'apparier au `<` d'une
+ * balise plus bas.
+ *
+ * Deux relevés du 26/08 le montrent : `/> ) : tab === 'heatmap' ? ( <Heatmap`
+ * (rendu conditionnel) et `home.qdiValues[b] !== undefined); … return (`.
+ * Aucun des deux n'est lu par qui que ce soit — c'est du code entre deux
+ * éléments JSX. Une garde qui les compte fait défaire du code juste.
+ *
+ * Le partage se fait sur les caractères : `=`, `[`, `]`, `$`, l'accent grave et
+ * la barre verticale n'apparaissent pas dans une phrase française, et
+ * apparaissent dans presque toute expression. Le point-virgule et l'esperluette
+ * sont VOLONTAIREMENT absents de cette liste : le gabarit HTML du PDF de bilan
+ * écrit `&nbsp;` et `&eacute;`, et ce texte-là est lu.
+ */
+const CODE_PAS_PROSE = /[=[\]$`|]/;
+
+/**
+ * Le texte d'un nœud tenu dans une accolade —
+ * `<Text>{'JERK RÉSIDUEL'}</Text>` et sa forme gabarit.
+ *
+ * `TEXTE_BALISE` l'écarte par construction (il refuse `{`), et c'est là que
+ * dorment les sur-titres mono : deux des trois chaînes fautives de `FlowViz`
+ * avaient cette forme.
+ */
+const TEXTE_EXPRESSION = />\s*\{\s*(?:`([^`]*)`|'([^'\n]*)'|"([^"\n]*)")\s*\}\s*</g;
+
+/**
  * Une interpolation n'est pas du texte lu.
  *
- * `label={\`Vitesse mini à la corde : ${apex} km/h\`}` est une phrase JUSTE :
- * `apex` y est le nom d'une variable, pas un mot affiché. Sans ce retrait, la
- * garde condamnait des libellés déjà conformes — le défaut exact qu'elle a
- * déjà corrigé une fois pour les chips.
+ * `label={` + `Vitesse mini à la corde : ${apex} km/h` + `}` est une phrase
+ * JUSTE : `apex` y est le nom d'une variable, pas un mot affiché. Sans ce
+ * retrait, la garde condamnait des libellés déjà conformes — le défaut exact
+ * qu'elle a déjà corrigé une fois pour les chips.
  */
 function sansInterpolation(valeur: string): string {
   return valeur.replace(/\$\{[^}]*\}/g, ' ');
 }
 
-/** Les valeurs affichées d'une ligne, ou `[]`. */
-function valeursAffichees(ligne: string): string[] {
-  const out: string[] = [];
-  VALEURS.lastIndex = 0;
-  let m: RegExpExecArray | null;
-  while ((m = VALEURS.exec(ligne)) !== null) {
-    out.push(sansInterpolation(m[1] ?? m[2] ?? m[3] ?? ''));
+interface Extrait {
+  texte: string;
+  /** Position dans la source nettoyée, pour retrouver la ligne. */
+  index: number;
+}
+
+/**
+ * Tout ce qu'un humain lira dans cette source, et rien d'autre.
+ *
+ * LA VALEUR SEULE, PAS LA LIGNE. Première écriture : chercher le mot n'importe
+ * où sur une ligne portant une propriété d'affichage. Elle a accusé les chips
+ * CORRIGÉS — `<Chip label="Sur le tracé" active={tab === 'heatmap'} />` —
+ * parce que le nom de l'onglet reste `heatmap` dans le code, et doit le rester.
+ *
+ * Une garde qui condamne sa propre correction est pire qu'aucune garde : quand
+ * la propriété est SUIVIE D'UN LITTÉRAL, on ne prend que ce littéral-là.
+ *
+ * Quand elle est suivie d'une EXPRESSION — la forme de tous les axes de
+ * l'empreinte, `detail:` puis un ternaire — le littéral est plus loin sur la
+ * ligne ; on prend alors tous ceux qui restent. Les fragments d'un seul
+ * caractère (les séparateurs d'un `.replace()`) tombent d'eux-mêmes : on exige
+ * deux lettres consécutives pour qu'un extrait compte comme du texte.
+ */
+function extraits(src: string): Extrait[] {
+  const out: Extrait[] = [];
+  const pousse = (brut: string, index: number) => {
+    const texte = sansInterpolation(brut).replace(/\s+/g, ' ').trim();
+    if (/[A-Za-zÀ-ÿ]{2,}/.test(texte)) out.push({ texte, index });
+  };
+
+  DEBUT_PROP.lastIndex = 0;
+  let p: RegExpExecArray | null;
+  while ((p = DEBUT_PROP.exec(src)) !== null) {
+    const depart = p.index + p[0].length;
+    const finLigne = src.indexOf('\n', depart);
+    let reste = src.slice(depart, finLigne === -1 ? undefined : finLigne);
+    let decalage = depart;
+    const accolade = /^\{\s*/.exec(reste);
+    if (accolade) {
+      reste = reste.slice(accolade[0].length);
+      decalage += accolade[0].length;
+    }
+    const immediat = /^(?:"([^"]*)"|'([^']*)'|`([^`]*)`)/.exec(reste);
+    if (immediat) {
+      pousse(immediat[1] ?? immediat[2] ?? immediat[3] ?? '', decalage);
+      continue;
+    }
+    LITTERAL.lastIndex = 0;
+    let l: RegExpExecArray | null;
+    while ((l = LITTERAL.exec(reste)) !== null) {
+      pousse(l[1] ?? l[2] ?? l[3] ?? '', decalage + l.index);
+    }
   }
+
   TEXTE_BALISE.lastIndex = 0;
   let t: RegExpExecArray | null;
-  while ((t = TEXTE_BALISE.exec(ligne)) !== null) {
-    const texte = t[1];
-    if (/[A-Za-zÀ-ÿ]{2,}/.test(texte)) out.push(texte);
+  while ((t = TEXTE_BALISE.exec(src)) !== null) {
+    if (!CODE_PAS_PROSE.test(t[1])) pousse(t[1], t.index + 1);
   }
-  return out;
+
+  TEXTE_EXPRESSION.lastIndex = 0;
+  let x: RegExpExecArray | null;
+  while ((x = TEXTE_EXPRESSION.exec(src)) !== null) {
+    pousse(x[1] ?? x[2] ?? x[3] ?? '', x.index + 1);
+  }
+
+  return out.sort((a, b) => a.index - b.index);
+}
+
+/** Les valeurs affichées d'une ligne, ou `[]`. */
+function valeursAffichees(ligne: string): string[] {
+  return extraits(ligne).map((e) => e.texte);
+}
+
+/** Numéro de ligne (1-indexé) d'une position dans la source nettoyée. */
+function ligneDe(src: string, index: number): number {
+  let n = 1;
+  for (let i = 0; i < index && i < src.length; i += 1) if (src[i] === '\n') n += 1;
+  return n;
 }
 
 /**
@@ -211,20 +339,18 @@ function jargonPilote(): Trouvaille[] {
   const out: Trouvaille[] = [];
   for (const f of PERIMETRE.flatMap((c) => fichiers(c))) {
     const code = sansCommentaires(readFileSync(f, 'utf8'));
-    code.split('\n').forEach((ligne, i) => {
-      for (const valeur of valeursAffichees(ligne)) {
-        for (const { mot } of PROSCRITS) {
-          if (mot.test(valeur)) {
-            out.push({
-              fichier: f.replace(RACINE, '').split(/[\\/]/).join('/'),
-              ligne: i + 1,
-              mot: String(mot),
-              texte: valeur.slice(0, 120),
-            });
-          }
+    for (const e of extraits(code)) {
+      for (const { mot } of PROSCRITS) {
+        if (mot.test(e.texte)) {
+          out.push({
+            fichier: f.replace(RACINE, '').split(/[\\/]/).join('/'),
+            ligne: ligneDe(code, e.index),
+            mot: String(mot),
+            texte: e.texte.slice(0, 120),
+          });
         }
       }
-    });
+    }
   }
   return out;
 }
@@ -272,6 +398,48 @@ describe('vocabulaire de l’espace pilote', () => {
   });
 
   /**
+   * LOT 10b — LES FORMES QUI DORMAIENT HORS DE PORTÉE.
+   *
+   * Trois structures que la garde d'avant ne savait pas lire, et qui portaient
+   * chacune une des chaînes corrigées : le littéral de propriété d'un objet
+   * (le catalogue, l'empreinte), le nœud de texte tenu dans une accolade, et
+   * la phrase qui court sur deux lignes.
+   */
+  it('le relevé reconnaît les formes du lot 10b — objets, accolades, phrases longues', () => {
+    const avant = [
+      "    name: 'Diagramme G-G',",
+      "    { label: 'G latéral', value: fmtG(maxLat), unit: 'g', tone: 'gold' },",
+      '      detail: latMean !== null ? `${fmtG(latMean)} g latéral` : null,',
+      "      detail: carry !== null ? `apex à ${Math.round(carry * 100)} %` : null,",
+      '<Text style={styles.statusRight}>{`JERK RÉSIDUEL · ${points.length} POINTS`}</Text>',
+      '<Text style={styles.heroLabel}>JERK MOYEN NON EXPLIQUÉ PAR LA TRAJECTOIRE</Text>',
+      '<Text style={styles.statusRight}>COMBINÉ G-G</Text>',
+      '<Text style={styles.vide}>\n  Pas encore de mesure. Le jerk se calcule\n  sur les trames de télémétrie.\n</Text>',
+    ];
+    for (const ligne of avant) {
+      const valeurs = valeursAffichees(ligne);
+      expect(valeurs.length).toBeGreaterThan(0);
+      expect(valeurs.some((v) => PROSCRITS.some((p) => p.mot.test(v)))).toBe(true);
+    }
+  });
+
+  /**
+   * ET CE QUE LA GARDE NE DOIT PAS ACCUSER — LA MÉTHODE.
+   *
+   * Le champ `source` du catalogue nomme l'instrument. Le § 01 l'autorise, le
+   * fondateur l'a confirmé le 26/08 : « garde le terme technique là où il est
+   * une méthode ouverte, mais pas dans un titre ni une étiquette lue en
+   * premier ». Si `source` entrait un jour dans la liste des propriétés lues,
+   * ce test tomberait — et c'est le but.
+   */
+  it('la méthode reste technique — `source` n’est pas une étiquette', () => {
+    const methode =
+      "    source: 'Nuage de points (G longitudinal, G latéral) sur l’ensemble du tour.',";
+    expect(PROPS_AFFICHEES.test(methode)).toBe(false);
+    expect(valeursAffichees(methode)).toEqual([]);
+  });
+
+  /**
    * ET LE CAS QUI A FAIT REPRENDRE LA MESURE.
    *
    * Le chip CORRIGÉ garde `'heatmap'` comme nom d'onglet dans le code — c'est
@@ -288,15 +456,34 @@ describe('vocabulaire de l’espace pilote', () => {
   /**
    * UNE VALEUR MESURÉE N'EST PAS UN MOT.
    *
-   * `${apex}` interpolé dans une phrase juste — « Vitesse mini à la corde :
-   * 87 km/h » — est le NOM D'UNE VARIABLE. La première écriture de la garde
-   * lisait le gabarit brut et accusait ce libellé, qui est déjà conforme.
+   * L'interpolation d'une vitesse à la corde dans une phrase juste est le NOM
+   * D'UNE VARIABLE. La première écriture de la garde lisait le gabarit brut et
+   * accusait ce libellé, qui est déjà conforme.
    */
   it('une interpolation n’est pas du texte lu', () => {
     const juste = '<Metric label={`Vitesse mini à la corde : ${apex} km/h`} />';
     const valeurs = valeursAffichees(juste);
-    expect(valeurs).toEqual(['Vitesse mini à la corde :   km/h']);
+    expect(valeurs).toEqual(['Vitesse mini à la corde : km/h']);
     expect(valeurs.some((v) => PROSCRITS.some((p) => p.mot.test(v)))).toBe(false);
+  });
+
+  /**
+   * DU CODE ENTRE DEUX BALISES N'EST PAS UN NŒUD DE TEXTE.
+   *
+   * En lisant le fichier entier plutôt que ligne à ligne, le relevé s'est mis à
+   * apparier le `>` d'un `/>` avec le `<` de la balise suivante — et à accuser
+   * le rendu conditionnel qui vit entre les deux. Ces deux formes ont été
+   * relevées le 26/08 dans `data/session/[id].tsx` et `index.tsx` : elles sont
+   * justes, et le nom d'onglet `'heatmap'` doit y rester.
+   */
+  it('le rendu conditionnel entre deux balises n’est pas de la copie', () => {
+    const codeEntreBalises = [
+      "<GGScatter points={gg} />\n      ) : tab === 'heatmap' ? (\n        <HeatmapTrace traj={traj} />",
+      'const mesurees = B.filter((b) => home.qdiValues[b] !== undefined);\n  return (\n    <PressScale',
+    ];
+    for (const bloc of codeEntreBalises) {
+      expect(valeursAffichees(bloc).some((v) => PROSCRITS.some((p) => p.mot.test(v)))).toBe(false);
+    }
   });
 
   /**

@@ -119,9 +119,14 @@ function deriveModel(points: GGPoint[] | null | undefined): GGModel | null {
   mags.sort((a, b) => a - b);
   const envelopePct = Math.max(0, Math.min(100, Math.round((p95(mags) / G_MAX) * 100)));
 
+  // Trois étiquettes lues, donc trois étiquettes en langage pilote (charte
+  // anti-jargon §02, arbitrage du 26/08 : cet écran est l'onglet Data DU
+  // pilote). « G latéral » devient l'appui latéral ; « G frein » suit, parce
+  // qu'un « Appui latéral » posé à côté d'un « G frein » ne serait qu'à moitié
+  // traduit. L'unité reste `g` — c'est une grandeur mesurée, pas un mot.
   const stats: GGModel['stats'] = [
-    { label: 'G latéral', value: fmtG(maxLat), unit: 'g', tone: 'gold' },
-    { label: 'G frein', value: fmtG(maxBrake), unit: 'g', tone: 'gold' },
+    { label: 'Appui latéral', value: fmtG(maxLat), unit: 'g', tone: 'gold' },
+    { label: 'Freinage', value: fmtG(maxBrake), unit: 'g', tone: 'gold' },
     { label: 'Combiné', value: fmtG(maxCombined), unit: 'g', tone: 'mute' },
   ];
 
@@ -175,7 +180,10 @@ export function GGViz({ points }: GGVizProps) {
             <Animated.View style={[styles.dot, { opacity: blink }]} />
             <Text style={styles.statusLabel}>Enveloppe d’adhérence</Text>
           </View>
-          <Text style={styles.statusRight}>COMBINÉ G-G</Text>
+          {/* « G-G » → « les appuis » (charte §02). Le nom du fichier, du
+              composant et des variables reste `gg` : c'est du code, et il doit
+              le rester — la garde `vocabulairePilote` ne lit que l'affiché. */}
+          <Text style={styles.statusRight}>APPUIS COMBINÉS</Text>
         </View>
 
         {/* Radar + nombre central superposé. */}
