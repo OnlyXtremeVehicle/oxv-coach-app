@@ -197,11 +197,12 @@ const CONNUS: readonly string[] = [
   '/src/render/gg.ts',
   '/src/render/projection.ts',
   '/src/render/ribbon.ts',
-  // Kit de grammaire livré le 15/08 : les quatre rôles de couleur et le type
-  // `Mesure<T>`. Aucun écran ne le consomme ENCORE — l'adoption se fait écran
-  // par écran (A1 § 3 : « la migration de type est le geste durable »). Inscrit
-  // ici sciemment, à retirer au premier écran migré.
-  '/src/ui/v2/grammaireviz.ts',
+  // `grammaireviz.ts` EST SORTI DE CETTE LISTE le 26/08/2026, et c'est le sens
+  // de sortie qu'on veut : son inscription du 15/08 disait « à retirer au
+  // premier écran migré ». Le voici — la carte des écarts sur le tracé
+  // (lot 7b) consomme le rôle POLARITÉ (`couleurDelta`, `POLES_DELTA`) depuis
+  // `src/features/data/carteOpportunitesLogic.ts` et
+  // `app/(app2)/data/session/[id].tsx`.
   // Outil des GARDES : seuls des tests l'importent, par construction. C'est la
   // même nuance que `hauteSaintonge` — « plus aucun code de production ne s'en
   // sert » est ici l'état voulu, pas une dette.

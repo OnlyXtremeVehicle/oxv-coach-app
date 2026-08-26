@@ -104,6 +104,13 @@ import {
 } from '@/features/data/confianceLogic';
 import { longueurDerivee, versTramesQualite } from '@/features/data/confianceSource';
 import { construireIndex, portion } from '@/telemetry/projectionCurviligne';
+import {
+  SEUIL_ECART_PEINT_S,
+  carteOpportunites,
+  type CarteOpportunites,
+  type PortionEcart,
+} from '@/features/data/carteOpportunitesLogic';
+import { POLES_DELTA } from '@/ui/v2/grammaireViz';
 import { calculeTendanceSession } from '@/features/data/progressionLogic';
 import {
   evaluerTours,
@@ -144,7 +151,7 @@ import { etatLecture, sectionAffichable } from '@/components/insights/disponibil
 import { BarresG } from '@/components/telemetry/BarresG';
 import { NiveauxRestitution } from '@/components/telemetry/NiveauxRestitution';
 import { SectionBande } from '@/components/telemetry/SectionBande';
-import { SectionDelta } from '@/components/telemetry/SectionDelta';
+import { SectionDelta, type LectureTraceDelta } from '@/components/telemetry/SectionDelta';
 import { StripMap } from '@/components/telemetry/StripMap';
 import { TraceVirage } from '@/components/telemetry/TraceVirage';
 import { getCornerDuCircuit } from '@/lib/circuitTopology';
@@ -653,6 +660,23 @@ export default function SeanceScreen() {
   // Tour sélectionné (pilote Tracé / Télémétrie / Cœur). null = tour de réf.
   const [selectedLap, setSelectedLap] = useState<number | null>(null);
 
+  /**
+   * LA LECTURE DU DELTA, PARTAGÉE ENTRE DEUX SECTIONS — lot 7b.
+   *
+   * La section L'ÉCART la produit (elle charge déjà les deux tours de trames) ;
+   * la section TRACÉ la consomme pour peindre les écarts locaux sur la
+   * polyligne. Une seule lecture, un seul calcul, deux vues qui ne peuvent pas
+   * se contredire.
+   *
+   * `null` tant que la section L'ÉCART n'a rien pu établir — le tracé reste
+   * alors nu, ce qui est le comportement voulu.
+   */
+  const [lectureDelta, setLectureDelta] = useState<LectureTraceDelta | null>(null);
+  // Référence stable : elle est en dépendance de l'effet qui publie.
+  const recevoirLectureDelta = useCallback((lecture: LectureTraceDelta | null) => {
+    setLectureDelta(lecture);
+  }, []);
+
   // Scroll partagé : header condensé + rail actif suivent le même défilement.
   const scrollRef = useAnimatedRef<Animated.ScrollView>();
   const scrollY = useSharedValue(0);
@@ -867,6 +891,7 @@ export default function SeanceScreen() {
             }))}
             tourSelectionne={selectedLap}
             segments={data.segments}
+            onLecture={recevoirLectureDelta}
           />
         </View>
 
@@ -885,6 +910,7 @@ export default function SeanceScreen() {
             laps={data.laps}
             circuitName={data.session.circuit_name ?? null}
             meilleurTour={data.session.best_lap_number ?? null}
+            lectureDelta={lectureDelta}
           />
         </View>
 
@@ -1803,6 +1829,7 @@ function TraceSection({
   laps,
   circuitName,
   meilleurTour,
+  lectureDelta,
 }: {
   sessionId: string;
   selectedLap: number | null;
@@ -1821,6 +1848,12 @@ function TraceSection({
   circuitName: string | null;
   /** Meilleur tour de la séance selon la base. null si non désigné. */
   meilleurTour: number | null;
+  /**
+   * La lecture du delta publiée par la section L'ÉCART, ou `null`. Elle sert à
+   * peindre les écarts locaux sur le tracé (lot 7b) — jamais à recalculer quoi
+   * que ce soit ici.
+   */
+  lectureDelta: LectureTraceDelta | null;
 }) {
   const [trace, setTrace] = useState<{ lat: number; lon: number }[] | null>(null);
   const [loading, setLoading] = useState(true);
@@ -1904,17 +1937,63 @@ function TraceSection({
    * des bornes hors tracé ne se projetteraient pas. Une portion qui ne se
    * projette pas malgré tout → rien n'est marqué.
    */
-  const zonesAttenuees = useMemo(() => {
+  /** L'index curviligne du tracé affiché — construit une fois, lu trois fois. */
+  const indexTrace = useMemo(
+    () => (trace && trace.length >= 2 ? construireIndex(trace, true) : null),
+    [trace]
+  );
+
+  const zonesFaibles = useMemo(() => {
     if (selectedLap === null || tramesQualite === null || tramesQualite.length === 0) return [];
-    if (!trace || trace.length < 2) return [];
-    const index = construireIndex(trace, true);
-    if (index === null) return [];
-    const tour = evaluerConfianceTour(tramesQualite, decouperZones(index.longueurTotale));
-    const faibles = tour.zones.filter((z) => z.niveau === 'faible');
-    if (faibles.length === 0) return [];
-    const bornes = faibles.map((z) => ({ debutM: z.zone.debutM, finM: z.zone.finM }));
-    return bornes.every((b) => portion(index, b.debutM, b.finM) !== null) ? bornes : [];
-  }, [selectedLap, tramesQualite, trace]);
+    if (indexTrace === null) return [];
+    const tour = evaluerConfianceTour(tramesQualite, decouperZones(indexTrace.longueurTotale));
+    return tour.zones
+      .filter((z) => z.niveau === 'faible')
+      .map((z) => ({ debutM: z.zone.debutM, finM: z.zone.finM }));
+  }, [selectedLap, tramesQualite, indexTrace]);
+
+  const zonesAttenuees = useMemo(() => {
+    if (indexTrace === null || zonesFaibles.length === 0) return [];
+    return zonesFaibles.every((b) => portion(indexTrace, b.debutM, b.finM) !== null)
+      ? zonesFaibles
+      : [];
+  }, [indexTrace, zonesFaibles]);
+
+  /**
+   * LES ÉCARTS LOCAUX, PEINTS SUR LE TRACÉ — module M07, lot 7b.
+   *
+   * Trois conditions, et il les faut TOUTES :
+   *
+   *   — un tour est affiché (la séance entière superpose des géométries que
+   *     l'écart d'un tour ne décrit pas) ;
+   *   — c'est LE tour que le delta a lu comme « courant ». Peindre l'écart du
+   *     tour 7 sur la géométrie du tour 4 poserait des couleurs justes au
+   *     mauvais endroit — le pire des défauts possibles ici ;
+   *   — les portions se projettent toutes sur ce tracé. Sinon rien n'est
+   *     peint : un trou muet au milieu d'une carte de couleurs se lirait
+   *     « rien à signaler ».
+   *
+   * Les zones en confiance de mesure faible sont retirées PAR LE MODULE — une
+   * mesure fragile ne porte pas de verdict de couleur.
+   */
+  const carte = useMemo(() => {
+    if (selectedLap === null || lectureDelta === null || indexTrace === null) return null;
+    if (lectureDelta.courant !== selectedLap) return null;
+    return carteOpportunites({
+      segments: lectureDelta.opportunites.segments,
+      longueurTourM: lectureDelta.longueurTourM,
+      longueurTraceM: indexTrace.longueurTotale,
+      confiance: lectureDelta.opportunites.confiance,
+      zonesFaiblesM: zonesFaibles,
+    });
+  }, [selectedLap, lectureDelta, indexTrace, zonesFaibles]);
+
+  const portionsEcart: readonly PortionEcart[] = useMemo(() => {
+    if (carte === null || indexTrace === null || carte.portions.length === 0) return [];
+    return carte.portions.every((p) => portion(indexTrace, p.debutM, p.finM) !== null)
+      ? carte.portions
+      : [];
+  }, [carte, indexTrace]);
 
   // Pastilles de marge : uniquement si des virages segmentés existent (honnête).
   const cornerMarkers = useMemo(
@@ -1956,7 +2035,11 @@ function TraceSection({
           height={200}
           markers={cornerMarkers}
           attenues={zonesAttenuees}
+          portions={portionsEcart}
         />
+        {portionsEcart.length > 0 && carte !== null && lectureDelta !== null ? (
+          <LegendeEcartTrace carte={carte} lecture={lectureDelta} />
+        ) : null}
         {zonesAttenuees.length > 0 ? (
           <Text style={styles.legendMono}>
             Trait atténué : mesure en confiance réduite (voir Résumé).
@@ -2017,6 +2100,62 @@ function TraceSection({
           />
         ) : null}
       </Sheet>
+    </View>
+  );
+}
+
+/**
+ * LA LÉGENDE DE LA CARTE DES ÉCARTS — elle NOMME ce qu'on voit.
+ *
+ * Une couleur sur un tracé ne veut rien dire tant que personne ne l'a dite.
+ * Trois choses sont écrites ici, et aucune n'est un jugement :
+ *
+ *   — À QUOI le tour est comparé. Sans le numéro du tour de référence, un
+ *     écart signé ne se rapporte à rien.
+ *   — CE QUE CHAQUE PÔLE SIGNIFIE, dans les mots du dépôt : « rend du temps »
+ *     / « en reprend ». Pas « perd », pas « gagne ».
+ *   — POURQUOI DU TRAIT RESTE NU. C'est le point le plus important : un tracé
+ *     à moitié coloré laisserait croire que le reste du tour n'a rien à dire,
+ *     alors qu'une partie n'est simplement pas assez sûre pour être peinte.
+ *     Les comptes viennent du module, pas d'une estimation d'écran.
+ */
+function LegendeEcartTrace({
+  carte,
+  lecture,
+}: {
+  carte: CarteOpportunites;
+  lecture: LectureTraceDelta;
+}) {
+  const seuilMs = Math.round(SEUIL_ECART_PEINT_S * 1000);
+
+  const nues: string[] = [];
+  if (carte.sousSeuil > 0) {
+    nues.push(`${carte.sousSeuil} sous ${seuilMs} ms`);
+  }
+  if (carte.ecartesConfianceZone > 0) {
+    nues.push(`${carte.ecartesConfianceZone} en confiance de mesure réduite`);
+  }
+
+  return (
+    <View style={styles.legendeEcart}>
+      <Text style={styles.legendMono}>
+        {`Trait coloré : l’écart, segment par segment, avec le tour ${lecture.reference}.`}
+      </Text>
+      <View style={styles.legendeEcartPoles}>
+        <View style={styles.legendeEcartPole}>
+          <View style={[styles.legendeEcartPastille, { backgroundColor: POLES_DELTA.perd }]} />
+          <Text style={styles.legendeEcartTexte}>
+            {`Le tour ${lecture.courant} y rend du temps`}
+          </Text>
+        </View>
+        <View style={styles.legendeEcartPole}>
+          <View style={[styles.legendeEcartPastille, { backgroundColor: POLES_DELTA.reprend }]} />
+          <Text style={styles.legendeEcartTexte}>Il y en reprend</Text>
+        </View>
+      </View>
+      {nues.length > 0 ? (
+        <Text style={styles.legendMono}>{`Trait nu : ${nues.join(' · ')}.`}</Text>
+      ) : null}
     </View>
   );
 }
@@ -3953,6 +4092,32 @@ const styles = StyleSheet.create({
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: colors.border.card,
     padding: space.md,
+  },
+  // ── Légende de la carte des écarts (lot 7b) ──
+  legendeEcart: {
+    marginTop: space.sm,
+    gap: space.xs,
+  },
+  legendeEcartPoles: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: space.md,
+  },
+  legendeEcartPole: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  // Un trait, pas une puce : la légende doit ressembler à ce qu'elle explique.
+  legendeEcartPastille: {
+    width: 18,
+    height: 4,
+    borderRadius: 2,
+  },
+  legendeEcartTexte: {
+    fontFamily: typo.body,
+    fontSize: fontSize.small,
+    color: colors.text.low,
   },
   cornerRow: {
     flexDirection: 'row',

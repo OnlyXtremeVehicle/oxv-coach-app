@@ -69,7 +69,26 @@ export interface TraceCircuitProps {
    * marquée (l'écran Résumé porte déjà l'information en clair).
    */
   attenues?: readonly { debutM: number; finM: number }[];
-  /** Couleur du trait de progression. Défaut accent. */
+  /**
+   * Portions du tracé PEINTES PAR UNE DONNÉE — bornes en mètres le long de la
+   * polyligne (mêmes abscisses curvilignes que `attenues`), et la couleur que
+   * la donnée leur donne.
+   *
+   * L'appelant choisit la couleur, mais pas n'importe laquelle : elle doit
+   * venir d'un rôle de `grammaireViz` (POLARITÉ pour un écart signé, MAGNITUDE
+   * pour une grandeur continue). Ni rouge de marque, ni or, ni couleur QDI —
+   * ce composant ne le vérifie pas, la grammaire le garantit à la source.
+   *
+   * Une borne qui ne se projette pas sur ce tracé → AUCUNE portion n'est
+   * peinte. Même règle que `attenues` : un marquage partiel silencieux
+   * laisserait croire que le reste du tour n'a rien à dire.
+   */
+  portions?: readonly { debutM: number; finM: number; couleur: string }[];
+  /**
+   * Couleur du trait de progression. Défaut accent.
+   *
+   * IGNORÉE quand `portions` est renseigné — voir `TRAIT_EFFACE`.
+   */
   color?: string;
   /** Lumière du trait. Défaut accentGlow. */
   glowColor?: string;
@@ -103,6 +122,27 @@ const MARKER_R = 5;
  */
 const ATTENUE_STROKE = BASE_STROKE + 4;
 const ATTENUE_OPACITY = 0.6;
+/**
+ * Trait des portions peintes : un peu plus large que le trait de fond, pour le
+ * couvrir entièrement — bords et lumière compris. Une portion peinte remplace
+ * le trait, elle ne le teinte pas.
+ */
+const PORTION_STROKE = BASE_STROKE + 1;
+/**
+ * LE TRAIT DU TRACÉ S'EFFACE DÈS QU'UNE DONNÉE LE PEINT.
+ *
+ * Le trait de progression est ROUGE DE MARQUE par défaut. C'est un accent, pas
+ * une donnée — et cela tient tant qu'il est seul. Dès que des portions
+ * colorées le recouvrent par endroits, le rouge qui subsiste ENTRE elles se
+ * lit comme un troisième pôle : le pilote y verrait une valeur là où il n'y a
+ * que du chrome.
+ *
+ * Le trait passe donc au gris de texte secondaire, et sa lumière avec lui.
+ * `colors.accent` reste l'accent unique de la zone — porté par autre chose que
+ * la donnée.
+ */
+const TRAIT_EFFACE = colors.text.dim;
+const LUEUR_EFFACEE = 'rgba(120,124,138,0.30)';
 
 export function TraceCircuit({
   centerline,
@@ -112,6 +152,7 @@ export function TraceCircuit({
   progress,
   markers = [],
   attenues = [],
+  portions = [],
   color = colors.accent,
   glowColor = colors.accentGlow,
   animateOnViewport = true,
@@ -130,26 +171,55 @@ export function TraceCircuit({
     [centerline, width, height, closed]
   );
 
-  // Portions atténuées : abscisses métriques → sous-polylignes (projection
-  // curviligne) → écran, par LA MÊME transformation de cadrage que le tracé
-  // complet (mêmes points sources, même padding). Si une borne ne se projette
-  // pas (`portion` → null : ces distances et ce tracé ne parlent pas du même
-  // tour), on ne marque RIEN — jamais un marquage partiel silencieux.
-  const attenuePaths = useMemo(() => {
-    if (width <= 0 || attenues.length === 0) return [];
+  /**
+   * L'index curviligne et le cadrage écran, calculés UNE fois pour tous les
+   * marquages posés sur le tracé. Le cadrage est celui du tracé complet —
+   * mêmes points sources, même padding —, sans quoi les portions glisseraient
+   * de quelques pixels par rapport au trait qu'elles recouvrent.
+   */
+  const geometrie = useMemo(() => {
+    if (width <= 0) return null;
     const index = construireIndex(centerline, closed);
-    if (index === null) return [];
+    if (index === null) return null;
     const transform = fitTransform(index.points, width, height, TRACE_PADDING);
-    if (transform === null) return [];
+    if (transform === null) return null;
+    return { index, transform };
+  }, [centerline, closed, width, height]);
+
+  // Portions atténuées : abscisses métriques → sous-polylignes (projection
+  // curviligne) → écran. Si une borne ne se projette pas (`portion` → null :
+  // ces distances et ce tracé ne parlent pas du même tour), on ne marque RIEN
+  // — jamais un marquage partiel silencieux.
+  const attenuePaths = useMemo(() => {
+    if (geometrie === null || attenues.length === 0) return [];
     const chemins: string[] = [];
     for (const zone of attenues) {
-      const points = portion(index, zone.debutM, zone.finM);
+      const points = portion(geometrie.index, zone.debutM, zone.finM);
       if (points === null) return [];
-      const chemin = pointsToSvgPath(points.map(transform), false);
+      const chemin = pointsToSvgPath(points.map(geometrie.transform), false);
       if (chemin !== '') chemins.push(chemin);
     }
     return chemins;
-  }, [attenues, centerline, closed, width, height]);
+  }, [attenues, geometrie]);
+
+  // Portions peintes par une donnée. Même règle du tout-ou-rien que
+  // ci-dessus : une portion qui ne se projette pas laisserait un trou muet au
+  // milieu d'une carte de couleurs, indiscernable d'un « rien à signaler ».
+  const portionPaths = useMemo(() => {
+    if (geometrie === null || portions.length === 0) return [];
+    const peintes: { chemin: string; couleur: string }[] = [];
+    for (const p of portions) {
+      const points = portion(geometrie.index, p.debutM, p.finM);
+      if (points === null) return [];
+      const chemin = pointsToSvgPath(points.map(geometrie.transform), false);
+      if (chemin !== '') peintes.push({ chemin, couleur: p.couleur });
+    }
+    return peintes;
+  }, [portions, geometrie]);
+
+  // Le trait du tracé s'efface dès qu'une donnée le peint — cf. TRAIT_EFFACE.
+  const traitCouleur = portionPaths.length > 0 ? TRAIT_EFFACE : color;
+  const traitLueur = portionPaths.length > 0 ? LUEUR_EFFACEE : glowColor;
 
   const controlled = progress !== undefined;
   const internal = useSharedValue(0);
@@ -181,6 +251,12 @@ export function TraceCircuit({
           attenuePaths.length > 1 ? 'portions atténuées' : 'portion atténuée'
         } (confiance de mesure réduite)`
       : ''
+  }${
+    portionPaths.length > 0
+      ? `, ${portionPaths.length} ${
+          portionPaths.length > 1 ? 'portions colorées' : 'portion colorée'
+        } par l’écart avec le tour comparé`
+      : ''
   }`;
 
   return (
@@ -201,11 +277,27 @@ export function TraceCircuit({
           />
           <GlowStroke
             path={trace.path}
-            color={color}
-            glowColor={glowColor}
+            color={traitCouleur}
+            glowColor={traitLueur}
             strokeWidth={GLOW_STROKE}
             progress={controlled ? progress : internal}
           />
+          {/*
+            Les portions peintes passent AVANT le voile d'atténuation : une
+            zone en confiance réduite doit rester atténuée même si l'appelant
+            lui a, par mégarde, donné une couleur.
+          */}
+          {portionPaths.map((peinte, index) => (
+            <Path
+              key={`portion-${index}`}
+              path={peinte.chemin}
+              style="stroke"
+              strokeWidth={PORTION_STROKE}
+              strokeCap="round"
+              strokeJoin="round"
+              color={peinte.couleur}
+            />
+          ))}
           {attenuePaths.map((chemin, index) => (
             <Path
               key={`attenue-${index}`}

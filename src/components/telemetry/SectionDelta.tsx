@@ -45,6 +45,32 @@ import { reperesDepuisSegments, type SegmentSituable } from '@/features/data/rep
 import type { Repere } from '@/telemetry/courbeDelta';
 import { loadDeltaEntreTours, TEXTE_ABSENCE, type DeltaEntreTours } from '@/services/deltaService';
 
+/**
+ * CE QUE LA SECTION DELTA REND DISPONIBLE AU RESTE DE L'ÉCRAN.
+ *
+ * La section Tracé, plus bas, peint les mêmes écarts locaux sur la polyligne
+ * du tour (lot 7b). Elle a donc besoin du delta — et le delta coûte DEUX tours
+ * de trames.
+ *
+ * Le recharger là-bas porterait l'écran de sept à neuf lectures paginées, pour
+ * la même donnée, au même instant. La section qui le charge déjà le publie
+ * plutôt : le calcul reste unique, et les deux vues ne peuvent pas diverger.
+ *
+ * L'ordre de l'écran fait le reste : le Delta est au-dessus du Tracé, donc il
+ * est entré dans la fenêtre — et a chargé — avant que le Tracé ne soit lu.
+ * S'il ne l'a pas fait, la lecture vaut `null` et le tracé reste nu.
+ */
+export interface LectureTraceDelta {
+  /** Tour dont la géométrie porte les écarts — le « courant » de la paire. */
+  courant: number;
+  /** Tour auquel il est comparé. */
+  reference: number;
+  /** Écarts locaux par segment, tels que le module M07 les rend. */
+  opportunites: OpportunitesTour;
+  /** Longueur du tour sur la grille du delta, en mètres. */
+  longueurTourM: number;
+}
+
 export interface SectionDeltaProps {
   sessionId: string;
   /** Les tours de la séance, tels que `fetchSessionLaps` les rend. */
@@ -58,6 +84,15 @@ export interface SectionDeltaProps {
    * courbe se dessine alors sans repères, et c'est le comportement voulu.
    */
   segments?: readonly SegmentSituable[];
+  /**
+   * Publie la lecture du delta dès qu'elle existe, `null` sinon.
+   *
+   * Requise, et non optionnelle : une section qui produit une donnée que
+   * l'écran attend ne doit pas pouvoir être montée en oubliant de la brancher.
+   * La référence doit être stable (`useCallback`) — elle est en dépendance
+   * d'un effet.
+   */
+  onLecture: (lecture: LectureTraceDelta | null) => void;
 }
 
 /** Marge latérale de l'écran de séance (`space.xl`), des deux côtés. */
@@ -70,6 +105,7 @@ export function SectionDelta({
   tours,
   tourSelectionne,
   segments = [],
+  onLecture,
 }: SectionDeltaProps) {
   const reduce = useReduceMotion();
   const { width: largeurEcran } = useWindowDimensions();
@@ -124,6 +160,30 @@ export function SectionDelta({
     const bornesM = reperes.map((r) => r.distanceM);
     return calculeOpportunites(delta, bornesM.length > 0 ? { bornesM } : undefined);
   }, [resultat, reperes]);
+
+  /**
+   * La publication vers le reste de l'écran. Elle ne recalcule RIEN : elle
+   * transmet ce que la section a déjà établi, ou `null` tant qu'il manque une
+   * pièce. Aucun drapeau d'annulation ici — l'effet n'écrit aucun état à lui.
+   */
+  const longueurTourM = useMemo(() => {
+    const grille = resultat?.delta?.distance;
+    return grille && grille.length > 0 ? grille[grille.length - 1] : null;
+  }, [resultat]);
+
+  useEffect(() => {
+    if (!paire || opportunites === null || longueurTourM === null) {
+      onLecture(null);
+      return;
+    }
+    onLecture({
+      courant: paire.courant,
+      reference: paire.reference,
+      opportunites,
+      longueurTourM,
+    });
+    // `paire` est recomposée à chaque rendu : on dépend de ses deux nombres.
+  }, [opportunites, longueurTourM, paire?.courant, paire?.reference, onLecture]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Moins de deux tours chronométrés : rien à comparer, et on le dit.
   if (!paire) {
