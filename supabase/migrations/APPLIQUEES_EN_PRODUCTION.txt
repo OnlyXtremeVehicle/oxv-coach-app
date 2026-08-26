@@ -265,3 +265,15 @@
 20260819130916|grant_execute_policy_helpers_to_anon
 
 20260825140000|m05_lap_marks_declarations_humaines       (déclarations humaines sur un tour ; patche aussi purge_user_data)
+
+# --- Releve du 26/08/2026 : cinq migrations du chantier PARTENAIRE ------------
+# Appliquees en production le 26/08 vers 13h36. Conformement a l'en-tete de ce
+# fichier, elles viennent du depot du site et leurs .sql y sont versionnes (a la
+# racine, sous migration_*.sql) — ce n'est pas une derive, c'est la convention.
+# Nommees ici parce que c'est precisement l'office de ce registre : dire ce que
+# la production porte, quelle qu'en soit la provenance.
+20260826133612|documents_pilote_supprime_et_remplace_ses_pieces  (oxv-site : migration_documents_suppression.sql)
+20260826133637|reservation_pilote_paiement_et_heritage           (oxv-site : migration_reservation_pilote.sql)
+20260826133720|preuve_partenaire_boucle_automatisee              (oxv-site : migration_preuve_partenaire.sql)
+20260826133807|audience_partenaire_personnes_pas_clics           (oxv-site : migration_audience_partenaire.sql)
+20260826133914|rapport_periodique_atelier_et_consentement_pointage (oxv-site : migration_rapport_periodique.sql)

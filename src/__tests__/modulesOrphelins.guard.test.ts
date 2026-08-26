@@ -189,6 +189,13 @@ const CONNUS: readonly string[] = [
   // ici est la contrepartie. Ils sortiront de cette liste au lot des écrans.
   '/src/features/presentations/compositionlogic.ts',
   '/src/features/presentations/registrepresentations.ts',
+  // LOT 10c — le service de lecture qui alimentera le moteur. Il établit les
+  // DEUX faits que la base portait déjà (`acquis` via `cycle_steps.status`,
+  // `voixCoach` via `coach_annotations.audio_url`). Il entre ici pour la même
+  // raison que ses deux voisins ci-dessus, et sortira avec eux : le lot 10c
+  // interdit explicitement de brancher un écran. Ses quatre pièces manquantes
+  // attendent la migration `20260826140000_lot10c_…`, non appliquée.
+  '/src/features/presentations/sourcescompositionservice.ts',
   // `prevollogic.ts` (lot M02) EST SORTI DE CETTE LISTE le 25/08/2026 : l'écran
   // de placement (`app/(app2)/rec/placement.tsx`) affiche désormais le prévol
   // avant l'armement — le module a son consommateur de production.
