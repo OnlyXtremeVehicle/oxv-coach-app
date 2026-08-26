@@ -183,6 +183,12 @@ const CONNUS: readonly string[] = [
   '/src/components/lapscrubber.tsx',
   '/src/components/oxvpromiseblock.tsx',
   '/src/components/signature/radarempreinte.tsx',
+  // LOT 9a — registre et moteur, écrans au lot suivant. Le catalogue des 65
+  // présentations et le moteur qui les compose sont écrits et testés avant
+  // qu'aucune surface ne les rende : c'est l'ordre demandé, et l'inscription
+  // ici est la contrepartie. Ils sortiront de cette liste au lot des écrans.
+  '/src/features/presentations/compositionlogic.ts',
+  '/src/features/presentations/registrepresentations.ts',
   // `prevollogic.ts` (lot M02) EST SORTI DE CETTE LISTE le 25/08/2026 : l'écran
   // de placement (`app/(app2)/rec/placement.tsx`) affiche désormais le prévol
   // avant l'armement — le module a son consommateur de production.
