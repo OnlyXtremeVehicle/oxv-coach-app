@@ -77,6 +77,8 @@ import {
   viewerShouldDismiss,
   VIEWER_PAN_ZOOM_THRESHOLD,
 } from '@/features/miroir/bilanLogic';
+import { fontSize } from '@/theme/v2';
+import { effetDuPas, phraseDuPas } from '@/features/data/synchroVideoLogic';
 import { EcouteNoteCoach } from '@/features/miroir/EcouteNoteCoach';
 import { useBilan } from '@/features/miroir/useBilan';
 import { exportAndShareBilanPdf } from '@/services/bilanPdfExportService';
@@ -100,7 +102,7 @@ export default function BilanScreen() {
   // fait sur elle (jamais déduite du rôle coach du binôme).
   const myUserId = useAuthStore((s) => s.profile?.id ?? null);
 
-  const { status, data, reload, messages, sendReply } = useBilan(sessionId);
+  const { status, data, reload, messages, sendReply, reglerDecalageVideo } = useBilan(sessionId);
 
   const header = useCondensingHeader({ titleFrom: 14, titleTo: 12 });
   // Le héros arrive par HeroMorph (géométrie capturée à l'accueil) ; le
@@ -129,6 +131,18 @@ export default function BilanScreen() {
   const [draft, setDraft] = useState('');
   const [sendFailed, setSendFailed] = useState(false);
   const [sending, setSending] = useState(false);
+  // M24 — un échec d'enregistrement du recalage se DIT, il ne se tait pas.
+  const [reglageEchoue, setReglageEchoue] = useState(false);
+
+  const onReglerVideo = useCallback(
+    (sens: 1 | -1) => {
+      setReglageEchoue(false);
+      reglerDecalageVideo(sens)
+        .then((ok) => setReglageEchoue(!ok))
+        .catch(() => setReglageEchoue(true));
+    },
+    [reglerDecalageVideo]
+  );
 
   const contextLine = useMemo(() => {
     if (!data) return '';
@@ -619,6 +633,47 @@ export default function BilanScreen() {
                   )}
                 />
               </View>
+
+              {/*
+                M24 — LA MARGE DE SYNCHRONISATION, À CÔTÉ DE LA VIDÉO.
+
+                La cellule « ◉ VIDÉO DU TOUR » ne promet rien toute seule :
+                cette ligne dit de combien l'image peut être décalée par
+                rapport à la mesure, ou qu'elle n'est pas alignée du tout. La
+                phrase vient telle quelle du module pur — l'écran n'en compose
+                aucune.
+              */}
+              {data.synchroVideo !== null ? (
+                <View style={styles.synchro}>
+                  <Text style={styles.synchroPhrase}>{data.synchroVideo.phrase}</Text>
+                  {data.videoOverlay !== null ? (
+                    <>
+                      <View style={styles.synchroActions}>
+                        <PressScale
+                          onPress={() => onReglerVideo(-1)}
+                          accessibilityLabel={`Reculer les mesures d'un dixième de seconde sur l'image. ${effetDuPas(-1)}`}
+                          style={styles.synchroPas}
+                        >
+                          <Text style={styles.synchroPasLabel}>− 0,10 S</Text>
+                        </PressScale>
+                        <PressScale
+                          onPress={() => onReglerVideo(1)}
+                          accessibilityLabel={`Avancer les mesures d'un dixième de seconde sur l'image. ${effetDuPas(1)}`}
+                          style={styles.synchroPas}
+                        >
+                          <Text style={styles.synchroPasLabel}>+ 0,10 S</Text>
+                        </PressScale>
+                      </View>
+                      <Text style={styles.synchroEffet}>{phraseDuPas()}</Text>
+                    </>
+                  ) : null}
+                  {reglageEchoue ? (
+                    <Text style={styles.synchroEffet}>
+                      Le décalage n&apos;a pas pu être enregistré.
+                    </Text>
+                  ) : null}
+                </View>
+              ) : null}
             </View>
           ) : null}
 
@@ -1300,6 +1355,40 @@ const styles = StyleSheet.create({
     width: SOUVENIR_CELL,
     height: SOUVENIR_CELL,
     borderRadius: radius.cell,
+  },
+  synchro: {
+    marginTop: space.md,
+  },
+  synchroPhrase: {
+    fontFamily: typo.body,
+    fontSize: fontSize.small,
+    lineHeight: 17,
+    color: colors.text.mid,
+  },
+  synchroActions: {
+    flexDirection: 'row',
+    gap: space.sm,
+    marginTop: space.sm,
+  },
+  synchroPas: {
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: colors.border.strong,
+    borderRadius: radius.pill,
+    paddingHorizontal: space.md,
+    paddingVertical: space.xs,
+  },
+  synchroPasLabel: {
+    fontFamily: typo.mono,
+    fontSize: fontSize.micro,
+    letterSpacing: 0.6,
+    color: colors.text.hi,
+  },
+  synchroEffet: {
+    fontFamily: typo.body,
+    fontSize: fontSize.micro,
+    lineHeight: 15,
+    color: colors.text.mid,
+    marginTop: space.xs,
   },
   videoCell: {
     height: SOUVENIR_CELL,

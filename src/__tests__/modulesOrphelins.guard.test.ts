@@ -225,8 +225,13 @@ const CONNUS: readonly string[] = [
   // déprécié, ce que dit son en-tête.
   '/src/services/seasonstorylogic.ts',
   '/src/services/sessioninsightsengine.ts',
-  '/src/services/v2/videooverlaylogic.ts',
-  '/src/services/v2/videooverlayservice.ts',
+  // `videooverlaylogic.ts` et `videooverlayservice.ts` SONT SORTIS DE CETTE
+  // LISTE le 26/08/2026, et c'est le sens de sortie qu'on veut. Le lot M24
+  // (marge de synchronisation vidéo) les branche : `useBilan` lit
+  // `getForSession` pour savoir s'il existe un alignement persisté sur la
+  // séance, et `saveOffset` réécrit le décalage quand le pilote le recale.
+  // La validation pure (`validateOverlayOffset`) redevient atteignable par
+  // le service qui l'appelle.
   '/src/telemetry/accel.ts',
   '/src/telemetry/gg.ts',
   '/src/telemetry/segment.ts',

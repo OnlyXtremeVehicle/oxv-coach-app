@@ -53,6 +53,11 @@ import { QDI_ALGO_VERSION } from '@/services/qdiLogic';
 import { getOrComputeQdiForSession } from '@/services/qdiService';
 import { listSegmentAnalysesForSession } from '@/services/segmentAnalysesService';
 import { listSessionMedia, type SessionMediaItem } from '@/services/sessionMediaService';
+import {
+  getForSession as listVideoOverlays,
+  saveOffset as saveVideoOffset,
+  type VideoOverlay,
+} from '@/services/v2/videoOverlayService';
 import { fetchAllSessions, fetchSessionLaps } from '@/services/sessionsService';
 import { getSessionBiometry } from '@/services/v2/biometryService';
 import { useAuthStore } from '@/store/useAuthStore';
@@ -77,6 +82,11 @@ import {
   type CoachNoteModel,
 } from './bilanLogic';
 import { hasCelebrated, markCelebrated } from './recordCelebration';
+import {
+  decalerOffset,
+  synchroniserVideo,
+  type SynchroVideo,
+} from '@/features/data/synchroVideoLogic';
 
 export type BilanStatus = 'loading' | 'error' | 'empty' | 'ready';
 
@@ -152,6 +162,20 @@ export interface BilanData {
   /** Flag `video_overlay` (OFF aujourd'hui → cellule vidéo absente). */
   videoOverlayEnabled: boolean;
   /**
+   * ÉTAT DE SYNCHRONISATION DE LA VIDÉO DU TOUR — `null` quand le flag est OFF.
+   *
+   * M24. La cellule vidéo n'affiche JAMAIS un calage sans sa marge : soit une
+   * erreur chiffrée, soit la phrase qui dit que rien n'est aligné. Aujourd'hui
+   * aucune vidéo n'est rattachée en production (`video_overlays` est vide) —
+   * l'état rendu est donc « décalage non mesuré », et c'est exact.
+   */
+  synchroVideo: SynchroVideo | null;
+  /**
+   * L'alignement persisté de cette séance, `null` s'il n'y en a aucun. Porte
+   * le `local_asset_id` sans lequel aucun réglage ne peut être réécrit.
+   */
+  videoOverlay: VideoOverlay | null;
+  /**
    * Binôme le plus récent où l'utilisateur courant est le PILOTE (votre
    * coach), null sans binôme — jamais un fil côté coach sous son propre bilan.
    */
@@ -167,6 +191,12 @@ export interface UseBilanResult {
   messages: CoachMessage[];
   /** Envoi d'une réponse sur le fil (session attachée). false si échec. */
   sendReply: (body: string) => Promise<boolean>;
+  /**
+   * Recale la vidéo d'un pas (M24). Ne fait rien tant qu'aucun alignement
+   * n'existe : sans `local_asset_id`, il n'y a pas de vidéo à recaler, et
+   * offrir le geste serait promettre un média absent.
+   */
+  reglerDecalageVideo: (sens: 1 | -1) => Promise<boolean>;
 }
 
 function settled<T>(result: PromiseSettledResult<T>, fallback: T): T {
@@ -331,6 +361,38 @@ export function useBilan(sessionId: string | undefined): UseBilanResult {
         }
       }
 
+      /**
+       * M24 — L'ALIGNEMENT VIDÉO, ET SA MARGE.
+       *
+       * Lecture GATÉE par le flag, comme la biométrie : flag OFF, aucune
+       * requête, aucune cellule. Un échec de lecture ne vaut pas « pas
+       * d'alignement » : il laisse `overlay` à null, et la cellule dira que
+       * rien n'est aligné — jamais un calage supposé.
+       *
+       * Les trames ne sont pas chargées ici (le bilan n'en tient aucune) :
+       * `synchroniserVideo` reçoit donc une entrée sans repère, et rend l'état
+       * honnête correspondant. Le jour où un écran vidéo lira les trames, il
+       * passera les mêmes repères au même module.
+       */
+      let videoOverlay: VideoOverlay | null = null;
+      if (videoOverlayEnabled) {
+        try {
+          const overlays = await listVideoOverlays(sessionId);
+          if (cancelled) return;
+          videoOverlay = overlays.length > 0 ? overlays[0] : null;
+        } catch {
+          videoOverlay = null;
+        }
+      }
+      const synchroVideo = videoOverlayEnabled
+        ? synchroniserVideo({
+            trames: [],
+            video: null,
+            reperes: [],
+            offsetManuelMs: videoOverlay?.offsetMs ?? null,
+          })
+        : null;
+
       const validLaps = validLapsOf(laps);
       const bestLapMs = bestLapMsOf(laps, session.best_lap_seconds);
 
@@ -446,6 +508,8 @@ export function useBilan(sessionId: string | undefined): UseBilanResult {
           firstName
         ),
         videoOverlayEnabled,
+        synchroVideo,
+        videoOverlay,
         thread,
       });
       setStatus('ready');
@@ -483,7 +547,40 @@ export function useBilan(sessionId: string | undefined): UseBilanResult {
     [data?.thread, userId, sessionId]
   );
 
+  const overlay = data?.videoOverlay ?? null;
+  const reglerDecalageVideo = useCallback(
+    async (sens: 1 | -1): Promise<boolean> => {
+      if (!sessionId || overlay === null) return false;
+      const offsetMs = decalerOffset(overlay.offsetMs, sens);
+      const res = await saveVideoOffset({
+        sessionId,
+        localAssetId: overlay.localAssetId,
+        offsetMs,
+        durationMs: overlay.durationMs,
+      });
+      if (!res.ok) return false;
+      // On rejoue le MÊME module pur sur le nouvel offset : l'écran ne
+      // recompose jamais une phrase de son côté.
+      setData((d) =>
+        d === null
+          ? d
+          : {
+              ...d,
+              videoOverlay: { ...overlay, offsetMs },
+              synchroVideo: synchroniserVideo({
+                trames: [],
+                video: null,
+                reperes: [],
+                offsetManuelMs: offsetMs,
+              }),
+            }
+      );
+      return true;
+    },
+    [sessionId, overlay]
+  );
+
   const reload = useCallback(() => setReloadKey((k) => k + 1), []);
 
-  return { status, data, errorMessage, reload, messages, sendReply };
+  return { status, data, errorMessage, reload, messages, sendReply, reglerDecalageVideo };
 }

@@ -44,18 +44,30 @@ arbitrage du fondateur avant toute ligne de code (voir § Conflits).
 | §07 IA | Déjà la règle d'or : moteur déterministe séparé, IA qui verbalise, **coach approuve avant diffusion**, filtre doctrinal à l'exécution, provenance affichée |
 | §08 RGPD | Consentements granulaires par finalité, privé par défaut, export/suppression, AIPD inscrite au programme French Tech (ch. 21) |
 
-## B — Ce qui n'existe pas (chantiers réels)
+## B — Ce qui reste à faire (au 26/08/2026)
 
-| Module | Nature | Remarque |
+> Cette section a été remise en phase le 26/08 : elle listait encore comme
+> « n'existe pas » cinq modules livrés entre le 25 et le 26 (M01, M06, M07,
+> M09, M14/M15). Un inventaire qui ne se corrige pas devient un inventaire
+> qui ment — c'est la même règle que pour le dossier de candidature.
+
+| Module | Nature | État |
 |---|---|---|
-| ~~M01 Plan de run~~ | ~~écran + logique~~ | **LIVRÉ le 26/08 (lot 7a)** — cf. §D. Reste hors périmètre, et volontairement : critères verrouillés par le coach, score d'atteinte, virages cibles imposés (ce serait une consigne) ; et la « référence » du cahier, qu'aucune donnée du dépôt ne porte AVANT de rouler |
-| M06 Progression de session | vue | tendance robuste + interventions superposées — dérivable des données existantes |
-| M07 Carte des opportunités | vue | le tracé a déjà les pastilles de marge ; la coloration gain/perte par segment réconciliée au delta est à écrire |
-| M09 Gestionnaire de références | logique + écran | le score de comparabilité (véhicule/conditions/qualité) n'existe pas ; le « seul comparant = vous » actuel est un sous-ensemble |
-| M14/M15 Trail / rotation | algos | dérivables des canaux existants (Gx/Gy/yaw) ; labels sous/survirage interdits — déjà l'esprit de l'app |
-| M26 Passeport de compétences | produit | ATTENTION doctrine : proche d'un « score global » ; à cadrer avec le fondateur |
-| M29–M33 Live coach | infrastructure | WebSocket, état live, console flotte 20 voitures, alertes, modes dégradés — le seul vrai chantier d'architecture ; l'app a déjà `en-direct` (roster en piste) comme embryon |
-| M34 CAN/OBD | matériel + intégration | P3, hors Mini S — plus tard, comme le dit le cahier |
+| M24 Replay vidéo synchronisé | mesure + vue | **Prochain lot compatible.** L'alignement temporel existe (flag `video_overlay`, la vidéo ne quitte pas le téléphone) ; ce qui manque est l'exigence du cahier : une erreur de synchronisation **mesurée et affichée**, réglable par le pilote |
+| M29 / M30 / M33 Live coach | infrastructure | WebSocket, état live, console flotte 20 voitures, alertes et modes dégradés. Seul vrai chantier d'architecture restant ; `en-direct` (roster en piste) en est l'embryon. Non commencé — et à ne lancer qu'après le terrain |
+| M34 / M35 CAN/OBD | matériel + intégration | P3, hors RaceBox Mini S. Dépend d'un boîtier que le projet n'a pas encore |
+| M10 Potentiel démontré | audit | Le Constat « Tour idéal composé » existe ; sa continuité aux jonctions (§03 du cahier) n'a pas été auditée contre les tolérances vitesse/position/accélération |
+| M02 Prévol (reste) | écran | Livré au lot 5 (9 postes dans `placement.tsx`). Reste : le test de 15–30 s que le cahier décrit, qui exige un vrai boîtier |
+
+**Retirés par arbitrage du fondateur (25/08), définitivement :** M31/M32
+(consignes au tour suivant, audio coach→pilote en roulage — le silence en
+piste reste la signature) et M26 (passeport de compétences — trop proche du
+score global que la doctrine bannit). M04 conserve « une seule zone à
+explorer », contre les trois cartes du cahier.
+
+**Hors de portée logicielle**, quel que soit le lot : phase 0 du cahier (banc
+de paquets sur vrais boîtiers), validation face au chronométrage officiel
+multi-circuits, et toute revue juridique préalable à une bêta publique.
 
 > **ARBITRAGE FONDATEUR (25/08/2026)** : « enlève ce qui contredit la doctrine
 > et c'est parti ». M31/M32 (consignes au tour suivant, audio coach→pilote en

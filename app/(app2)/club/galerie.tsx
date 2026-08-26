@@ -69,6 +69,8 @@ import {
   videoOverlayCellVisible,
   type GalleryRow,
 } from '@/features/club/galerieLogic';
+import { fontSize } from '@/theme/v2';
+import { synchroniserVideo } from '@/features/data/synchroVideoLogic';
 import { useGalerie } from '@/features/club/useGalerie';
 import { useHeritageBook } from '@/features/club/useHeritageBook';
 import { VIEWER_PAN_ZOOM_THRESHOLD, viewerShouldDismiss } from '@/features/miroir/bilanLogic';
@@ -145,6 +147,18 @@ export default function GalerieScreen() {
 
   // Index d'une photo (id) dans la liste ouvrable — pour lancer le viewer au
   // bon endroit. Les vidéos / photos sans URL n'y figurent pas (non ouvrables).
+  /**
+   * M24 — l'état de synchronisation, dans la galerie.
+   *
+   * Aucune séance n'est en contexte ici, donc aucun repère n'est pointé et
+   * aucun décalage n'est posé : le module rend l'état « rien n'est aligné »,
+   * et c'est ce qui s'affiche. Entrée constante — mémoïsée une fois.
+   */
+  const synchroGalerie = useMemo(
+    () => synchroniserVideo({ trames: [], video: null, reperes: [], offsetManuelMs: null }),
+    []
+  );
+
   const photoIndexById = useMemo(() => {
     const map = new Map<string, number>();
     g.photos.forEach((p, i) => map.set(p.id, i));
@@ -291,6 +305,12 @@ export default function GalerieScreen() {
       {videoOverlayCellVisible(g.videoOverlayEnabled) ? (
         <View style={[styles.videoCell, { marginHorizontal: space.xl }]}>
           <Text style={styles.videoCellLabel}>◉ VIDÉO DU TOUR</Text>
+          {/*
+            M24 — la cellule ne promet pas une vidéo « calée ». La galerie ne
+            porte aucune séance : rien n'y est aligné sur la mesure, et la
+            phrase le dit — elle vient du module pur, pas d'ici.
+          */}
+          <Text style={styles.videoCellPhrase}>{synchroGalerie.phrase}</Text>
         </View>
       ) : null}
 
@@ -1026,6 +1046,13 @@ const styles = StyleSheet.create({
     fontSize: 10,
     letterSpacing: 1.2,
     color: colors.text.mid,
+  },
+  videoCellPhrase: {
+    fontFamily: typo.body,
+    fontSize: fontSize.small,
+    lineHeight: 17,
+    color: colors.text.mid,
+    marginTop: space.sm,
   },
   // ── Partages ──────────────────────────────────────────────────────────
   section: {
