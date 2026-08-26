@@ -62,6 +62,16 @@ import {
   listMyVehicleMedia,
 } from '@/services/pilotMediaService';
 import {
+  CONCORDANCE_ABSENTE,
+  MENTION_ADMINISTRATION,
+  SOURCE_FICHE_ABSENTE,
+  classeDeLaFiche,
+  ficheDepuisVehicule,
+  libelleAcces,
+  lignesFicheTechnique,
+  rendreConcordance,
+} from '@/features/vous/ficheVehiculeLogic';
+import {
   EMPTY_SETUP_DRAFT,
   type GarageEntry,
   type SetupDraft,
@@ -92,6 +102,11 @@ import {
   typo,
   useDoorTransition,
 } from '@/ui/v2';
+// `fontSize` vient du système V3 (`src/theme/v2.ts`), source des jetons
+// typographiques du dépôt. Les styles historiques de ce fichier portent encore
+// des tailles en dur ; les styles NEUFS prennent le jeton — le cliquet ne
+// serre que dans un sens.
+import { fontSize } from '@/theme/v2';
 
 type LoadState = 'loading' | 'ready';
 
@@ -413,6 +428,31 @@ function VehicleSheet({
     setPhotoIndex(Math.round(e.nativeEvent.contentOffset.x / carouselW));
   };
 
+  /*
+    FICHE TECHNIQUE, CLASSE, ACCÈS, CONCORDANCE — lots 1 et 2 du prompt Garage
+    du 26/08/2026.
+
+    Le calcul — rapport, classe, ouverture des offres — appartient à
+    `src/features/vehicules/eligibiliteLogic.ts`, module canonique du périmètre
+    de service. Cet écran n'en rend que la mise en forme.
+
+    UNE SEULE des cinq valeurs techniques existe en base : `mass_kg`, et elle
+    n'est renseignée sur aucune des six lignes de production. Les quatre autres
+    — génération, années, puissance, statut HistoVec — n'ont PAS de colonne.
+    L'écran affiche donc « — », proprement, sans rien deviner : rapprocher les
+    textes libres `brand`/`model` d'une entrée du référentiel produirait une
+    classe approximative, donc un accès faux.
+
+    La migration qui pose `vehicles.generation` et les trois colonnes HistoVec
+    est écrite et NON APPLIQUÉE :
+    `supabase/migrations/PROPOSITION_lot11b_referentiel_vehicules_et_histovec.sql`.
+    Le jour où elle passe, la seule couture à changer est
+    `ficheDepuisVehicule`, dans `ficheVehiculeLogic`.
+  */
+  const fiche = vehicle !== null ? ficheDepuisVehicule(vehicle) : SOURCE_FICHE_ABSENTE;
+  const classe = classeDeLaFiche(fiche);
+  const concordance = rendreConcordance(CONCORDANCE_ABSENTE);
+
   return (
     <Sheet
       visible={vehicleId !== null}
@@ -523,6 +563,45 @@ function VehicleSheet({
                 <ListRow key={r.key} label={r.label} value={r.value} divider={i < arr.length - 1} />
               ))}
             </View>
+          </View>
+
+          {/* ── CLASSE DE ROULAGE ──
+              Les six lignes du lot 1. Marque et modèle vivent au bloc
+              ci-dessus : les répéter ferait deux fois la même information à
+              deux centimètres d'intervalle. */}
+          <View style={styles.sheetSection}>
+            <SectionHeader eyebrow="CLASSE DE ROULAGE" />
+            <View style={styles.specList}>
+              {lignesFicheTechnique(fiche).map((r, i, arr) => (
+                <ListRow key={r.key} label={r.label} value={r.value} divider={i < arr.length - 1} />
+              ))}
+            </View>
+          </View>
+
+          {/* ── ACCÈS ──
+              Énonce l'ouvert. Jamais le fermé, jamais un verbe de restriction,
+              jamais une invitation à changer de véhicule. */}
+          <View style={styles.sheetSection}>
+            <SectionHeader eyebrow="ACCÈS" />
+            <View style={styles.specList}>
+              <ListRow label="Formules ouvertes" value={libelleAcces(classe)} divider={false} />
+            </View>
+          </View>
+
+          {/* ── CONCORDANCE HISTOVEC ──
+              Information restituée, jamais un contrôle applicatif : rien ici ne
+              bloque quoi que ce soit. Le contrôle réel a lieu au paddock. */}
+          <View style={styles.sheetSection}>
+            <SectionHeader eyebrow="CONCORDANCE" />
+            <View style={styles.specList}>
+              <ListRow label="HistoVec" value={concordance.valeur} divider={false} />
+            </View>
+            {concordance.detail !== null ? (
+              <Text style={styles.ficheNote}>{concordance.detail}</Text>
+            ) : null}
+            {concordance.mentionAdministration ? (
+              <Text style={styles.ficheNote}>{MENTION_ADMINISTRATION}</Text>
+            ) : null}
           </View>
 
           {/* ── JOURNAL DE RÉGLAGES (date automatique) ── */}
@@ -908,6 +987,15 @@ const styles = StyleSheet.create({
   },
   sheetSection: { marginTop: space.xl },
   specList: { marginTop: space.sm },
+
+  /** Ligne factuelle sous une valeur de fiche — motif, horodatage, mention. */
+  ficheNote: {
+    fontFamily: typo.body,
+    fontSize: fontSize.small,
+    lineHeight: 18,
+    color: colors.text.low,
+    marginTop: space.sm,
+  },
 
   // Composer réglage / véhicule
   composer: { marginTop: space.md, gap: space.md },

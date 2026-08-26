@@ -37,6 +37,7 @@ const veh = (over: Partial<Vehicle> = {}): Vehicle => ({
   color: 'Bleu',
   notes: null,
   isPrimary: false,
+  massKg: null,
   ...over,
 });
 

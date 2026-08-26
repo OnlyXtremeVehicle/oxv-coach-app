@@ -196,6 +196,12 @@ const CONNUS: readonly string[] = [
   // interdit explicitement de brancher un écran. Ses quatre pièces manquantes
   // attendent la migration `20260826140000_lot10c_…`, non appliquée.
   '/src/features/presentations/sourcescompositionservice.ts',
+  // LOT 11a — `features/vehicules/eligibiliteLogic.ts` et
+  // `features/vehicules/referentielVehicules.ts` N'Y FIGURENT PAS, et il faut
+  // dire pourquoi : ils ont été inscrits ici à l'écriture du lot, puis retirés
+  // le jour même. `features/vous/ficheVehiculeLogic.ts`, posé en parallèle,
+  // les atteint depuis `app/(app2)/vous/garage.tsx` — ils ont donc un appelant
+  // de production, et les inscrire décrirait un état que le code a déjà quitté.
   // `prevollogic.ts` (lot M02) EST SORTI DE CETTE LISTE le 25/08/2026 : l'écran
   // de placement (`app/(app2)/rec/placement.tsx`) affiche désormais le prévol
   // avant l'armement — le module a son consommateur de production.

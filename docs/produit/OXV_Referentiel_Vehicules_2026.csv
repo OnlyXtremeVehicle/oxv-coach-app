@@ -1,0 +1,94 @@
+﻿marque;modele;generation;annee_debut;annee_fin;puissance_ch;masse_kg;ratio_kg_ch;classe;carrosserie;motorisation;statut;motif_exclusion;revision
+Abarth;595;Competizione;2012;2023;180;1035;5,75;I;fermee;thermique;actif;;2026
+BMW;M135i;F40;2019;;306;1550;5,07;I;fermee;thermique;actif;;2026
+Honda;S2000;AP1 AP2;1999;2009;240;1260;5,25;I;decouvrable;thermique;actif;;2026
+Hyundai;i30 N;PD Performance;2017;;275;1429;5,20;I;fermee;thermique;actif;;2026
+Mazda;MX-5;ND2;2018;;184;1050;5,71;I;decouvrable;thermique;actif;;2026
+Mini;John Cooper Works;F56;2015;;231;1275;5,52;I;fermee;thermique;actif;;2026
+Nissan;350Z;Z33;2003;2009;280;1530;5,46;I;fermee;thermique;actif;;2026
+Peugeot;208;GTi 30th;2015;2019;208;1160;5,58;I;fermee;thermique;actif;;2026
+Porsche;911;964 Carrera;1989;1994;250;1350;5,40;I;fermee;thermique;actif;;2026
+Porsche;911;993 Carrera;1994;1998;272;1370;5,04;I;fermee;thermique;actif;;2026
+Porsche;Boxster;986 S;1999;2004;252;1320;5,24;I;decouvrable;thermique;actif;;2026
+Renault;Clio;IV RS Trophy;2015;2019;220;1204;5,47;I;fermee;thermique;actif;;2026
+Renault;Megane;IV RS 280;2018;2023;280;1430;5,11;I;fermee;thermique;actif;;2026
+Subaru;BRZ;ZD8;2021;;234;1280;5,47;I;fermee;thermique;actif;;2026
+Toyota;GR86;ZN8;2021;;234;1280;5,47;I;fermee;thermique;actif;;2026
+Volkswagen;Golf;VII GTI Performance;2013;2020;245;1350;5,51;I;fermee;thermique;actif;;2026
+Alfa Romeo;4C;960;2013;2020;240;1025;4,27;II;fermee;thermique;actif;;2026
+Alpine;A110;Base;2017;;252;1110;4,40;II;fermee;thermique;actif;;2026
+Alpine;A110;S;2019;;300;1114;3,71;II;fermee;thermique;actif;;2026
+Alpine;A110;R;2022;;300;1082;3,61;II;fermee;thermique;actif;;2026
+Audi;RS e-tron GT;J1;2021;;598;2347;3,92;II;fermee;electrique;actif;;2026
+Audi;RS3;8V;2015;2020;367;1520;4,14;II;fermee;thermique;actif;;2026
+Audi;RS3;8Y;2021;;400;1570;3,92;II;fermee;thermique;actif;;2026
+Audi;RS4;B9 Avant;2017;;450;1790;3,98;II;fermee;thermique;actif;;2026
+Audi;TT RS;8S;2016;2022;400;1450;3,62;II;fermee;thermique;actif;;2026
+BMW;M2;F87;2016;2021;370;1495;4,04;II;fermee;thermique;actif;;2026
+BMW;M2;G87;2023;;460;1725;3,75;II;fermee;thermique;actif;;2026
+BMW;M240i;G42;2021;;374;1690;4,52;II;fermee;thermique;actif;;2026
+BMW;M3;E46;2000;2006;343;1570;4,58;II;fermee;thermique;actif;;2026
+BMW;M3;E92;2007;2013;420;1655;3,94;II;fermee;thermique;actif;;2026
+BMW;M3;F80;2014;2018;431;1595;3,70;II;fermee;thermique;actif;;2026
+BMW;M4;F82;2014;2020;431;1572;3,65;II;fermee;thermique;actif;;2026
+BMW;Z4;M40i G29;2018;;340;1610;4,74;II;decouvrable;thermique;actif;;2026
+Caterham;Seven;310;2017;;152;540;3,55;II;decouvrable;thermique;actif;;2026
+Cupra;Leon;VZ 300;2020;;300;1450;4,83;II;fermee;thermique;actif;;2026
+Ford;Mustang;VI GT V8;2015;2023;450;1740;3,87;II;fermee;thermique;actif;;2026
+Honda;Civic Type R;FK8;2017;2021;320;1380;4,31;II;fermee;thermique;actif;;2026
+Honda;Civic Type R;FL5;2022;;329;1429;4,34;II;fermee;thermique;actif;;2026
+Lotus;Elise;S2 111S;2004;2011;192;860;4,48;II;decouvrable;thermique;actif;;2026
+Lotus;Elise;S3 S 220;2011;2021;220;924;4,20;II;decouvrable;thermique;actif;;2026
+Lotus;Emira;V6;2022;;405;1458;3,60;II;fermee;thermique;actif;;2026
+Lotus;Evora;S;2010;2021;350;1437;4,11;II;fermee;thermique;actif;;2026
+Mercedes-AMG;A45;W176;2015;2018;381;1480;3,88;II;fermee;thermique;actif;;2026
+Mercedes-AMG;A45 S;W177;2019;;421;1550;3,68;II;fermee;thermique;actif;;2026
+Nissan;370Z;Z34;2009;2020;328;1520;4,63;II;fermee;thermique;actif;;2026
+Peugeot;308;GTi 270;2015;2021;272;1205;4,43;II;fermee;thermique;actif;;2026
+Porsche;911;996 Carrera;1998;2004;300;1320;4,40;II;fermee;thermique;actif;;2026
+Porsche;911;996 GT3;1999;2005;360;1350;3,75;II;fermee;thermique;actif;;2026
+Porsche;911;997 Carrera S;2004;2012;355;1425;4,01;II;fermee;thermique;actif;;2026
+Porsche;911;992 Carrera;2019;;385;1505;3,91;II;fermee;thermique;actif;;2026
+Porsche;Boxster;718;2016;;300;1385;4,62;II;decouvrable;thermique;actif;;2026
+Porsche;Cayman;987 S;2005;2012;295;1350;4,58;II;fermee;thermique;actif;;2026
+Porsche;Cayman;981 S;2012;2016;325;1350;4,15;II;fermee;thermique;actif;;2026
+Porsche;Cayman;718;2016;;300;1365;4,55;II;fermee;thermique;actif;;2026
+Porsche;Cayman;718 S;2016;;350;1385;3,96;II;fermee;thermique;actif;;2026
+Porsche;Cayman;718 GTS 4.0;2020;;400;1405;3,51;II;fermee;thermique;actif;;2026
+Porsche;Taycan;4S J1;2020;;530;2220;4,19;II;fermee;electrique;actif;;2026
+Renault;Megane;IV RS Trophy;2019;2023;300;1430;4,77;II;fermee;thermique;actif;;2026
+Tesla;Model 3;Performance;2019;;510;1850;3,63;II;fermee;electrique;actif;;2026
+Toyota;GR Supra;A90 3.0;2019;;340;1520;4,47;II;fermee;thermique;actif;;2026
+Toyota;GR Yaris;XP210;2020;;261;1280;4,90;II;fermee;thermique;actif;;2026
+Volkswagen;Golf;VII R;2013;2020;310;1476;4,76;II;fermee;thermique;actif;;2026
+Volkswagen;Golf;VIII GTI Clubsport;2020;;300;1462;4,87;II;fermee;thermique;actif;;2026
+Volkswagen;Golf;VIII R;2020;;320;1551;4,85;II;fermee;thermique;actif;;2026
+Alfa Romeo;Giulia;Quadrifoglio;2016;;510;1620;3,18;III;fermee;thermique;actif;;2026
+Aston Martin;Vantage;V8 2018;2018;;510;1630;3,20;III;fermee;thermique;actif;;2026
+Audi;R8;4S V10;2015;;570;1660;2,91;III;fermee;thermique;actif;;2026
+Audi;RS6;C8 Avant;2019;;600;2075;3,46;III;fermee;thermique;actif;;2026
+BMW;M3;G80;2021;;510;1730;3,39;III;fermee;thermique;actif;;2026
+BMW;M5;F10;2011;2016;560;1870;3,34;III;fermee;thermique;actif;;2026
+Caterham;Seven;420;2017;;210;560;2,67;III;decouvrable;thermique;actif;;2026
+Chevrolet;Corvette;C7 Stingray;2014;2019;466;1560;3,35;III;fermee;thermique;actif;;2026
+Ferrari;296;GTB;2022;;830;1470;1,77;III;fermee;hybride;actif;;2026
+Ferrari;458;Italia;2009;2015;570;1485;2,61;III;fermee;thermique;actif;;2026
+Ferrari;488;GTB;2015;2019;670;1475;2,20;III;fermee;thermique;actif;;2026
+Ferrari;F8;Tributo;2019;2023;720;1435;1,99;III;fermee;thermique;actif;;2026
+Jaguar;F-Type;R Coupe;2014;;550;1730;3,15;III;fermee;thermique;actif;;2026
+Lamborghini;Gallardo;LP560-4;2008;2013;560;1430;2,55;III;fermee;thermique;actif;;2026
+Lamborghini;Huracan;LP610-4;2014;;610;1422;2,33;III;fermee;thermique;actif;;2026
+Lotus;Exige;S V6;2012;2021;350;1176;3,36;III;fermee;thermique;actif;;2026
+McLaren;570S;P13;2015;2021;570;1440;2,53;III;fermee;thermique;actif;;2026
+McLaren;720S;P14;2017;2023;720;1419;1,97;III;fermee;thermique;actif;;2026
+Mercedes-AMG;C63 S;W205;2015;2021;510;1745;3,42;III;fermee;thermique;actif;;2026
+Mercedes-AMG;GT;C190;2015;2021;476;1615;3,39;III;fermee;thermique;actif;;2026
+Nissan;GT-R;R35;2008;;570;1752;3,07;III;fermee;thermique;actif;;2026
+Porsche;911;997 GT3;2006;2011;415;1395;3,36;III;fermee;thermique;actif;;2026
+Porsche;911;991 Carrera S;2011;2019;420;1440;3,43;III;fermee;thermique;actif;;2026
+Porsche;911;991 GT3;2013;2019;500;1430;2,86;III;fermee;thermique;actif;;2026
+Porsche;911;992 GT3;2021;;510;1418;2,78;III;fermee;thermique;actif;;2026
+Porsche;911;992 Turbo;2020;;580;1640;2,83;III;fermee;thermique;actif;;2026
+Porsche;Cayman;718 GT4;2019;;420;1420;3,38;III;fermee;thermique;actif;;2026
+Porsche;Taycan;Turbo S J1;2020;;761;2320;3,05;III;fermee;electrique;actif;;2026
+Tesla;Model S;Plaid;2021;;1020;2190;2,15;III;fermee;electrique;actif;;2026

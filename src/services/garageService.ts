@@ -22,6 +22,19 @@ export interface Vehicle {
    * « le premier enregistré » qui vivait dans `garageLogic`.
    */
   isPrimary: boolean;
+  /**
+   * Masse en ordre de marche, en kilogrammes. `numeric(6,1)`, posée par la
+   * migration `20260729034110`, avec la contrainte `> 100 et < 5000`.
+   *
+   * LA COLONNE EXISTAIT DEPUIS LE 29/07/2026 ET PERSONNE NE LA LISAIT — comme
+   * `is_primary`, sa voisine de migration. Zéro ligne renseignée sur six,
+   * aucun formulaire ne l'écrit, ni l'app ni le site.
+   *
+   * Elle est lue depuis le 26/08/2026 pour la fiche technique du Garage : elle
+   * y est la SEULE des cinq valeurs techniques qui existe en base. Tant qu'elle
+   * est nulle, la fiche affiche « — » — et c'est l'état normal aujourd'hui.
+   */
+  massKg: number | null;
 }
 
 export interface VehicleSetup {
@@ -46,6 +59,7 @@ function mapVehicle(r: Record<string, unknown>): Vehicle {
     color: (r.color as string | null) ?? null,
     notes: (r.notes as string | null) ?? null,
     isPrimary: r.is_primary === true,
+    massKg: r.mass_kg != null ? Number(r.mass_kg) : null,
   };
 }
 
@@ -78,7 +92,7 @@ export interface MutationResult {
 export async function listMyVehicles(): Promise<Vehicle[]> {
   const { data, error } = await supabase
     .from('vehicles')
-    .select('id, brand, model, year, color, notes, is_primary')
+    .select('id, brand, model, year, color, notes, is_primary, mass_kg')
     .order('created_at', { ascending: true });
   if (error) {
     console.warn('[OXV][garage] listMyVehicles :', error.message);
@@ -90,7 +104,7 @@ export async function listMyVehicles(): Promise<Vehicle[]> {
 export async function getVehicle(id: string): Promise<Vehicle | null> {
   const { data, error } = await supabase
     .from('vehicles')
-    .select('id, brand, model, year, color, notes, is_primary')
+    .select('id, brand, model, year, color, notes, is_primary, mass_kg')
     .eq('id', id)
     .maybeSingle();
   if (error || !data) return null;
