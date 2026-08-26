@@ -5,7 +5,14 @@
  * Le PDF est intentionnellement sobre :
  *   - En-tête : circuit + date + marge globale en gros
  *   - Carte SVG inline du circuit avec 7 virages coloriés par zone
- *   - Tableau virage par virage (zone, marge %, vitesse à l'apex)
+ *   - Tableau virage par virage (zone, marge %, vitesse au point lent)
+ *
+ * La colonne s'intitulait « Apex ». Charte anti-jargon du catalogue
+ * d'expérience, § 02 : « Apex → point le plus intérieur / point lent », avec
+ * cette précaution — « la vitesse mini n'est pas toujours l'apex ». Le mot
+ * promettait une géométrie que la colonne ne mesure pas : elle porte la
+ * vitesse MINIMALE du virage. Le champ de données reste `apexSpeedKmh`, nom
+ * technique et juste ; c'est l'en-tête lu par le pilote qui change.
  *   - Stats session (best lap, vitesse max, tours)
  *   - Footer pacte « L'app est un miroir »
  *
@@ -269,7 +276,7 @@ function buildBilanHtml(data: BilanHtmlData): string {
         <th>#</th>
         <th>Nom</th>
         <th>Marge</th>
-        <th>Apex</th>
+        <th>Point lent</th>
       </tr>
     </thead>
     <tbody>
