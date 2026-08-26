@@ -27,6 +27,7 @@ import { useCallback, useEffect, useState } from 'react';
 
 import type { LatLon } from '@/circuit/circuitGenerator';
 import { useCoachThread } from '@/hooks/useCoachThread';
+import { aUnCoachAffilieActif } from '@/services/pilotConsentService';
 import { focusVirage, margeModel, type MargeBilan } from '@/features/miroir/margeLogic';
 import { colors } from '@/ui/v2/tokens';
 import { BELTOISE_CORNERS } from '@/lib/circuitTopology';
@@ -366,10 +367,16 @@ export function useBilan(sessionId: string | undefined): UseBilanResult {
            * vide : `decisionCapture` autorise alors sur le SOCLE seul, et le
            * dit (motif `socle_seul`). Aucun accord n'est prétendu.
            */
+          // Arbitrage du 26/08/2026 : la ceinture n'est mesurable que si un
+          // coach affilié accompagne. Lu à chaque bilan — une affiliation peut
+          // cesser après l'accord, et la source se referme alors d'elle-même,
+          // sans que l'accord soit révoqué.
+          const coachAffilieActif = await aUnCoachAffilieActif();
           const etatConsentements = {
             drapeauActif: biometryFlag,
             socleCapture: consents.capture,
             partageCoach: consents.coachShare,
+            coachAffilieActif,
             parSource: {},
           };
           const arbitre = arbitrerBiometrie(

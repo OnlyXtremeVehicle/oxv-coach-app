@@ -219,6 +219,27 @@ export async function listMyCoaches(): Promise<MyCoachAssignment[]> {
  * et `programme` ouvrent en plus la donnée brute et l'analyse de virage.
  * Notifie le coach via push (fire-and-forget).
  */
+/**
+ * Le pilote a-t-il une affiliation coach ACTIVE et qu'il a consentie ?
+ *
+ * Arbitrage fondateur du 26/08/2026 : la ceinture cardio n'est mesurable que
+ * si un coach accompagne. Cette fonction porte la moitié applicative de la
+ * règle — la base porte l'autre (trigger `biometry_ceinture_exige_un_coach`,
+ * qui refuse de POSER un tel accord sans affiliation).
+ *
+ * NUANCE ASSUMÉE : le trigger exige aussi le consentement du COACH
+ * (`coach_consent_at`), colonne que la vue pilote ne remonte pas. Cette
+ * fonction lit donc ce que le pilote voit — affiliation active et consentie
+ * par lui. Un écart n'ouvre rien de plus qu'un accord déjà posé : la base a
+ * exigé les deux au moment de le poser.
+ *
+ * Erreur de lecture → `false`. Une source de santé ne s'ouvre pas sur un doute.
+ */
+export async function aUnCoachAffilieActif(): Promise<boolean> {
+  const assignations = await listMyCoaches();
+  return assignations.some((a) => a.active && a.pilotConsentAt !== null);
+}
+
 export async function giveConsent(
   assignmentId: string,
   level: CoachAccessLevel = 'lecture_simple'

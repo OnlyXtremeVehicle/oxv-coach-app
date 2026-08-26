@@ -197,3 +197,69 @@ grant execute on function public.revoke_biometry_source_consent(public.biometry_
 -- Rétention : `purge_old_biometry()` (30 jours) porte sur les MESURES. Un
 -- consentement n'est pas une mesure — il est la base légale qui l'autorise, et
 -- il se conserve tant que le compte existe. Aucune rétention n'est posée ici.
+
+-- =============================================================================
+-- 6 · ARBITRAGE FONDATEUR DU 26/08/2026 — DEUX ACCORDS, ET LA CEINTURE LIÉE
+-- =============================================================================
+--
+-- « deux acceptations différentes et la ceinture seulement si coach affilié
+--   durant sessions »
+--
+-- Le premier point était déjà tenu : une ligne par source, donc deux accords
+-- distincts, chacun révocable seul. Rien à ajouter.
+--
+-- Le second est neuf, et il change la nature de l'accord ceinture. La ceinture
+-- thoracique mesure en continu et porte la variabilité cardiaque — la donnée de
+-- santé la plus fine du dispositif. Le fondateur la subordonne à la présence
+-- d'un coach affilié : elle n'existe pas comme équipement de confort, elle
+-- existe parce qu'un professionnel l'accompagne.
+--
+-- DEUX ENDROITS, ET C'EST VOULU :
+--
+--   • ICI, à la pose de l'accord — un accord ceinture sans affiliation active
+--     est REFUSÉ. Fail fast : mieux vaut un refus net au moment du geste qu'un
+--     accord qui dort et qu'on croit valide.
+--   • DANS LE CODE (`consentementSource.ts`) à chaque séance — parce qu'une
+--     affiliation peut cesser APRÈS l'accord. La base ne peut pas rejouer sa
+--     garde à chaque battement ; le module, lui, décide séance par séance.
+--
+-- On ne RÉVOQUE pas l'accord quand l'affiliation cesse : révoquer serait
+-- décider à la place du pilote. L'accord dort, la capture s'arrête, et il
+-- reprend si un coach revient. La distinction compte — l'un est un fait
+-- d'usage, l'autre serait une volonté qu'on lui prête.
+
+create or replace function public.biometry_ceinture_exige_un_coach()
+returns trigger
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $$
+begin
+  if new.source = 'polar_h10' then
+    if not exists (
+      select 1 from public.coach_pilots cp
+      where cp.pilot_id = new.user_id
+        and cp.active
+        and cp.pilot_consent_at is not null
+        and cp.coach_consent_at is not null
+    ) then
+      raise exception
+        'La ceinture cardio demande un coach affilié. Aucune affiliation active pour ce pilote.'
+        using errcode = 'check_violation';
+    end if;
+  end if;
+  return new;
+end $$;
+
+revoke execute on function public.biometry_ceinture_exige_un_coach() from public, anon, authenticated;
+
+drop trigger if exists biometry_ceinture_exige_un_coach_trg on public.biometry_source_consents;
+create trigger biometry_ceinture_exige_un_coach_trg
+  before insert on public.biometry_source_consents
+  for each row execute function public.biometry_ceinture_exige_un_coach();
+
+comment on function public.biometry_ceinture_exige_un_coach() is
+  'Arbitrage du 26/08/2026 : la ceinture cardio n''est consentable que si le '
+  'pilote a une affiliation coach ACTIVE et doublement consentie. La montre, '
+  'elle, ne dépend de personne. Le module consentementSource rejoue la règle '
+  'à chaque séance, car une affiliation peut cesser après l''accord.';

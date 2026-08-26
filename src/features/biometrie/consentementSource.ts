@@ -82,7 +82,15 @@ export type MotifDecision =
   /** Le pilote a retiré CETTE source, socle intact. */
   | 'source_retiree'
   /** L'identifiant de source n'est pas au registre. */
-  | 'source_inconnue';
+  | 'source_inconnue'
+  /**
+   * La ceinture demande un coach affilié, et il n'y en a pas — arbitrage
+   * fondateur du 26/08/2026. La base refuse déjà de POSER un tel accord ; ce
+   * motif couvre le cas où l'affiliation cesse APRÈS l'accord. On ne révoque
+   * rien alors : l'accord dort, la capture s'arrête, et elle reprend si un
+   * coach revient. Révoquer serait décider à la place du pilote.
+   */
+  | 'coach_affilie_absent';
 
 export interface DecisionSource {
   /** Cette source peut-elle mesurer, maintenant ? */
@@ -98,6 +106,13 @@ export interface EtatConsentements {
   socleCapture: boolean;
   /** Partage au coach : `users.biometry_coach_share_consent_at` non nul. */
   partageCoach: boolean;
+  /**
+   * Une affiliation coach ACTIVE et doublement consentie existe-t-elle ?
+   *
+   * Requis, pas optionnel : une source qui EXIGE un coach ne doit pas pouvoir
+   * s'autoriser parce que l'appelant a oublié de renseigner le champ.
+   */
+  coachAffilieActif: boolean;
   /** L'état par source. Une source absente de la table vaut `jamais_recueilli`. */
   parSource: Readonly<Partial<Record<IdSource, EtatSource>>>;
 }
@@ -136,6 +151,15 @@ export function decisionCapture(
 
   const propre = etatDeLaSource(etat, source.id);
   if (propre === 'retire') return { autorisee: false, motif: 'source_retiree' };
+
+  // Arbitrage du 26/08/2026. Placée APRÈS le retrait — un pilote qui a retiré
+  // sa ceinture l'a retirée, qu'un coach soit là ou non, et c'est SON geste
+  // qu'on lui rend. Placée AVANT l'accord, parce qu'une affiliation qui cesse
+  // ferme la source même si l'accord tient toujours.
+  if (source.exigeCoachAffilie === true && etat.coachAffilieActif !== true) {
+    return { autorisee: false, motif: 'coach_affilie_absent' };
+  }
+
   if (propre === 'accorde') return { autorisee: true, motif: 'socle_et_source' };
   return { autorisee: true, motif: 'socle_seul' };
 }

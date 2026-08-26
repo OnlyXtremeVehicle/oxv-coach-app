@@ -277,3 +277,4 @@
 20260826133720|preuve_partenaire_boucle_automatisee              (oxv-site : migration_preuve_partenaire.sql)
 20260826133807|audience_partenaire_personnes_pas_clics           (oxv-site : migration_audience_partenaire.sql)
 20260826133914|rapport_periodique_atelier_et_consentement_pointage (oxv-site : migration_rapport_periodique.sql)
+20260826150000|lot10a_biometry_source_consents  (accord par source ; ceinture liee a un coach affilie — arbitrage 26/08)

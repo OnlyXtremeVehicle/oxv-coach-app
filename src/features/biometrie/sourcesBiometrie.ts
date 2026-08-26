@@ -76,6 +76,21 @@ export interface SourceBiometrique {
   cadenceNominaleHz: number;
   /** Rapporte-t-elle les intervalles R-R (variabilité) ? */
   porteVariabilite: boolean;
+  /**
+   * Cette source n'est consentable — et mesurable — que si un coach affilié
+   * accompagne le pilote. Arbitrage fondateur du 26/08/2026.
+   *
+   * La ceinture thoracique mesure en continu et porte la variabilité : c'est la
+   * donnée de santé la plus fine du dispositif. Elle n'existe pas comme
+   * équipement de confort, mais parce qu'un professionnel accompagne. La montre,
+   * elle, ne dépend de personne.
+   *
+   * Tenu à DEUX endroits, et c'est voulu : la base refuse de poser un tel accord
+   * sans affiliation (trigger `biometry_ceinture_exige_un_coach`), et
+   * `decisionCapture` rejoue la règle à chaque séance — une affiliation peut
+   * cesser après l'accord.
+   */
+  exigeCoachAffilie: boolean;
   /** Peut-elle alimenter le direct du coach ? (conséquence de la latence.) */
   alimenteLeDirect: boolean;
   /**
@@ -109,6 +124,8 @@ export const SOURCE_CEINTURE = {
   // À VALIDER SUR PISTE.
   cadenceNominaleHz: 1,
   porteVariabilite: true,
+  // Arbitrage 26/08/2026 : la ceinture n'existe que si un coach accompagne.
+  exigeCoachAffilie: true,
   alimenteLeDirect: true,
   natureMesure: 'Fréquence cardiaque et variabilité, mesure de précision.',
   rangDeclare: 0,
@@ -139,6 +156,8 @@ export const SOURCE_MONTRE = {
   // la cadence réelle dépend du mode d'entraînement actif sur la montre.
   cadenceNominaleHz: 0.2,
   porteVariabilite: false,
+  // La montre ne dépend de personne : elle est au poignet du pilote.
+  exigeCoachAffilie: false,
   alimenteLeDirect: false,
   natureMesure: 'Mesure au poignet, indicative.',
   rangDeclare: 1,

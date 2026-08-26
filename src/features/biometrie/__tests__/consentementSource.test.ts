@@ -17,6 +17,7 @@ function etat(p: Partial<EtatConsentements> = {}): EtatConsentements {
     drapeauActif: true,
     socleCapture: true,
     partageCoach: false,
+    coachAffilieActif: true,
     parSource: {},
     ...p,
   };
@@ -100,7 +101,8 @@ describe('le partage coach est DISTINCT de la capture', () => {
   });
 
   it('partage accordé mais source retirée → refus (le partage ne ressuscite rien)', () => {
-    const e = etat({ partageCoach: true, parSource: { ceinture_ble: 'retire' } });
+    const e = etat({ partageCoach: true,
+  coachAffilieActif: true, parSource: { ceinture_ble: 'retire' } });
     expect(decisionPartageCoach(e, SOURCE_CEINTURE)).toEqual({
       autorisee: false,
       motif: 'source_retiree',
@@ -150,5 +152,71 @@ describe('les phrases rendues', () => {
     expect(
       phraseDecision(SOURCE_CEINTURE, { autorisee: false, motif: 'source_inconnue' })
     ).toBeNull();
+  });
+});
+
+/**
+ * ARBITRAGE FONDATEUR DU 26/08/2026
+ * « deux acceptations différentes et la ceinture seulement si coach affilié
+ *   durant sessions »
+ *
+ * La ceinture thoracique mesure en continu et porte la variabilité : elle
+ * n'existe pas comme équipement de confort, mais parce qu'un professionnel
+ * accompagne. La montre, au poignet du pilote, ne dépend de personne.
+ */
+describe('la ceinture demande un coach affilié — arbitrage du 26/08/2026', () => {
+  it('sans coach affilié, la ceinture ne mesure pas — et le motif le dit', () => {
+    const d = decisionCapture(
+      etat({ coachAffilieActif: false, parSource: { ceinture_ble: 'accorde' } }),
+      SOURCE_CEINTURE
+    );
+    expect(d.autorisee).toBe(false);
+    expect(d.motif).toBe('coach_affilie_absent');
+  });
+
+  it('avec un coach affilié, l’accord ceinture porte', () => {
+    const d = decisionCapture(
+      etat({ coachAffilieActif: true, parSource: { ceinture_ble: 'accorde' } }),
+      SOURCE_CEINTURE
+    );
+    expect(d.autorisee).toBe(true);
+    expect(d.motif).toBe('socle_et_source');
+  });
+
+  it('la montre ne dépend de personne : sans coach, elle mesure quand même', () => {
+    const d = decisionCapture(
+      etat({ coachAffilieActif: false, parSource: { montre_apple: 'accorde' } }),
+      SOURCE_MONTRE
+    );
+    expect(d.autorisee).toBe(true);
+  });
+
+  it('deux acceptations DIFFÉRENTES : retirer la ceinture ne touche pas la montre', () => {
+    const e = etat({
+      coachAffilieActif: true,
+      parSource: { ceinture_ble: 'retire', montre_apple: 'accorde' },
+    });
+    expect(decisionCapture(e, SOURCE_CEINTURE).autorisee).toBe(false);
+    expect(decisionCapture(e, SOURCE_MONTRE).autorisee).toBe(true);
+  });
+
+  /**
+   * L'ordre des marches compte : un retrait est le geste du pilote, et c'est
+   * lui qu'on lui rend — pas une absence de coach qu'il n'a pas décidée.
+   */
+  it('un retrait prime sur l’absence de coach : c’est son geste qu’on lui rend', () => {
+    const d = decisionCapture(
+      etat({ coachAffilieActif: false, parSource: { ceinture_ble: 'retire' } }),
+      SOURCE_CEINTURE
+    );
+    expect(d.motif).toBe('source_retiree');
+  });
+
+  it('l’affiliation qui cesse ferme la source sans révoquer l’accord', () => {
+    const accorde = { ceinture_ble: 'accorde' } as const;
+    expect(etatDeLaSource(etat({ coachAffilieActif: false, parSource: accorde }), 'ceinture_ble'))
+      .toBe('accorde');
+    expect(decisionCapture(etat({ coachAffilieActif: false, parSource: accorde }), SOURCE_CEINTURE).autorisee)
+      .toBe(false);
   });
 });
