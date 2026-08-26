@@ -10,6 +10,12 @@
  * Gating biométrie STRICTEMENT fail-closed (flag ET consentement ET données).
  */
 
+import {
+  arbitrerSources,
+  phraseArbitrage,
+  regrouperParSource,
+} from '@/features/biometrie/arbitrageSources';
+import type { IdSource } from '@/features/biometrie/sourcesBiometrie';
 import { projectToMeters, type LatLon } from '@/circuit/circuitGenerator';
 import { getCorner } from '@/lib/circuitTopology';
 import { isDoctrineSafe } from '@/services/aiSafetyFilter';
@@ -424,29 +430,60 @@ export interface BiometryRowLite {
   quality: number | null;
 }
 
-/** Lignes base → échantillons {ts ms, hr} du BiometryStrip (invalides filtrés). */
-export function toBiometrySamples(rows: readonly BiometryRowLite[]): { ts: number; hr: number }[] {
+/**
+ * Lignes base → échantillons {ts ms, hr} du BiometryStrip (invalides filtrés).
+ *
+ * `cleSource` EST OBLIGATOIRE DEPUIS LE LOT 10a, et ce n'était pas un oubli
+ * anodin. La clé naturelle de `biometry_raw` est `(session_id, ts, source)` :
+ * deux sources peuvent donc écrire sur la même séance — c'est même le cas
+ * nominal d'un pilote qui porte sa montre ET enfile une ceinture au paddock.
+ * Sans filtre, la sparkline mêlait deux capteurs, deux sites de mesure et deux
+ * horloges, sous un badge unique. Aucun de ses points n'avait plus d'origine
+ * identifiable. On ne trace donc QUE la source retenue par l'arbitrage.
+ */
+export function toBiometrySamples(
+  rows: readonly BiometryRowLite[],
+  cleSource: string
+): { ts: number; hr: number }[] {
   return rows
+    .filter((r) => r.source === cleSource)
     .map((r) => ({ ts: Date.parse(r.ts), hr: r.hr }))
     .filter((s) => Number.isFinite(s.ts) && Number.isFinite(s.hr) && s.hr > 0);
 }
 
 /**
- * Capteur dominant de la séance → badge du BiometryStrip.
- * 'apple_watch' → montre, 'polar_h10' → ceinture ; source inconnue ignorée,
- * aucune reconnue → null (pas de badge inventé).
+ * Arbitre les sources d'une séance et rend la retenue, son badge et son motif.
+ *
+ * REMPLACE `biometrySourceOf`, qui posait le badge à la MAJORITÉ des lignes. Ce
+ * vote-là était biaisé par construction : la ceinture rend ~1 point / s, la
+ * montre ~1 point / 5 s, donc la ceinture gagnait presque toujours — non parce
+ * qu'elle avait été retenue, mais parce qu'elle est plus bavarde. La règle vit
+ * maintenant dans `@/features/biometrie/arbitrageSources`, elle est explicite,
+ * et son motif est RENDU au pilote.
+ *
+ * `consentiePar` est demandé à l'appelant : ce module ne lit aucun consentement.
  */
-export function biometrySourceOf(
-  rows: readonly Pick<BiometryRowLite, 'source'>[]
-): 'montre' | 'ceinture' | null {
-  let watch = 0;
-  let belt = 0;
-  for (const r of rows) {
-    if (r.source === 'apple_watch') watch += 1;
-    else if (r.source === 'polar_h10') belt += 1;
-  }
-  if (watch === 0 && belt === 0) return null;
-  return watch >= belt ? 'montre' : 'ceinture';
+export interface BiometrieArbitree {
+  /** Clé base de la source retenue — le filtre de `toBiometrySamples`. */
+  cleSource: string;
+  /** Badge du BiometryStrip. */
+  badge: 'montre' | 'ceinture';
+  /** Phrase du motif, ou null s'il n'y a rien à expliquer (source unique). */
+  motif: string | null;
+}
+
+export function arbitrerBiometrie(
+  rows: readonly BiometryRowLite[],
+  consentiePar: (id: IdSource) => boolean
+): BiometrieArbitree | null {
+  const { flux, inconnues } = regrouperParSource(rows, consentiePar);
+  const arbitrage = arbitrerSources(flux, inconnues);
+  if (arbitrage.retenue === null) return null;
+  return {
+    cleSource: arbitrage.retenue.cleBase,
+    badge: arbitrage.retenue.badge,
+    motif: phraseArbitrage(arbitrage),
+  };
 }
 
 /** Seuils de lecture de la qualité 0-100 (computeQuality, BE-1). */

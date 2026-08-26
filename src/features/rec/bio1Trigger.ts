@@ -27,8 +27,26 @@
  * précisément pourquoi la garde n'est posée qu'après une lecture RÉELLE.
  */
 
-/** Fréquence d'échantillonnage attendue de l'Apple Watch (~1 Hz) pour la qualité. */
-export const BIO1_EXPECTED_HZ = 1;
+import { SOURCE_MONTRE } from '@/features/biometrie/sourcesBiometrie';
+
+/**
+ * Fréquence d'échantillonnage attendue de la montre, pour le calcul de qualité.
+ *
+ * ELLE VALAIT 1 Hz, ET C'ÉTAIT L'ATTENTE DE LA CEINTURE (lot 10a).
+ *
+ * `computeQuality` rapporte le nombre de points reçus au nombre attendu sur la
+ * durée. À 1 Hz, une montre qui rend correctement son point toutes les cinq
+ * secondes affichait une densité de 0,2 — donc une qualité proche de 20, que
+ * `biometryQualityOf` traduit par « basse ». La montre était déclarée de qualité
+ * basse à chaque séance, non parce qu'elle avait mal mesuré, mais parce qu'on la
+ * jugeait à l'aune d'un autre capteur.
+ *
+ * La valeur vient désormais du registre des sources, qui déclare ce que CHAQUE
+ * source annonce. On lit la constante directement plutôt que via un accesseur
+ * par identifiant : un accesseur rendrait `number | null`, et le `?? 1` qu'il
+ * appellerait réintroduirait très exactement le défaut qu'on retire ici.
+ */
+export const BIO1_EXPECTED_HZ = SOURCE_MONTRE.cadenceNominaleHz;
 
 /** Préfixe MMKV de la garde d'idempotence de la lecture BIO-1. */
 export const BIO1_GUARD_PREFIX = 'bio1-read:';
@@ -129,7 +147,10 @@ export async function runBio1(input: Bio1Input, deps: Bio1Deps): Promise<Bio1Out
     // 4. Qualité + persistance idempotente (upsert côté service).
     const quality = deps.computeQuality(raw, BIO1_EXPECTED_HZ);
     const enriched: Bio1Sample[] = raw.map((s) => ({ ts: s.ts, hr: s.hr, quality }));
-    const res = await deps.saveSamples(input.sessionId, enriched, 'apple_watch');
+    // La clé de source vient du REGISTRE, pas d'un littéral recopié : c'est ce
+    // qui garantit qu'une mesure écrite ici et une mesure relue au bilan parlent
+    // de la même source, et qu'il n'existe qu'un seul endroit où cela se décide.
+    const res = await deps.saveSamples(input.sessionId, enriched, SOURCE_MONTRE.cleBase);
 
     // 5. Garde posée UNIQUEMENT sur une lecture réelle persistée.
     deps.guardMark(input.sessionId);

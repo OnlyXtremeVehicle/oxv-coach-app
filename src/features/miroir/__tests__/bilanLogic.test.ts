@@ -21,8 +21,8 @@ import {
   BILAN_PILLAR_KEYS,
   bestLapMsOf,
   bilanHeroMorphId,
+  arbitrerBiometrie,
   biometryQualityOf,
-  biometrySourceOf,
   biometryVisible,
   buildCoachNotes,
   buildTraceMarkers,
@@ -74,26 +74,72 @@ describe('toBiometrySamples', () => {
       { ts: 'pas-une-date', hr: 100, source: 'polar_h10', quality: null },
       { ts: '2026-07-18T10:00:01.000Z', hr: 0, source: 'polar_h10', quality: null },
     ];
-    const samples = toBiometrySamples(rows);
+    const samples = toBiometrySamples(rows, 'polar_h10');
     expect(samples).toHaveLength(1);
     expect(samples[0]).toEqual({ ts: Date.parse('2026-07-18T10:00:00.000Z'), hr: 96 });
   });
+
+  /**
+   * LOT 10a — LA COURBE NE MÊLE PLUS DEUX CAPTEURS.
+   *
+   * `toBiometrySamples` versait toutes les lignes dans une seule série, sans
+   * regarder leur source. Deux capteurs, deux sites de mesure, deux horloges,
+   * et plus aucun point dont on sache d'où il vient.
+   */
+  it('ne garde QUE les lignes de la source retenue', () => {
+    const rows = [
+      { ts: '2026-07-18T10:00:00.000Z', hr: 96, source: 'polar_h10', quality: 80 },
+      { ts: '2026-07-18T10:00:01.000Z', hr: 150, source: 'apple_watch', quality: 80 },
+    ];
+    expect(toBiometrySamples(rows, 'polar_h10')).toEqual([
+      { ts: Date.parse('2026-07-18T10:00:00.000Z'), hr: 96 },
+    ]);
+    expect(toBiometrySamples(rows, 'apple_watch')).toEqual([
+      { ts: Date.parse('2026-07-18T10:00:01.000Z'), hr: 150 },
+    ]);
+  });
 });
 
-describe('biometrySourceOf / biometryQualityOf', () => {
-  it('capteur dominant → badge ; aucune source reconnue → null', () => {
-    expect(
-      biometrySourceOf([
-        { source: 'apple_watch' },
-        { source: 'apple_watch' },
-        { source: 'polar_h10' },
-      ])
-    ).toBe('montre');
-    expect(biometrySourceOf([{ source: 'polar_h10' }])).toBe('ceinture');
-    expect(biometrySourceOf([{ source: 'inconnu' }])).toBe(null);
-    expect(biometrySourceOf([])).toBe(null);
+describe('arbitrerBiometrie — remplace le vote à la majorité', () => {
+  const toutConsenti = () => true;
+
+  function ligne(source: string, quality: number | null = 80) {
+    return { ts: '2026-07-18T10:00:00.000Z', hr: 120, source, quality };
+  }
+
+  it('LE DÉFAUT FERMÉ — la montre majoritaire ne l’emporte plus par le nombre', () => {
+    // Trois lignes montre contre une ceinture : l'ancien `biometrySourceOf`
+    // rendait « montre ». La règle explicite retient la CADENCE, et le dit.
+    const arb = arbitrerBiometrie(
+      [ligne('apple_watch'), ligne('apple_watch'), ligne('apple_watch'), ligne('polar_h10')],
+      toutConsenti
+    );
+    expect(arb?.badge).toBe('ceinture');
+    expect(arb?.cleSource).toBe('polar_h10');
+    expect(arb?.motif).toContain('cadence plus fine');
   });
 
+  it('une source unique est retenue sans motif à produire', () => {
+    const arb = arbitrerBiometrie([ligne('polar_h10')], toutConsenti);
+    expect(arb).toEqual({ cleSource: 'polar_h10', badge: 'ceinture', motif: null });
+  });
+
+  it('une source NON consentie n’est pas retenue', () => {
+    const arb = arbitrerBiometrie(
+      [ligne('polar_h10'), ligne('apple_watch')],
+      (id) => id === 'montre_apple'
+    );
+    expect(arb?.cleSource).toBe('apple_watch');
+  });
+
+  it('aucune source reconnue ou consentie → null (jamais un badge inventé)', () => {
+    expect(arbitrerBiometrie([ligne('inconnu')], toutConsenti)).toBeNull();
+    expect(arbitrerBiometrie([], toutConsenti)).toBeNull();
+    expect(arbitrerBiometrie([ligne('polar_h10')], () => false)).toBeNull();
+  });
+});
+
+describe('biometryQualityOf', () => {
   it('qualité : moyenne des valeurs mesurées, undefined sans mesure', () => {
     expect(biometryQualityOf([{ quality: 90 }, { quality: 70 }])).toBe('haute');
     expect(biometryQualityOf([{ quality: 50 }])).toBe('moyenne');

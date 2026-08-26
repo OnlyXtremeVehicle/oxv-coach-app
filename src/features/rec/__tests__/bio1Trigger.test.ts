@@ -1,3 +1,4 @@
+import { SOURCE_MONTRE } from '@/features/biometrie/sourcesBiometrie';
 import { bio1GuardKey, BIO1_EXPECTED_HZ, runBio1, type Bio1Deps } from '../bio1Trigger';
 
 /** Deps par défaut : tout permis, une lecture non vide, garde en mémoire. */
@@ -55,7 +56,11 @@ const input = {
 describe('bio1GuardKey', () => {
   it('dérive la clé de garde par séance', () => {
     expect(bio1GuardKey('s1')).toBe('bio1-read:s1');
-    expect(BIO1_EXPECTED_HZ).toBe(1);
+    // LOT 10a — l'attente n'est plus celle de la ceinture. Elle valait 1 Hz,
+    // ce qui faisait tomber la qualité de la montre autour de 20 (« basse »)
+    // à chaque séance : la montre rend ~1 point / 5 s, pas 1 point / s.
+    expect(BIO1_EXPECTED_HZ).toBe(SOURCE_MONTRE.cadenceNominaleHz);
+    expect(BIO1_EXPECTED_HZ).toBeLessThan(1);
   });
 });
 

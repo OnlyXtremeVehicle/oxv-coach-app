@@ -20,6 +20,7 @@
  * de garde est testable sous ts-jest node sans natif ni réseau.
  */
 
+import { SOURCE_CEINTURE } from '@/features/biometrie/sourcesBiometrie';
 import type { HeartRateSample } from '@/services/v2/heartRateParser';
 import type { BioSample } from '@/services/v2/biometryBufferLogic';
 import type { BiometryInputSample, BiometrySource } from '@/services/v2/biometryService';
@@ -192,7 +193,9 @@ async function flushSession(
     clearSession(deps.storage, sessionId); // rien d'exploitable → purge locale
     return;
   }
-  await deps.saveSamples(sessionId, input, 'polar_h10'); // throw si échec → garde local
+  // Clé de source lue au REGISTRE (lot 10a) plutôt que recopiée : la ceinture
+  // s'écrit ici, se relit au bilan, et une seule déclaration en fait foi.
+  await deps.saveSamples(sessionId, input, SOURCE_CEINTURE.cleBase); // throw → garde local
   clearSession(deps.storage, sessionId); // succès confirmé → purge locale
 }
 

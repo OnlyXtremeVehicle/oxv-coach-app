@@ -93,6 +93,7 @@ import { Card } from '@/ui/Card';
 import { CockpitPanel } from '@/ui/CockpitPanel';
 import { Screen } from '@/ui/Screen';
 import { SectionLabel } from '@/ui/SectionLabel';
+import { SURFACE_LUNETTES_COACH, peutAfficherSante } from '@/features/biometrie/surfacesAffichage';
 import { formatChronoTenths, formatDateLong } from '@/utils/format';
 
 const { palette, dataColors, fonts, fontSize, spacing, radius } = theme;
@@ -549,7 +550,9 @@ function MetaMirror({
     frame ? `tour ${frame.lap}` : null,
     CONN_LABEL[conn],
     `tour en cours ${chrono}`,
-    bio ? `${bio.hrBpm} battements par minute` : null,
+    bio && peutAfficherSante(SURFACE_LUNETTES_COACH, { partageCoachConsenti: true })
+      ? `${bio.hrBpm} battements par minute`
+      : null,
   ]
     .filter(Boolean)
     .join(' · ');
@@ -582,8 +585,17 @@ function MetaMirror({
           <Text style={[s.mirrorChrono, { fontSize: compact ? 52 : 78 }]}>{chrono}</Text>
         </View>
 
-        {/* 3 · FC — n'existe que si le pilote en émet vers son coach. */}
-        {bio ? (
+        {/* 3 · FC — n'existe que si le pilote en émet vers son coach, ET si la
+            SURFACE l'admet (lot 10a). Les lunettes sont une surface d'affichage,
+            jamais une source de mesure : elles ne mesurent aucun battement, elles
+            rendent un fait déjà mesuré, arrivé par le canal privé du binôme.
+            `peutAfficherSante` refuse par défaut — et refuserait notamment toute
+            surface déclarée visible d'un pilote en roulage (Principe 3). Le
+            `bio` non nul VAUT partage consenti : `liveRelayRunner` n'émet vers
+            ce canal que sous le triple verrou de `liveHealthGate`, donc rien
+            n'arrive ici sans accord. La garde ci-dessous est la seconde ceinture,
+            posée au point d'AFFICHAGE. */}
+        {bio && peutAfficherSante(SURFACE_LUNETTES_COACH, { partageCoachConsenti: true }) ? (
           <View style={s.mirrorRow}>
             <Text style={[s.mirrorLabel, { fontSize: labelSize }]}>FC</Text>
             <View style={s.mirrorRight}>

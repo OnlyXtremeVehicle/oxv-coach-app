@@ -45,6 +45,8 @@ import {
   type CoachMessage,
   type MessageThread,
 } from '@/services/coachMessagesService';
+import { decisionCapture } from '@/features/biometrie/consentementSource';
+import { sourceParId } from '@/features/biometrie/sourcesBiometrie';
 import { loadBiometryConsents } from '@/services/consentService';
 import { getIntentionForSession, type SessionIntention } from '@/services/intentionsService';
 import { isFlagEnabled } from '@/services/featureFlagsService';
@@ -65,8 +67,8 @@ import type { Lap, TelemetrySession } from '@/types/telemetry';
 
 import {
   bestLapMsOf,
+  arbitrerBiometrie,
   biometryQualityOf,
-  biometrySourceOf,
   biometryVisible,
   buildCoachNotes,
   buildTraceMarkers,
@@ -94,6 +96,12 @@ export interface BilanBiometry {
   samples: { ts: number; hr: number }[];
   source: 'montre' | 'ceinture';
   quality?: 'haute' | 'moyenne' | 'basse';
+  /**
+   * Lot 10a — POURQUOI CETTE SOURCE-LÀ, quand deux ont mesuré la séance.
+   * `null` quand une seule source était en lice : il n'y a alors rien à
+   * expliquer, et une phrase de remplissage serait du bruit.
+   */
+  motifSource: string | null;
 }
 
 export interface BilanData {
@@ -344,17 +352,50 @@ export function useBilan(sessionId: string | undefined): UseBilanResult {
         try {
           const rows = await getSessionBiometry(sessionId);
           if (cancelled) return;
-          const samples = toBiometrySamples(rows);
-          const source = biometrySourceOf(rows);
-          if (
-            biometryVisible({
-              flagEnabled: biometryFlag,
-              captureConsent: consents.capture,
-              sampleCount: samples.length,
-            }) &&
-            source !== null
-          ) {
-            biometry = { samples, source, quality: biometryQualityOf(rows) };
+
+          /**
+           * LOT 10a — UNE SOURCE RETENUE, ET DITE.
+           *
+           * Deux sources peuvent avoir mesuré cette séance (clé naturelle
+           * `(session_id, ts, source)`). On en retient UNE, selon une règle
+           * explicite, et l'on ne trace que ses points : une courbe dont
+           * chaque battement a une origine connue.
+           *
+           * Le consentement PAR SOURCE se lit ici. Tant que la table
+           * `biometry_source_consents` n'est pas appliquée, `parSource` reste
+           * vide : `decisionCapture` autorise alors sur le SOCLE seul, et le
+           * dit (motif `socle_seul`). Aucun accord n'est prétendu.
+           */
+          const etatConsentements = {
+            drapeauActif: biometryFlag,
+            socleCapture: consents.capture,
+            partageCoach: consents.coachShare,
+            parSource: {},
+          };
+          const arbitre = arbitrerBiometrie(
+            rows,
+            (id) => decisionCapture(etatConsentements, sourceParId(id)).autorisee
+          );
+          if (arbitre !== null) {
+            const lignesRetenues = rows.filter((r) => r.source === arbitre.cleSource);
+            const samples = toBiometrySamples(rows, arbitre.cleSource);
+            if (
+              biometryVisible({
+                flagEnabled: biometryFlag,
+                captureConsent: consents.capture,
+                sampleCount: samples.length,
+              })
+            ) {
+              biometry = {
+                samples,
+                source: arbitre.badge,
+                // La qualité est celle des SEULES lignes retenues : moyenner
+                // deux sources donnerait un chiffre qui n'appartient à aucune
+                // des deux.
+                quality: biometryQualityOf(lignesRetenues),
+                motifSource: arbitre.motif,
+              };
+            }
           }
         } catch {
           biometry = null;

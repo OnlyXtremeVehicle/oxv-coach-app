@@ -41,6 +41,14 @@ import {
   useDoorTransition,
 } from '@/ui/v2';
 
+import { fontSize } from '@/theme/v2';
+import {
+  SOURCE_CEINTURE,
+  SOURCE_MONTRE,
+  phraseCadence,
+  phraseLatence,
+  type SourceBiometrique,
+} from '@/features/biometrie/sourcesBiometrie';
 import {
   devicePastille,
   deviceHealthLabel,
@@ -216,8 +224,38 @@ function BeltCard() {
           <Text style={styles.simpleSub}>
             Réservée aux pilotes coachés — gérée au paddock par le staff.
           </Text>
+          <FicheSource source={SOURCE_CEINTURE} />
         </View>
       </View>
+    </View>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Fiche d'une source — sa nature, sa cadence, sa latence (lot 10a)
+// ---------------------------------------------------------------------------
+
+/**
+ * CE QUE CHAQUE SOURCE ANNONCE, DIT ET NON SUPPOSÉ.
+ *
+ * Les deux cartes ci-dessus disaient à qui la source s'adresse et si elle est
+ * autorisée. Elles ne disaient RIEN de ce qu'elle mesure, à quelle cadence, ni
+ * quand la mesure devient lisible. Le pilote voyait ensuite une qualité
+ * « basse » ou « haute » au bilan sans savoir à l'aune de quoi.
+ *
+ * Ces trois lignes viennent du registre `sourcesBiometrie` — la même déclaration
+ * qui sert de référence au calcul de qualité. Ce que le pilote lit ici est donc
+ * exactement ce à quoi la mesure est comparée.
+ *
+ * Constats, jamais consignes.
+ */
+function FicheSource({ source }: { source: SourceBiometrique }) {
+  const cadence = phraseCadence(source);
+  return (
+    <View style={styles.ficheSource}>
+      <Text style={styles.ficheLigne}>{source.natureMesure}</Text>
+      {cadence !== null ? <Text style={styles.ficheLigne}>{cadence}</Text> : null}
+      <Text style={styles.ficheLigne}>{phraseLatence(source)}</Text>
     </View>
   );
 }
@@ -243,6 +281,7 @@ function WatchCard({
           <Text style={styles.simpleSub}>
             Autorisation santé : {watchStatusLabel(equip.watchStatus)}
           </Text>
+          <FicheSource source={SOURCE_MONTRE} />
         </View>
       </View>
       {watchShowAuthorizeButton(equip.watchStatus) ? (
@@ -402,6 +441,16 @@ const styles = StyleSheet.create({
     fontSize: 13,
     lineHeight: 19,
     color: colors.text.mid,
+  },
+  ficheSource: {
+    marginTop: space.sm,
+    gap: 2,
+  },
+  ficheLigne: {
+    fontFamily: typo.body,
+    fontSize: fontSize.small,
+    lineHeight: 17,
+    color: colors.text.dim,
   },
 
   authBtnContainer: { alignSelf: 'flex-start' },

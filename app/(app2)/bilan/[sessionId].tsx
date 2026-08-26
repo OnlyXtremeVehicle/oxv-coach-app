@@ -501,6 +501,11 @@ export default function BilanScreen() {
                   source={data.biometry.source}
                   quality={data.biometry.quality}
                 />
+                {/* Lot 10a — quand DEUX sources ont mesuré, on dit laquelle on
+                    lit et pourquoi. Absente s'il n'y a rien à expliquer. */}
+                {data.biometry.motifSource !== null ? (
+                  <Text style={styles.bioMotifSource}>{data.biometry.motifSource}</Text>
+                ) : null}
               </View>
             </View>
           ) : null}
@@ -1199,6 +1204,12 @@ const styles = StyleSheet.create({
   },
   momentBody: {
     flex: 1,
+  },
+  bioMotifSource: {
+    marginTop: space.sm,
+    color: colors.text.mid,
+    fontSize: fontSize.small,
+    lineHeight: 17,
   },
   bioCard: {
     marginTop: space.lg,
