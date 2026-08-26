@@ -15,6 +15,16 @@
  *   6. C1 « Qui roule » : opt-in own-row + inscrits opt-in (RPC gaté), filtre
  *      « Mon groupe » si écurie.
  *   7. C2 Convoi (flag `convoys` fail-closed) : RDV, participants, rejoindre.
+ *   8. PLAN DU RUN (M01) : la carte composée par `planDeRunLogic` — ce que le
+ *      pilote veut regarder, le circuit, le créneau, les conditions mesurées —
+ *      et la surface d'écriture (`CarteProchaineFois`, moment « avant »).
+ *
+ * POURQUOI LE POINT 8 EXISTE. Le hub PISTE annonce « Conditions, check-list,
+ * intention » ; cet écran ne portait AUCUNE occurrence du mot. L'écriture
+ * d'intention avait été relocalisée en sortie de séance (lot J5) sans jamais
+ * revenir en entrée : le pilote posait ce qu'il voulait regarder « la prochaine
+ * fois » et ne le revoyait qu'après avoir roulé. La promesse du hub est
+ * désormais tenue par l'écran.
  *
  * Doctrine : vouvoiement, sans emoji, jamais prescriptif, un seul chiffre roi
  * (le cadran countdown), fail-closed sur flag/opt-in.
@@ -50,6 +60,7 @@ import Animated, {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { storage } from '@/lib/mmkv';
+import { fontSize as fs } from '@/theme/v2';
 import { circuitDeMaJournee } from '@/services/journeeDuJourService';
 import { fetchCircuits, getDefaultCircuit } from '@/services/circuitsService';
 import { listMesJournees, type MaJournee } from '@/services/journeesService';
@@ -65,7 +76,9 @@ import {
 import { getMyCrew, type MyCrew } from '@/services/v2/referralService';
 import * as convoysService from '@/services/v2/convoysService';
 import { useAuthStore } from '@/store/useAuthStore';
+import { getPendingIntention } from '@/services/intentionsService';
 import {
+  Button,
   CondensingHeaderBar,
   Chip,
   colors,
@@ -114,6 +127,8 @@ import {
   setMyAttendanceOptIn,
 } from '@/features/rec/attendancePublicService';
 import { REC_ROUTES } from '@/features/rec/captureStepLogic';
+import { CarteProchaineFois } from '@/features/rec/CarteProchaineFois';
+import { composerPlanDeRun, RAPPEL_PLAN_DE_RUN } from '@/features/rec/planDeRunLogic';
 
 const HERO_HEIGHT = 170;
 const AVATAR = 44;
@@ -155,6 +170,16 @@ export default function PreparationScreen() {
   // C2 Convoi (flag fail-closed).
   const [convoysOn, setConvoysOn] = useState(false);
   const [convoys, setConvoys] = useState<convoysService.Convoy[]>([]);
+
+  /**
+   * PLAN DU RUN (M01) — ce que le pilote a posé, et la surface pour le poser.
+   *
+   * `intentionPosee` est le TEXTE tel qu'il est en base (own-row, RLS), jamais
+   * un texte que l'écran aurait composé. `null` = rien de posé : la carte le
+   * dit, elle ne remplit pas le vide.
+   */
+  const [intentionPosee, setIntentionPosee] = useState<string | null>(null);
+  const [ecritureOuverte, setEcritureOuverte] = useState(false);
 
   // --- Chargements best-effort ---------------------------------------------
 
@@ -256,11 +281,27 @@ export default function PreparationScreen() {
     setPass(prochaineJourneeAvecQr(regs, Date.now()));
   }, []);
 
+  /**
+   * L'intention EN ATTENTE — celle que le pilote a posée et qui n'est pas
+   * encore rattachée à une séance. Le service applique déjà la fenêtre de
+   * fraîcheur de 24 h : une intention écrite il y a trois jours et jamais
+   * consommée ne revient pas ici comme « celle du jour ».
+   *
+   * Un échec de lecture (hors-ligne au paddock) laisse `null` : la carte dit
+   * qu'il n'y a rien de posé plutôt que d'afficher un texte incertain, et
+   * l'écriture reste possible.
+   */
+  const loadIntention = useCallback(async () => {
+    const it = await getPendingIntention().catch(() => null);
+    setIntentionPosee(it?.body ?? null);
+  }, []);
+
   useFocusEffect(
     useCallback(() => {
       loadDay();
       loadPass();
-    }, [loadDay, loadPass])
+      loadIntention();
+    }, [loadDay, loadPass, loadIntention])
   );
 
   // --- Actions --------------------------------------------------------------
@@ -344,6 +385,24 @@ export default function PreparationScreen() {
   const days = nextDay ? daysUntilTrackDay(nextDay.date, new Date()) : null;
   const countdown = heroCountdownKind(days);
   const shownMembers = crewFilter && myCrew ? filterByCrew(members, myCrew.crewId) : members;
+
+  /**
+   * La carte du run (M01) — composée à partir des MÊMES données réelles que le
+   * reste de l'écran. Les conditions n'y entrent que si elles ont été mesurées
+   * (`trackConditions().mesure`) : un état de piste non lu ne se rend pas.
+   */
+  const plan = composerPlanDeRun({
+    intention: intentionPosee,
+    circuitNom: nextDay?.circuitName ?? null,
+    creneau: nextDay ? startTimeLabel(nextDay.startTime) : null,
+    conditions: conditions
+      ? {
+          label: conditions.label,
+          mesure: conditions.mesure,
+          temperatureC: weather?.temperatureC ?? null,
+        }
+      : null,
+  });
 
   return (
     <Animated.View style={[styles.root, door]}>
@@ -449,6 +508,71 @@ export default function PreparationScreen() {
               />
             ))}
           </View>
+        </View>
+
+        {/*
+          PLAN DU RUN (M01) — la carte du run, à l'ENTRÉE.
+
+          Elle juxtapose ce que le pilote veut regarder et le contexte réel de
+          la journée. Elle ne l'évalue pas, ne le note pas, n'en verrouille
+          aucun critère : l'application ne sait pas ce que le pilote veut dire
+          par sa phrase, et la juger serait sortir du miroir. Le pendant de
+          cette carte est la section « CE QUE VOUS AVIEZ POSÉ » du Bilan, où le
+          même texte revient à côté de ce que la séance en dit.
+
+          Lecture et écriture ne s'affichent jamais ensemble : pendant que le
+          champ est ouvert, le pilote lit son texte dans le champ — l'afficher
+          deux fois serait du bruit.
+        */}
+        <View style={styles.section}>
+          <SectionHeader eyebrow="PLAN DU RUN" />
+          <View style={styles.card}>
+            {!ecritureOuverte ? (
+              <View style={styles.planTete}>
+                <Text style={styles.planEyebrow}>CE QUE VOUS VOULEZ REGARDER</Text>
+                {plan.intention ? (
+                  <Text style={styles.planIntention}>{plan.intention}</Text>
+                ) : (
+                  <Text style={styles.planAbsence}>Rien de posé pour l’instant.</Text>
+                )}
+              </View>
+            ) : null}
+
+            {plan.lignes.map((ligne, i) => (
+              <ListRow
+                key={ligne.cle}
+                label={ligne.libelle}
+                value={ligne.valeur}
+                divider={i < plan.lignes.length - 1}
+              />
+            ))}
+
+            {/* Carte entièrement vide : le rappel n'aurait rien à encadrer. */}
+            {!plan.vide ? <Text style={styles.planRappel}>{RAPPEL_PLAN_DE_RUN}</Text> : null}
+          </View>
+
+          <View style={styles.planAction}>
+            <Button
+              label={ecritureOuverte ? 'Fermer' : plan.intention ? 'Modifier' : 'Poser mes mots'}
+              variant="ghost"
+              onPress={() => setEcritureOuverte((o) => !o)}
+              accessibilityLabel={
+                ecritureOuverte
+                  ? 'Fermer la saisie de votre intention'
+                  : plan.intention
+                    ? 'Modifier ce que vous voulez regarder'
+                    : 'Écrire ce que vous voulez regarder'
+              }
+            />
+          </View>
+
+          {ecritureOuverte ? (
+            <CarteProchaineFois
+              circuitId={nextDay?.circuitId ?? null}
+              moment="avant"
+              onGardee={setIntentionPosee}
+            />
+          ) : null}
         </View>
 
         {/* Pass OXV */}
@@ -1054,6 +1178,43 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   progressFill: { height: 2, borderRadius: radius.pill, backgroundColor: colors.accent },
+  // --- Plan du run (M01) ----------------------------------------------------
+  planTete: { paddingTop: space.md, paddingBottom: space.sm },
+  /**
+   * `text.mid`, pas `text.dim` : cet écran appartient au flux REC, où le
+   * plancher de contraste est de 7:1 en plein soleil et où le tertiaire est
+   * interdit (garde `contrasteFluxRec`). La hiérarchie se fait ici par la
+   * graisse et la casse, jamais en baissant le gris.
+   */
+  planEyebrow: {
+    fontFamily: typo.monoSemi,
+    fontSize: fs.eyebrow,
+    letterSpacing: 1,
+    color: colors.text.mid,
+  },
+  planIntention: {
+    fontFamily: typo.body,
+    fontSize: fs.bodyLg,
+    lineHeight: 22,
+    color: colors.text.hi,
+    marginTop: space.sm,
+  },
+  /** L'absence est DITE, sans tiret ni bloc vide qui ferait croire à une donnée. */
+  planAbsence: {
+    fontFamily: typo.body,
+    fontSize: fs.body,
+    color: colors.text.mid,
+    marginTop: space.sm,
+  },
+  planRappel: {
+    fontFamily: typo.body,
+    fontSize: fs.small,
+    lineHeight: 18,
+    color: colors.text.mid,
+    paddingTop: space.sm,
+    paddingBottom: space.md,
+  },
+  planAction: { marginTop: space.sm },
   progressLabel: {
     fontFamily: typo.monoSemi,
     fontSize: 12,

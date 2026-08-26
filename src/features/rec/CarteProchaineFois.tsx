@@ -40,12 +40,31 @@
  *
  * L'acte est FACULTATIF : rien ne bloque la sortie de l'écran. Une variable
  * qu'on impose n'est plus la sienne.
+ *
+ * ---
+ *
+ * DEUX MOMENTS, UNE SEULE SURFACE D'ÉCRITURE (lot 7a, M01)
+ *
+ * La reconnaissance M01 a mesuré que l'écran de PRÉPARATION ne portait aucune
+ * occurrence du mot « intention », alors que le hub PISTE annonce
+ * « Conditions, check-list, intention ». Le pilote posait ce qu'il voulait
+ * regarder en SORTANT de piste, et ne le revoyait qu'après avoir roulé.
+ *
+ * Plutôt que d'écrire une seconde carte de saisie — deux producteurs pour une
+ * même ligne `session_intentions`, deux copies à faire dériver — cette carte
+ * porte désormais son MOMENT. Le service, lui, ne change pas : il n'existe
+ * qu'UNE intention en attente à la fois, mise à jour et jamais empilée. Poser
+ * en préparation puis corriger en fin de séance touche la même ligne.
+ *
+ * Seule la formulation change, parce que la question n'est pas la même : avant
+ * de rouler on regarde le jour qui vient, après on regarde la fois suivante.
+ * Aucune des deux ne demande une action ni ne propose de contenu.
  */
 
 import { useEffect, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
-import { INTENTION_MAX } from '@/services/intentionLogic';
+import { INTENTION_MAX, normalizeIntention } from '@/services/intentionLogic';
 import {
   getPendingIntention,
   savePendingIntention,
@@ -55,12 +74,41 @@ import { Button, ConsentRow, Field, SectionHeader, colors, space, typo } from '@
 
 type Etat = 'repos' | 'envoi' | 'gardee';
 
+/**
+ * Où la carte est montée. `avant` : l'écran de préparation, la séance n'a pas
+ * commencé. `apres` : la fin de séance, la question porte sur la fois suivante.
+ */
+export type MomentIntention = 'avant' | 'apres';
+
+/** Les mots de chaque moment. Ni gabarit ni suggestion : seulement la question. */
+const FORMULATIONS: Record<MomentIntention, { eyebrow: string; question: string; aide: string }> = {
+  avant: {
+    eyebrow: 'CE QUE VOUS VOULEZ REGARDER',
+    question: 'Que voulez-vous regarder aujourd’hui ?',
+    aide: 'Vos mots, pas ceux de l’application. Vous les retrouverez dans votre bilan, à côté de ce que la séance en dit.',
+  },
+  apres: {
+    eyebrow: 'LA PROCHAINE FOIS',
+    question: 'Que voulez-vous garder en tête ?',
+    aide: 'Vos mots, pas ceux de l’application. Vous les retrouverez au départ de votre prochaine séance.',
+  },
+};
+
 export interface CarteProchaineFoisProps {
-  /** Circuit de la séance qui vient de finir — contexte de stockage. */
+  /** Circuit rattaché au moment de l'écriture — contexte de stockage. */
   circuitId: string | null;
+  /** Avant de rouler, ou en sortie de séance. Décide de la formulation. */
+  moment: MomentIntention;
+  /**
+   * Appelé avec le texte effectivement gardé, pour l'écran qui l'affiche
+   * ailleurs (la carte du run, en préparation). `null` quand personne
+   * n'écoute — c'est le cas en fin de séance, où rien d'autre ne le rend.
+   * Explicitement `null` plutôt qu'omis : un appelant doit décider.
+   */
+  onGardee: ((texte: string) => void) | null;
 }
 
-export function CarteProchaineFois({ circuitId }: CarteProchaineFoisProps) {
+export function CarteProchaineFois({ circuitId, moment, onGardee }: CarteProchaineFoisProps) {
   const [texte, setTexte] = useState('');
   const [partage, setPartage] = useState(false);
   const [existante, setExistante] = useState<SessionIntention | null>(null);
@@ -99,20 +147,24 @@ export function CarteProchaineFois({ circuitId }: CarteProchaineFoisProps) {
     if (res.ok) {
       if (res.id) setExistante((prev) => (prev ? { ...prev, id: res.id as string } : prev));
       setEtat('gardee');
+      // On rend au parent le texte tel que le service l'a borné (mêmes trim et
+      // même longueur maximale), pas la valeur brute du champ : ce qui
+      // s'affiche ailleurs doit être ce qui est en base.
+      const garde = normalizeIntention(texte);
+      if (onGardee && garde) onGardee(garde);
     } else {
       setEtat('repos');
       setErreur(res.error ?? "Votre intention n'a pas pu être gardée.");
     }
   }
 
+  const mots = FORMULATIONS[moment];
+
   return (
     <View style={styles.carte}>
-      <SectionHeader eyebrow="LA PROCHAINE FOIS" />
-      <Text style={styles.question}>Que voulez-vous garder en tête ?</Text>
-      <Text style={styles.aide}>
-        Vos mots, pas ceux de l&apos;application. Vous les retrouverez au départ de votre prochaine
-        séance.
-      </Text>
+      <SectionHeader eyebrow={mots.eyebrow} />
+      <Text style={styles.question}>{mots.question}</Text>
+      <Text style={styles.aide}>{mots.aide}</Text>
 
       <Field
         label="Votre intention"

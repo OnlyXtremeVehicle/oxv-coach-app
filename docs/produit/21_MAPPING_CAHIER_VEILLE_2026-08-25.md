@@ -48,7 +48,7 @@ arbitrage du fondateur avant toute ligne de code (voir § Conflits).
 
 | Module | Nature | Remarque |
 |---|---|---|
-| M01 Plan de run | écran + logique | compatible doctrine si formulé en observation (« ce que je veux regarder »), pas en consigne |
+| ~~M01 Plan de run~~ | ~~écran + logique~~ | **LIVRÉ le 26/08 (lot 7a)** — cf. §D. Reste hors périmètre, et volontairement : critères verrouillés par le coach, score d'atteinte, virages cibles imposés (ce serait une consigne) ; et la « référence » du cahier, qu'aucune donnée du dépôt ne porte AVANT de rouler |
 | M06 Progression de session | vue | tendance robuste + interventions superposées — dérivable des données existantes |
 | M07 Carte des opportunités | vue | le tracé a déjà les pastilles de marge ; la coloration gain/perte par segment réconciliée au delta est à écrire |
 | M09 Gestionnaire de références | logique + écran | le score de comparabilité (véhicule/conditions/qualité) n'existe pas ; le « seul comparant = vous » actuel est un sous-ensemble |
@@ -91,6 +91,20 @@ arbitrage du fondateur avant toute ligne de code (voir § Conflits).
 | 6 « Tours » | M05 | `validationToursLogic` (classement propre / hors chrono / suspect, chaque marque portant son **fait** chiffré, écart net robuste par MAD **dans les deux sens**, référence = meilleur tour PROPRE avec réserve factuelle si le meilleur brut ne l'est pas) + section Tours (tours douteux atténués, détail au toucher, réserve près du chrono de référence) — 28 tests dont un **verrou lexical** : aucune sortie ne peut prononcer « trafic », « drapeau » ni une faute |
 
 | 6b « Déclaration » | M05 (humain) | Table **`lap_marks` appliquée en production** le 25/08 + types, `lapMarksService`, `marquesTourLogic`, et la Sheet « Déclarer » de la section Tours — 17 tests dont six verrouillent la **cohabitation** : le fait de la machine survit à la déclaration humaine, aucun genre ne retouche le classement |
+
+| 7a « Plan de run » (26/08) | M01 | Construit SUR la brique d'intention existante, jamais à côté. La reconnaissance a trouvé le trou : `grep -n intention app/(app2)/rec/preparation.tsx` rendait **zéro occurrence**, alors que le hub PISTE annonce « Conditions, check-list, intention ». Le lot J5 avait relocalisé la saisie en sortie de séance (`rec/fin`) sans jamais la remettre à l'entrée — le pilote posait ce qu'il voulait regarder « la prochaine fois » et ne le revoyait qu'après avoir roulé. Livré : `planDeRunLogic` (composition PURE de la carte du run — intention + circuit + créneau + conditions **mesurées** ; une entrée absente ne produit AUCUNE ligne) + section « PLAN DU RUN » en préparation + `CarteProchaineFois` portant désormais son **moment** (`avant` / `apres`) : une seule surface d'écriture, un seul `savePendingIntention`, une seule ligne `session_intentions`. **Aucune migration DB.** — 25 tests, dont une garde à cliquet (`planDeRunPose`) qui tient les deux bouts : la promesse du hub, et l'interdit de verdict (« tenue », « réussi », « atteint », « score ») au voisinage de la carte |
+
+**Ce que le lot 7a n'a PAS pris de M01, et pourquoi.** La fiche demande
+« critères et conditions », « validation coach », « objectif formulé en action
+mesurable » et un coach qui « verrouille les indicateurs de réussite ». Un
+critère qu'un tiers verrouille est une consigne ; un score d'atteinte est un
+verdict sur une phrase que l'application n'a pas comprise. Le coach LIT une
+intention partagée (RLS `SELECT` seul, `session_intentions_coach_select`) ; il
+ne l'écrit pas, il ne la borne pas. **La « référence » du cahier n'a pas été
+fabriquée** : `choixPaireTours` désigne la référence d'une séance DÉJÀ courue,
+et rien dans le dépôt ne persiste un repère choisi en amont — inventer la ligne
+aurait été le chiffre fabriqué que la doctrine interdit. Le module nomme
+l'absence et laisse la clé à ajouter le jour où la donnée existera.
 
 **Décision de schéma — RENDUE le 25/08 : table dédiée `lap_marks`.** Appliquée
 et vérifiée (7 colonnes, 3 politiques select/insert/delete, **aucune UPDATE** —

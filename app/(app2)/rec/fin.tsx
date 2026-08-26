@@ -356,8 +356,16 @@ export default function FinScreen() {
               C'était, avant ce lot, la seule capacité que l'arbre V1 détenait
               sans équivalent : `savePendingIntention` n'avait que deux
               appelants, tous deux en V1.
+
+              `onGardee={null}` : ici, rien d'autre à l'écran ne rend
+              l'intention — personne n'a à être prévenu. En préparation, la
+              carte du run l'affiche, et elle écoute.
             */}
-            <CarteProchaineFois circuitId={meta?.circuitId ?? null} />
+            <CarteProchaineFois
+              circuitId={meta?.circuitId ?? null}
+              moment="apres"
+              onGardee={null}
+            />
           </ScrollView>
         ) : null}
 
