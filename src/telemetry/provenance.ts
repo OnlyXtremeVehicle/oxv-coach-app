@@ -264,11 +264,15 @@ export const BANQUE: readonly Grandeur[] = [
   // ---- [I] ce qui suppose quelque chose de non mesuré ---------------------
   {
     cle: 'delta.idealLapTime',
-    nom: 'Tour idéal composé',
+    // « Optimal lap → Potentiel démontré » (charte anti-jargon, §02 du catalogue
+    // d'expérience). La clé reste `delta.idealLapTime` : elle nomme la fonction
+    // du dépôt qui produirait cette grandeur, pas le mot montré au pilote.
+    nom: 'Potentiel démontré',
     prov: 'I',
     source:
-      'Somme des meilleurs secteurs. **Suppose que ces secteurs sont combinables dans un même tour** — aucun tour ne l’a réalisé.',
-    convention: 'À annoncer théorique partout où il s’affiche.',
+      'Somme des meilleurs morceaux. **Suppose que ces morceaux sont combinables dans un même tour** — aucun tour ne l’a réalisé, et la continuité aux jonctions n’est pas vérifiée.',
+    convention:
+      'À annoncer théorique partout où il s’affiche : « potentiel démontré », jamais « tour garanti ».',
   },
   {
     cle: 'gg.exploitationRate',

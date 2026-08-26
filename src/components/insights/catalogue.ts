@@ -101,13 +101,22 @@ export const READINGS: ReadingDef[] = [
   },
   {
     key: 'tour-ideal',
-    name: 'Tour idéal composé',
+    // « Optimal lap → Potentiel démontré · jamais "tour garanti" » — charte
+    // anti-jargon du catalogue d'expérience (§02), reprise par la fiche M10 du
+    // cahier de veille : « nommer le résultat potentiel démontré ».
+    //
+    // Le nom précédent — « Tour idéal composé » — annonçait au pilote une
+    // composition que rien dans la chaîne ne fait : le moteur de production
+    // (`compute-session-insights-v3`) écrit le MEILLEUR TOUR RÉEL de la séance,
+    // et le moteur app-side (`sessionInsightsEngine`) fait de même, en le
+    // disant. Le mot promettait donc davantage que la donnée.
+    name: 'Potentiel démontré',
     badge: 'N3',
     tier: 'N3',
     dimension: 'accel',
-    eyebrow: 'Niveau 3 · Tour idéal composé',
+    eyebrow: 'Niveau 3 · Potentiel démontré',
     source:
-      'Découpage micro-sectoriel et comparaison intra-session : meilleur secteur de chaque tour assemblé.',
+      'Meilleurs chronos déjà réalisés sur la séance. Aucune continuité vérifiée aux jonctions entre morceaux : jamais un tour garanti.',
   },
   {
     key: 'flow',

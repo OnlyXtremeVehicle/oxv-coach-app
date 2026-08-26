@@ -28,7 +28,7 @@
  * quand même — mais c'est ce module qui décide de les OFFRIR.
  */
 
-import type { SessionInsights } from '@/circuit/sessionInsights';
+import type { IdealLap, SessionInsights } from '@/circuit/sessionInsights';
 import type { ReadingKey } from './catalogue';
 
 /**
@@ -79,6 +79,38 @@ function aDuContenu(bloc: unknown): boolean {
 }
 
 /**
+ * LE BLOC `ideal_lap` PORTE-T-IL LES CHRONOS QUE LA VUE LIT ?
+ *
+ * `aDuContenu` suffisait aux autres blocs, qui sont des enregistrements plats.
+ * Pas à celui-ci. Le moteur de production `compute-session-insights-v3` écrit :
+ *
+ *     ideal_lap: { theoretical_day: {…}, theoretical_record: {…} }
+ *
+ * — une forme IMBRIQUÉE, quand `IdealLap` et `TourIdealViz` lisent
+ * `ideal_time_s` / `real_best_s` À PLAT. Compter les clés voyait donc deux
+ * clés, déclarait la lecture disponible, et la vue ouvrait sur « Données
+ * insuffisantes sur cette séance ».
+ *
+ * C'est exactement la porte fermée que ce module existe pour supprimer, et
+ * elle vit sur le chemin de production. On exige ici ce que la vue exige :
+ * deux chronos finis, à plat. Le reste est absent, et le dit.
+ *
+ * (La forme imbriquée n'est PAS lue au passage : la rattacher serait un choix
+ * de produit — quel potentiel montrer, celui du jour ou celui du record — qui
+ * revient au fondateur, pas à cette liste blanche.)
+ */
+function chronosLisibles(bloc: unknown): boolean {
+  if (bloc == null || typeof bloc !== 'object') return false;
+  const b = bloc as Partial<IdealLap>;
+  return (
+    typeof b.ideal_time_s === 'number' &&
+    Number.isFinite(b.ideal_time_s) &&
+    typeof b.real_best_s === 'number' &&
+    Number.isFinite(b.real_best_s)
+  );
+}
+
+/**
  * État d'UNE lecture.
  *
  * Aucune lecture n'est `disponible` par défaut : chacune doit prouver qu'elle a
@@ -107,7 +139,7 @@ export function etatLecture(key: ReadingKey, e: EntreesLectures): Disponibilite 
         : { key, etat: 'absent', raison: RAISONS.pasAssezDeTours };
 
     case 'tour-ideal':
-      return aDuContenu(i.ideal_lap)
+      return chronosLisibles(i.ideal_lap)
         ? { key, etat: 'disponible' }
         : { key, etat: 'absent', raison: RAISONS.pasDeChrono };
 

@@ -91,6 +91,66 @@ describe('chaque lecture dépend de SA source', () => {
     expect(etatLecture('dispersion', entrees({ insights: avec })).etat).toBe('absent');
   });
 
+  /**
+   * LA FORME IMBRIQUÉE DU MOTEUR DE PRODUCTION — audit M10 du 26/08/2026.
+   *
+   * `compute-session-insights-v3` écrit `ideal_lap` ainsi :
+   *
+   *     { theoretical_day: {…}, theoretical_record: {…} }
+   *
+   * `IdealLap` et `TourIdealViz` lisent `ideal_time_s` / `real_best_s` À PLAT.
+   * Compter les clés voyait donc deux clés, déclarait la lecture disponible, et
+   * la vue s'ouvrait sur « Données insuffisantes sur cette séance ».
+   *
+   * C'est LA porte fermée que ce module existe pour supprimer, et elle vivait
+   * sur le chemin de production.
+   */
+  it('la forme imbriquée du moteur v3 n’ouvre pas la porte', () => {
+    const v3 = {
+      ...VIDE,
+      ideal_lap: {
+        theoretical_day: { ideal_time_s: 94.3, real_best_s: 94.3, gap_s: 0 },
+        theoretical_record: null,
+      } as never,
+    };
+    const d = etatLecture('tour-ideal', entrees({ insights: v3 }));
+    expect(d.etat).toBe('absent');
+    expect(d.raison).toBe('Chronos de secteur non calculés');
+  });
+
+  // Le contre-test : la forme À PLAT, elle, ouvre bien.
+  it('la forme à plat, avec ses deux chronos, ouvre la lecture', () => {
+    const plat = {
+      ...VIDE,
+      ideal_lap: {
+        ideal_time_s: 94.3,
+        real_best_s: 94.3,
+        gap_s: 0,
+        best_lap: 3,
+        loss_by_sector_pct: [],
+        worst_sector: 0,
+      },
+    };
+    expect(etatLecture('tour-ideal', entrees({ insights: plat })).etat).toBe('disponible');
+  });
+
+  // Un chrono non fini n'est pas un chrono. `Number.isFinite` vaut `true` sur
+  // zéro : c'est la présence des DEUX bornes qui décide, pas leur valeur.
+  it('un chrono non fini ne rend pas la lecture disponible', () => {
+    const casse = {
+      ...VIDE,
+      ideal_lap: {
+        ideal_time_s: Number.NaN,
+        real_best_s: 94.3,
+        gap_s: 0,
+        best_lap: 3,
+        loss_by_sector_pct: [],
+        worst_sector: 0,
+      },
+    };
+    expect(etatLecture('tour-ideal', entrees({ insights: casse })).etat).toBe('absent');
+  });
+
   it('gg et flow dépendent de leurs nuages de points, pas des blocs', () => {
     expect(etatLecture('gg', entrees({ nbPointsGG: 1 })).etat).toBe('disponible');
     expect(etatLecture('flow', entrees({ nbPointsFlow: 1 })).etat).toBe('disponible');

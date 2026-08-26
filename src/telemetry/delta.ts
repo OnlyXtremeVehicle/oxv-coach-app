@@ -134,6 +134,32 @@ export function computeDelta(
  *
  * Rend `null` si aucun tour n'est exploitable — une cible théorique bâtie sur
  * rien serait une invention.
+ *
+ * ---
+ *
+ * CE QUE LE CAHIER DE VEILLE DEMANDE, ET QUE CETTE FONCTION NE FAIT PAS.
+ *
+ * Audit M10 du 26/08/2026. Le cahier (§03 « Tour optimal réaliste », fiche M10)
+ * pose le contraire de ce découpage :
+ *
+ *   « Assembler les meilleurs micro-secteurs produit souvent un tour
+ *     impossible. Mirror doit assembler des BLOCS COMPLETS entrée–virage–sortie,
+ *     vérifier la CONTINUITÉ vitesse/position/accélération aux jonctions, puis
+ *     nommer le résultat potentiel démontré. »
+ *
+ * Cette fonction prend le minimum indice par indice sur une grille uniforme :
+ * elle ignore où commencent et finissent les virages, et ne regarde aucune
+ * jonction. Un minimum pris juste avant un point de corde et le suivant pris
+ * juste après peuvent venir de deux tours dont les vitesses d'entrée diffèrent
+ * de vingt km/h ; la somme n'en sait rien.
+ *
+ * Elle N'A AUCUN APPELANT DE PRODUCTION — l'écran « Potentiel démontré » lit le
+ * bloc `ideal_lap` de `session_insights`, pas cette fonction. Elle est donc
+ * laissée INTACTE : la réécrire en assemblage par blocs est une décision de
+ * produit (découpage des blocs, tolérances de jonction, que faire d'un bloc
+ * rejeté), pas une correction. `src/telemetry/__tests__/idealLapNonBranche.
+ * guard.test.ts` fige l'absence d'appelant, pour que le jour où quelqu'un la
+ * branche, la décision soit prise sciemment.
  */
 export function idealLapTime(
   tours: readonly (readonly (number | null)[])[],

@@ -1,18 +1,37 @@
 /**
- * TourIdealViz — Tour idéal composé (lecture N3.2).
+ * TourIdealViz — Potentiel démontré (lecture N3.2, fiche M10 du cahier de veille).
  *
  * Maquette : docs/specs-bundle-v4/maquette_insight_N3-2_tour_ideal.html
  * Patron cockpit : maquette_insight_gg_gaming.html (porté au niveau riche).
  * Spec     : 02_moteur_insights.md §3.2.
  *
- * Assemble le meilleur micro-secteur de chaque tour en un « tour théorique »
- * (chrono idéal sous le meilleur tour réel). Cockpit : barre de statut, chrono
- * idéal en nombre héros (lueur discrète) avec le réel en référence, puis
- * répartition du temps perdu par secteur.
- *
  * DONNÉES : alimenté par le bloc `ideal_lap` (IdealLap) de session_insights.
  * Aucune valeur figée. Si `ideal` est absent (ou chronos non calculés), un état
  * vide sobre s'affiche — jamais de chiffre inventé.
+ *
+ * ---
+ *
+ * CE QUE CET ÉCRAN DISAIT, ET CE QUE LA CHAÎNE FAIT — audit M10 du 26/08/2026.
+ *
+ * L'en-tête de ce fichier annonçait : « assemble le meilleur micro-secteur de
+ * chaque tour en un tour théorique ». La barre de statut l'écrivait au pilote,
+ * en capitales : « MICRO-SECTEURS ».
+ *
+ * Aucun des deux moteurs qui remplissent ce bloc ne fait cela.
+ *   • `supabase/functions/compute-session-insights-v3` écrit le meilleur tour
+ *     RÉEL de la journée, avec `gap_s: 0` et `sector_sources: []`.
+ *   • `src/services/sessionInsightsEngine.ts` fait de même, et le dit.
+ * La seule fonction du dépôt qui assemble vraiment des micro-secteurs —
+ * `idealLapTime` (src/telemetry/delta.ts) — n'a aucun appelant de production.
+ *
+ * Le mot promettait donc une composition que personne n'exécute. Il est retiré.
+ *
+ * Le cahier de veille (§03 « Tour optimal réaliste », fiche M10) demande par
+ * ailleurs l'inverse de cet assemblage : des BLOCS COMPLETS entrée–virage–sortie
+ * dont la continuité vitesse / position / accélération est vérifiée à chaque
+ * jonction. Cette vérification est hors de portée d'ici : `IdealLap` ne porte
+ * ni la source de chaque morceau ni l'état des jonctions. Tant que la donnée
+ * n'existe pas, cet écran ne prétend rien sur les jonctions.
  *
  * NOTE : la barre de provenance des micro-secteurs (maquette N3-2) exigeait la
  * source (n° de tour) de chaque secteur, absente d'IdealLap. Elle est retirée
@@ -34,6 +53,20 @@ import { useReduceMotion } from '@/components/motion/useReduceMotion';
 import { virgule } from '@/utils/format';
 
 const C = theme.dataColors;
+
+/**
+ * Écart minimal, en secondes, sous lequel aucun gain n'est ANNONCÉ — à valider
+ * sur piste.
+ *
+ * Les deux moteurs en service écrivent `gap_s: 0` : le potentiel qu'ils
+ * publient EST le meilleur tour réel. Rendu tel quel, l'écran affichait
+ * « TOUR IDÉAL · −0,0 s SOUS VOTRE MEILLEUR RÉEL » — un gain fabriqué à partir
+ * d'un zéro, exactement la forme que la doctrine refuse.
+ *
+ * Le seuil couvre aussi l'arrondi de chronométrage : sous quelques centièmes,
+ * l'écart n'est pas distinguable du bruit de mesure.
+ */
+const GAIN_MIN_S = 0.05;
 // Secteur qui concentre la perte : donnée principale en crème (neutre V3).
 // L'or reste réservé au chrono/record (nombre héros).
 const HOT = theme.palette.cream;
@@ -77,7 +110,7 @@ export function TourIdealViz({ ideal }: TourIdealVizProps) {
     return () => loop.stop();
   }, [blink, reduceMotion]);
 
-  // Honnêteté : sans chronos calculés, aucun tour idéal à composer.
+  // Honnêteté : sans chronos calculés, aucun potentiel à montrer.
   if (!ideal || !Number.isFinite(ideal.ideal_time_s) || !Number.isFinite(ideal.real_best_s)) {
     return (
       <View style={styles.card}>
@@ -91,6 +124,16 @@ export function TourIdealViz({ ideal }: TourIdealVizProps) {
   // gap_s = écart réel − idéal ; repli par soustraction si le bloc l'omet.
   const gap = Number.isFinite(ideal.gap_s) ? ideal.gap_s : ideal.real_best_s - ideal.ideal_time_s;
   const deltaStr = `−${fmtFr(gap, 1)} s`;
+
+  /**
+   * Un gain a-t-il été DÉMONTRÉ, ou le potentiel est-il le meilleur tour réel ?
+   *
+   * Les deux moteurs en service rendent le second cas. Le distinguer est tout
+   * ce que cet écran peut honnêtement dire de la composition : il ne sait pas
+   * de quels morceaux le potentiel serait fait, et encore moins si leurs
+   * jonctions tiennent.
+   */
+  const gainDemontre = Number.isFinite(gap) && gap >= GAIN_MIN_S;
 
   // Répartition du temps perdu : un secteur par entrée de loss_by_sector_pct
   // (secondes = part du gap). worst_sector (index 1-based) = point chaud (crème).
@@ -116,19 +159,28 @@ export function TourIdealViz({ ideal }: TourIdealVizProps) {
         <View style={styles.status}>
           <View style={styles.statusLeft}>
             <Animated.View style={[styles.dotLive, { opacity: blink }]} />
-            <Text style={styles.statusLabel}>Tour idéal composé</Text>
+            <Text style={styles.statusLabel}>Potentiel démontré</Text>
           </View>
-          <Text style={styles.statusRight}>MICRO-SECTEURS</Text>
+          {/*
+            « MICRO-SECTEURS » se tenait ici. Rien dans la chaîne ne découpe la
+            séance en micro-secteurs ; l'étiquette décrivait une méthode absente.
+            Elle part, elle n'est pas remplacée : le bloc `ideal_lap` ne dit pas
+            comment il a été composé, et inventer une autre mention serait le
+            même défaut sous un autre mot.
+          */}
         </View>
 
         <View style={styles.hero}>
           <Text style={styles.heroNum}>{idealStr}</Text>
-          <Text style={styles.heroLabel}>TOUR IDÉAL · {deltaStr} SOUS VOTRE MEILLEUR RÉEL</Text>
+          <Text style={styles.heroLabel}>
+            {gainDemontre
+              ? `POTENTIEL DÉMONTRÉ · ${deltaStr} SOUS VOTRE MEILLEUR RÉEL`
+              : 'POTENTIEL DÉMONTRÉ · VOTRE MEILLEUR TOUR RÉEL DE LA SÉANCE'}
+          </Text>
         </View>
 
         {/*
-          « Tour idéal sur 50 à 200 micro-secteurs, ANNONCÉ THÉORIQUE » — dossier
-          de montage, phase 4septies.
+          « Tour idéal, ANNONCÉ THÉORIQUE » — dossier de montage, phase 4septies.
 
           Le mot « théorique » ne vivait que dans l'en-tête de ce fichier. À
           l'écran, ce chrono s'affichait en chiffre héros, sans rien dire de sa
@@ -137,9 +189,14 @@ export function TourIdealViz({ ideal }: TourIdealVizProps) {
 
           L'étiquette vient du registre `src/telemetry/provenance.ts`, qui classe
           `delta.idealLapTime` en [I] et nomme l'hypothèse — les meilleurs
-          secteurs supposés combinables dans un même tour.
+          morceaux supposés combinables dans un même tour.
+
+          Elle ne s'affiche QUE si un gain est annoncé. Sans gain, le chrono
+          montré est le meilleur tour réel : une mesure, pas une inférence.
+          L'étiqueter [I] aurait fait passer un tour réellement bouclé pour une
+          hypothèse — l'erreur symétrique de celle que ce lot corrige.
         */}
-        <ProvenanceTag cle="delta.idealLapTime" />
+        {gainDemontre ? <ProvenanceTag cle="delta.idealLapTime" /> : null}
 
         <View style={styles.refRow}>
           <Text style={styles.refKey}>Meilleur tour réel</Text>
@@ -147,8 +204,10 @@ export function TourIdealViz({ ideal }: TourIdealVizProps) {
         </View>
       </View>
 
-      {/* Où se loge l'écart — constat, pas consigne. */}
-      {lost.length > 0 && (
+      {/* Où se loge l'écart — constat, pas consigne. Sans gain annoncé, il n'y a
+          aucun écart à répartir : une barre « 0 % · 0,00 s » par secteur serait
+          un zéro fabriqué. */}
+      {gainDemontre && lost.length > 0 && (
         <View style={styles.card}>
           <Text style={styles.cap}>Où se loge l’écart de {fmtFr(gap, 1)} s</Text>
           {lost.map((l) => (

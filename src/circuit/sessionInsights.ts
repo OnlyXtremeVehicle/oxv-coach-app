@@ -43,7 +43,33 @@ export interface DataQuality {
   laps_detected: number;
 }
 
-/** Tour idéal composé + répartition du temps perdu PAR SECTEUR (pas par virage). */
+/**
+ * Potentiel démontré + répartition du temps perdu PAR SECTEUR (pas par virage).
+ *
+ * ---
+ *
+ * CE QUE CETTE FORME NE PORTE PAS — audit M10 du 26/08/2026.
+ *
+ * La fiche M10 du cahier de veille pose comme critère d'acceptation :
+ * « aucune jonction hors tolérances vitesse, position et accélération », et
+ * demande d'afficher « l'origine de chaque bloc et une jauge de faisabilité ».
+ *
+ * Rien ici ne permet cela. `ideal_time_s` est un total ; les morceaux qui le
+ * composent, leur tour d'origine et l'état de leurs jonctions sont absents. Un
+ * écran ne peut donc ni vérifier une jonction, ni en montrer une. Trois champs
+ * manquent, du bas vers le haut de la chaîne — c'est une décision de schéma, à
+ * rendre par le fondateur, pas un correctif :
+ *
+ *   • `sector_sources` — pour chaque morceau : bornes (s_début, s_fin), tour
+ *     d'origine, et si le découpage suit des blocs entrée–virage–sortie ;
+ *   • `junctions` — à chaque raccord : écart de vitesse (km/h), écart de
+ *     position latérale (m), écart d'accélération (g) ;
+ *   • `feasible` — le verdict, avec les tolérances qui l'ont produit.
+ *
+ * `sector_sources` existe DÉJÀ dans ce que le moteur v3 écrit, mais toujours
+ * vide (`[]`), et sous une forme imbriquée que ce type ne décrit pas (voir la
+ * note de `src/components/insights/disponibilite.ts`).
+ */
 export interface IdealLap {
   ideal_time_s: number;
   real_best_s: number;
