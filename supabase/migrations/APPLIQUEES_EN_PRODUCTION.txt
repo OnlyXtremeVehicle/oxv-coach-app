@@ -284,3 +284,9 @@
 20260826160001|lot11_referentiel_vehicules_millesime_2026 (93 entrees, classe GENEREE — jamais saisie)
 
 20260826170000|lot11_offres_classes_et_recours_vehicule (ouverture par classe + trigger de rejet + recours 72 h)
+
+20260827104959|lot12_examen_technique_plaque_figee_et_alerte (valeur 'en_examen' + registrations.immatriculation FIGEE + alerte Resend)
+
+20260827110623|lot12_plaque_normalisee_une_seule_regle (normaliser_plaque cote base : une regle, jamais dupliquee cote client)
+
+20260827113341|lot12_en_examen_reste_annulable_par_le_pilote (garde_pilote : 'en_examen' rejoint les statuts annulables)

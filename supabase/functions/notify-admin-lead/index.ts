@@ -5,6 +5,11 @@
 // d'attente, partenaire, presse). Déclenchée par triggers pg_net :
 //   - notify_registration_inserted -> { kind: 'booking',    id: <registration_id> }
 //   - notify_corporate_lead        -> { kind: <corporate|waitlist|partner|press>, id: <contact_message_id> }
+//   - notify_demande_examen_vehicule -> { kind: 'vehicule', id: <demandes_examen_vehicule_id> }
+//
+// La nature 'vehicule' envoie DEUX courriels : l'alerte à l'administration et
+// un accusé au demandeur (délai de 72 h ouvrées, CGV art. 5.3). Chacun a sa
+// propre clé d'idempotence dans email_log.
 //
 // Charge la donnée côté serveur (service_role). Envoie à ADMIN_NOTIFY_EMAIL
 // (défaut contact@oxvehicle.fr). Journalise email_log. Idempotent via email_log.
@@ -18,7 +23,7 @@ import { createClient } from 'jsr:@supabase/supabase-js@2';
 const RESEND_API_URL = 'https://api.resend.com/emails';
 const FROM = 'OXV <contact@oxvehicle.fr>';
 const RED = '#C8102E';
-const VALID_KINDS = ['booking', 'corporate', 'waitlist', 'partner', 'press'];
+const VALID_KINDS = ['booking', 'corporate', 'waitlist', 'partner', 'press', 'vehicule'];
 
 function escapeHtml(s: string): string {
   return String(s ?? '')
@@ -43,6 +48,42 @@ function wrap(title: string, rows: Array<[string, string]>, bodyText: string) {
   </table>
 </body></html>`;
   return { html, text: bodyText };
+}
+
+/**
+ * Gabarit tourné vers le PILOTE. Distinct du gabarit admin : pas de bandeau
+ * « ADMIN », pas de « à traiter », et un texte d'accompagnement.
+ *
+ * VERROU LEXICAL — le mot « refus » et ses variantes n'apparaissent nulle part.
+ * L'article L121-11 du code de la consommation interdit de refuser une
+ * prestation sans motif légitime ; un périmètre publié et appliqué
+ * uniformément n'est pas un refus. Toute la valeur juridique du dispositif se
+ * perd à la première chaîne qui l'écrit. Voir eligibiliteLogic.ts.
+ */
+function wrapPilote(title: string, intro: string, rows: Array<[string, string]>, pied: string) {
+  const trs = rows.map(([k, v]) =>
+    `<tr><td style="padding:8px 0;color:#888888;font-size:13px;border-top:1px solid rgba(255,255,255,0.06);">${escapeHtml(k)}</td><td style="padding:8px 0;color:#ffffff;font-size:14px;text-align:right;border-top:1px solid rgba(255,255,255,0.06);">${escapeHtml(v)}</td></tr>`,
+  ).join('');
+  const html = `<!doctype html>
+<html lang="fr"><head><meta charset="utf-8"><meta name="color-scheme" content="dark"></head>
+<body style="margin:0;padding:40px 20px;background:#050505;font-family:'Helvetica Neue',Arial,sans-serif;">
+  <table cellpadding="0" cellspacing="0" border="0" role="presentation" align="center" width="100%" style="max-width:560px;margin:0 auto;">
+    <tr><td style="background:#0A0A0A;border:1px solid rgba(255,255,255,0.08);border-radius:12px;padding:40px 36px;">
+      <p style="margin:0 0 10px 0;color:${RED};font-size:11px;letter-spacing:3px;font-weight:600;text-transform:uppercase;">OXV</p>
+      <h1 style="margin:0 0 18px 0;color:#ffffff;font-size:22px;font-weight:300;">${escapeHtml(title)}</h1>
+      <p style="margin:0 0 24px 0;color:#cccccc;font-size:14px;line-height:1.65;">${escapeHtml(intro)}</p>
+      <table cellpadding="0" cellspacing="0" border="0" role="presentation" width="100%" style="border-collapse:collapse;">${trs}</table>
+      <p style="margin:26px 0 0 0;color:#777777;font-size:12px;line-height:1.6;">${escapeHtml(pied)}</p>
+    </td></tr>
+  </table>
+</body></html>`;
+  const text = `${title}\n\n${intro}\n\n` + rows.map(([k, v]) => `${k} : ${v}`).join('\n') + `\n\n${pied}`;
+  return { html, text };
+}
+
+/** Un entier en typographie française : 1400 -> « 1 400 » (espace fine insécable). */
+function entierFr(n: number): string {
+  return Math.round(n).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
 }
 
 Deno.serve(async (req) => {
@@ -71,9 +112,19 @@ Deno.serve(async (req) => {
   const { data: already } = await admin
     .from('email_log').select('id').eq('email_type', 'admin_lead')
     .eq('metadata->>ref_id', id).eq('metadata->>kind', kind).limit(1);
-  if (already && already.length > 0) return new Response(JSON.stringify({ ok: true, skipped: 'already_notified' }), { status: 200 });
+  const dejaAlerte = !!(already && already.length > 0);
+  // 'vehicule' porte DEUX courriels aux clés d'idempotence distinctes : sortir
+  // ici priverait l'accusé de tout rejeu. On ne sort tôt que pour les natures
+  // à courriel unique, dont l'alerte admin épuise le travail.
+  if (dejaAlerte && kind !== 'vehicule') {
+    return new Response(JSON.stringify({ ok: true, skipped: 'already_notified' }), { status: 200 });
+  }
 
   let title = '', rows: Array<[string, string]> = [], subject = '';
+  // Accusé au demandeur : renseigné par la seule branche « véhicule ».
+  let ackEmail: string | null = null;
+  let ackUserId: string | null = null;
+  let ackRows: Array<[string, string]> = [];
   if (kind === 'booking') {
     const { data: reg } = await admin
       .from('registrations')
@@ -90,6 +141,42 @@ Deno.serve(async (req) => {
       ['Formule', String(reg.offer_type ?? '—')],
       ['Date', s.date ? `${s.date}${s.start_time ? ' ' + String(s.start_time).slice(0, 5) : ''}` : '—'],
       ['Montant', amount],
+    ];
+  } else if (kind === 'vehicule') {
+    const { data: dem } = await admin
+      .from('demandes_examen_vehicule')
+      .select('id, email, marque, modele, annee, puissance_ch, masse_kg, immatriculation, user_id, cree_le')
+      .eq('id', id).maybeSingle();
+    if (!dem) return new Response(JSON.stringify({ error: 'demande_not_found' }), { status: 404 });
+    const d = dem as Record<string, any>;
+    const vehicule = `${d.marque ?? ''} ${d.modele ?? ''}`.trim() + (d.annee ? ` (${d.annee})` : '');
+
+    // ── CE QUE CE COURRIEL NE FAIT PAS ──────────────────────────────
+    // Il ne calcule NI le ratio NI la classe. eligibiliteLogic.ts documente que
+    // trois règles d'arrondi (Python, Postgres, JS) donnent trois ratios
+    // différents, et que la classe se calcule sur le chiffre MONTRÉ au pilote.
+    // Une quatrième implémentation ici, en TypeScript Deno, rouvrirait
+    // exactement l'écart que le module ferme. Le courriel porte les faits
+    // déclarés ; la classification appartient au module, sur la surface admin.
+    title = "Demande d'examen de véhicule";
+    subject = `OXV — Examen véhicule : ${vehicule || d.email}`;
+    rows = [
+      ['Véhicule', vehicule || '—'],
+      ['Immatriculation', String(d.immatriculation ?? '—')],
+      ['Puissance', d.puissance_ch != null ? `${entierFr(Number(d.puissance_ch))} ch` : 'non déclarée'],
+      ['Masse', d.masse_kg != null ? `${entierFr(Number(d.masse_kg))} kg` : 'non déclarée'],
+      ['Demandeur', String(d.email ?? '—')],
+      ['Compte OXV', d.user_id ? 'oui' : 'non (demande hors compte)'],
+      ['Reçue le', d.cree_le ? new Date(String(d.cree_le)).toLocaleString('fr-FR', { timeZone: 'Europe/Paris' }) : '—'],
+      ['Délai de réponse', '72 h ouvrées (CGV art. 5.3)'],
+    ];
+    ackEmail = typeof d.email === 'string' && d.email.includes('@') ? d.email : null;
+    ackUserId = typeof d.user_id === 'string' ? d.user_id : null;
+    ackRows = [
+      ['Véhicule', vehicule || '—'],
+      ['Immatriculation', String(d.immatriculation ?? '—')],
+      ['Puissance déclarée', d.puissance_ch != null ? `${entierFr(Number(d.puissance_ch))} ch` : 'non déclarée'],
+      ['Masse déclarée', d.masse_kg != null ? `${entierFr(Number(d.masse_kg))} kg` : 'non déclarée'],
     ];
   } else {
     const { data: msg } = await admin
@@ -147,22 +234,69 @@ Deno.serve(async (req) => {
   const mail = wrap(title, rows, bodyText);
 
   let sent = false, resendId: string | null = null, sendError: string | null = null;
-  try {
-    const res = await fetch(RESEND_API_URL, {
-      method: 'POST',
-      headers: { Authorization: `Bearer ${RESEND_KEY}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ from: FROM, to: [TO], subject, html: mail.html, text: mail.text, tags: [{ name: 'category', value: `admin_${kind}` }] }),
-    });
-    const json = await res.json().catch(() => ({}));
-    sent = res.ok; resendId = json?.id ?? null;
-    if (!res.ok) sendError = `resend_${res.status}: ${JSON.stringify(json).slice(0, 200)}`;
-  } catch (e) { sendError = String(e); }
+  if (!dejaAlerte) {
+    try {
+      const res = await fetch(RESEND_API_URL, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${RESEND_KEY}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ from: FROM, to: [TO], subject, html: mail.html, text: mail.text, tags: [{ name: 'category', value: `admin_${kind}` }] }),
+      });
+      const json = await res.json().catch(() => ({}));
+      sent = res.ok; resendId = json?.id ?? null;
+      if (!res.ok) sendError = `resend_${res.status}: ${JSON.stringify(json).slice(0, 200)}`;
+    } catch (e) { sendError = String(e); }
 
-  await admin.from('email_log').insert({
-    user_id: null, email_type: 'admin_lead', subject,
-    template_used: `admin_${kind}_v1`, status: sent ? 'sent' : 'bounced',
-    metadata: { to: TO, kind, ref_id: id, resend_message_id: resendId, error: sendError },
-  }).then(({ error }) => { if (error) console.warn('[notify-admin-lead] email_log:', error.message); });
+    await admin.from('email_log').insert({
+      user_id: null, email_type: 'admin_lead', subject,
+      template_used: `admin_${kind}_v1`, status: sent ? 'sent' : 'bounced',
+      metadata: { to: TO, kind, ref_id: id, resend_message_id: resendId, error: sendError },
+    }).then(({ error }) => { if (error) console.warn('[notify-admin-lead] email_log:', error.message); });
+  }
 
-  return new Response(JSON.stringify({ ok: true, email_sent: sent, email_error: sendError }), { status: 200, headers: { 'Content-Type': 'application/json' } });
+  // ── L'ACCUSÉ AU DEMANDEUR ─────────────────────────────────
+  // Le délai de 72 h ouvrées est un engagement de CGV (art. 5.3). Un engagement
+  // que le demandeur ne voit nulle part n'en est pas un : l'accusé est ce qui
+  // le rend opposable. Il a sa PROPRE clé d'idempotence — si l'alerte admin est
+  // rejouée par pg_net, l'accusé ne part pas deux fois, et un accusé en échec
+  // garde sa chance au rejeu suivant, puisque l'alerte déjà partie ne coupe
+  // plus l'exécution en amont.
+  //
+  // Son échec n'invalide pas l'appel : la demande est enregistrée en base, et
+  // c'est elle qui fait foi, pas le courriel.
+  let ackSent: boolean | null = null;
+  if (kind === 'vehicule' && ackEmail) {
+    const { data: dejaAck } = await admin
+      .from('email_log').select('id').eq('email_type', 'vehicule_ack')
+      .eq('metadata->>ref_id', id).limit(1);
+    if (dejaAck && dejaAck.length > 0) {
+      ackSent = null; // déjà accusé, on ne renvoie pas
+    } else {
+      const ackSubject = "OXV — Votre demande d'examen de véhicule";
+      const ack = wrapPilote(
+        'Votre demande est enregistrée',
+        "Vous avez sollicité un examen individuel pour le véhicule ci-dessous. Le Club vous répond sous soixante-douze heures ouvrées.",
+        ackRows,
+        "L'absence d'un véhicule du référentiel publié ne vaut pas décision de non-éligibilité : elle ouvre cet examen. L'examen porte sur le véhicule, jamais sur le pilote.",
+      );
+      let ackError: string | null = null, ackResendId: string | null = null;
+      try {
+        const r = await fetch(RESEND_API_URL, {
+          method: 'POST',
+          headers: { Authorization: `Bearer ${RESEND_KEY}`, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ from: FROM, to: [ackEmail], subject: ackSubject, html: ack.html, text: ack.text, tags: [{ name: 'category', value: 'vehicule_ack' }] }),
+        });
+        const j = await r.json().catch(() => ({}));
+        ackSent = r.ok; ackResendId = j?.id ?? null;
+        if (!r.ok) ackError = `resend_${r.status}: ${JSON.stringify(j).slice(0, 200)}`;
+      } catch (e) { ackSent = false; ackError = String(e); }
+
+      await admin.from('email_log').insert({
+        user_id: ackUserId, email_type: 'vehicule_ack', subject: ackSubject,
+        template_used: 'vehicule_ack_v1', status: ackSent ? 'sent' : 'bounced',
+        metadata: { to: ackEmail, kind, ref_id: id, resend_message_id: ackResendId, error: ackError },
+      }).then(({ error }) => { if (error) console.warn('[notify-admin-lead] email_log ack:', error.message); });
+    }
+  }
+
+  return new Response(JSON.stringify({ ok: true, email_sent: sent, email_skipped: dejaAlerte, email_error: sendError, ack_sent: ackSent }), { status: 200, headers: { 'Content-Type': 'application/json' } });
 });

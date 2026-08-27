@@ -171,6 +171,12 @@ const VIEWS: { href: string; label: string; description: string; famille: Famill
     description: 'Les disponibilités proposées par les coachs, en attente d’ouverture.',
   },
   {
+    href: '/(admin)/examens-vehicule',
+    famille: 'a-faire' as FamilleAdmin,
+    label: 'Examens véhicule',
+    description: 'Véhicules hors référentiel à examiner. Réponse due sous 72 h ouvrées.',
+  },
+  {
     href: '/(admin)/partenaires',
     famille: 'structure' as FamilleAdmin,
     label: 'Partenaires',
