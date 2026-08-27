@@ -312,3 +312,7 @@
 20260827151759|lot16_fil_ecurie_et_annonces_automatiques (le fil n existait pas ; message systeme sans auteur, inecrivable par un membre)
 
 20260827153000|lot16_correctif_le_depot_passe_par_la_fonction_seule (ma policy d insertion contournait la regle des 3 dates : verifie, corrige)
+
+20260827152630|lot17_le_capitanat_ne_peut_plus_diverger (crews.captain_id fait foi ; crew_members.role en devient un reflet pose par la base)
+
+20260827153153|lot17_insertion_sans_journee_imposee_au_capitaine (le capitaine annonce un effectif, OXV arrete la date — symetrie avec la privatisation)

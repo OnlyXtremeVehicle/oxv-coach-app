@@ -175,6 +175,19 @@ export default function EcurieScreen() {
                 <Text style={s.lienSortieTexte}>La sortie de votre écurie</Text>
               </Pressable>
 
+              {/* Le fil porte la parole de l'écurie ET l'organisation d'une
+                  sortie groupée : le capitaine y annonce un effectif, la base
+                  en déduit la formule, et l'annonce s'y pose d'elle-même.
+                  Arbitrage du fondateur — « tout doit se faire dans le tchat ». */}
+              <Pressable
+                onPress={() => router.push('/(app2)/club/fil')}
+                accessibilityRole="button"
+                accessibilityLabel="Ouvrir le fil de votre écurie"
+                style={s.lienSortie}
+              >
+                <Text style={s.lienSortieTexte}>Le fil de votre écurie</Text>
+              </Pressable>
+
               <View style={s.bloc}>
                 <SectionHeader eyebrow="LES PILOTES" />
                 {ecurie.membres.map((m) => (
