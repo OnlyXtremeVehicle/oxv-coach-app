@@ -302,3 +302,11 @@
 20260827150507|lot14_intentions_journee_la_demande_ecartee_se_mesure (la demande ecartee cesse d etre un cul-de-sac ; purge RGPD patchee par ancrage)
 
 20260827150555|lot14_impact_restriction_mesure_avant_le_geste (rend TOUJOURS la part d inconnu : « zero exclu » n est pas « on ne sait pas »)
+
+20260827151314|lot15_plancher_de_prix_et_cadre_de_remise (le prix cessait d etre dicte par le navigateur : 2 inscriptions a 0 EUR en prod)
+
+20260827151534|lot16_reservation_ecurie_insertion_ou_privatisation (seuil 17 CALCULE, jamais saisi ; 3 dates distinctes et futures)
+
+20260827151625|lot16_remise_ecurie_non_forgeable_et_depot_atomique (-10 % exige une reservation d ecurie CONFIRMEE sur CETTE journee)
+
+20260827151759|lot16_fil_ecurie_et_annonces_automatiques (le fil n existait pas ; message systeme sans auteur, inecrivable par un membre)
