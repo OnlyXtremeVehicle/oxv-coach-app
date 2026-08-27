@@ -310,3 +310,5 @@
 20260827151625|lot16_remise_ecurie_non_forgeable_et_depot_atomique (-10 % exige une reservation d ecurie CONFIRMEE sur CETTE journee)
 
 20260827151759|lot16_fil_ecurie_et_annonces_automatiques (le fil n existait pas ; message systeme sans auteur, inecrivable par un membre)
+
+20260827153000|lot16_correctif_le_depot_passe_par_la_fonction_seule (ma policy d insertion contournait la regle des 3 dates : verifie, corrige)
