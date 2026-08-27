@@ -290,3 +290,9 @@
 20260827110623|lot12_plaque_normalisee_une_seule_regle (normaliser_plaque cote base : une regle, jamais dupliquee cote client)
 
 20260827113341|lot12_en_examen_reste_annulable_par_le_pilote (garde_pilote : 'en_examen' rejoint les statuts annulables)
+
+20260827143410|lot13_journee_declare_ses_classes_admises (sessions.classes_admises + 2e verrou du declencheur : formule ET plateau)
+
+20260827143455|lot13_classes_admises_liste_vide_vraiment_impossible (array_length rend NULL sur tableau vide, donc CHECK satisfaite : cardinality)
+
+20260827144603|lot13_sessions_public_porte_les_classes_admises (la vue enumerait 20 colonnes : la restriction n atteignait pas le pilote)

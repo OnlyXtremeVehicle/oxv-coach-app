@@ -33,6 +33,7 @@ const veh = (over: Partial<Vehicle> = {}): Vehicle => ({
   id: 'v1',
   brand: 'Alpine',
   model: 'A110',
+  generation: null,
   year: 2019,
   color: 'Bleu',
   notes: null,

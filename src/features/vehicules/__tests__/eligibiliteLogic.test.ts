@@ -318,6 +318,30 @@ describe('C4 — masse', () => {
     expect(r.conditions[3].motif).toBe('Masse de 2 401 kg, au-delà du plafond de 2 400 kg.');
   });
 
+  /**
+   * LE MOTIF NE PEUT PAS SE CONTREDIRE.
+   *
+   * `vehicles.mass_kg` est un `numeric(6,1)` : les décimales existent en base.
+   * C4 compare la masse BRUTE — 2 400,4 kg est bien au-delà de 2 400 — mais
+   * l'énonçait arrondie, et produisait littéralement « Masse de 2 400 kg,
+   * au-delà du plafond de 2 400 kg. »
+   *
+   * Toute la parade de l'article L121-11 repose sur des motifs objectifs et
+   * vérifiables par celui qu'ils concernent. Un motif qu'on ne peut pas
+   * vérifier, parce qu'il se dément lui-même, ne vaut pas mieux qu'une absence
+   * de motif. Cette assertion aurait échoué jusqu'au 27/08/2026.
+   */
+  it('une masse décimale s’énonce telle qu’elle a été mesurée', () => {
+    const r = evalueEligibilite(veh({ masseKg: 2400.4, puissanceCh: 700 }));
+    expect(r.verdict).toBe('hors_du_perimetre');
+    expect(r.conditions[3].motif).toBe('Masse de 2 400,4 kg, au-delà du plafond de 2 400 kg.');
+  });
+
+  it('une masse entière reste entière — pas de « 2 401,0 »', () => {
+    const r = evalueEligibilite(veh({ masseKg: 2401, puissanceCh: 700 }));
+    expect(r.conditions[3].motif).toBe('Masse de 2 401 kg, au-delà du plafond de 2 400 kg.');
+  });
+
   it('masse absente → non établi, et la réserve de masse ne se pose pas', () => {
     const r = evalueEligibilite(veh({ masseKg: null }));
     expect(r.verdict).toBe('non_etabli');

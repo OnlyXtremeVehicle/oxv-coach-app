@@ -96,7 +96,10 @@ import {
   offresOuvertes,
   ratioKgCh,
 } from '@/features/vehicules/eligibiliteLogic';
-import type { EntreeReferentiel } from '@/features/vehicules/referentielVehicules';
+import {
+  chercheAuReferentiel,
+  type EntreeReferentiel,
+} from '@/features/vehicules/referentielVehicules';
 import type { Vehicle } from '@/services/garageService';
 
 /** Absence. Jamais zéro, jamais une valeur inventée. */
@@ -314,16 +317,30 @@ export function lignesFicheTechnique(source: SourceFiche): LigneFiche[] {
 /**
  * Ce dont la fiche dispose pour un véhicule du garage.
  *
- * `entree` est TOUJOURS `null` aujourd'hui : `public.vehicles` ne porte pas la
- * génération, et sans elle aucun rapprochement exact n'est possible (cf.
- * l'en-tête — on ne devine pas). Seule la masse déclarée remonte.
+ * LA COUTURE, désormais cousue. Elle a été écrite en attente de
+ * `vehicles.generation` ; la colonne existe en production depuis le lot 11, avec
+ * `puissance_ch`, `referentiel_id` et `mass_kg`. Le motif du `null` en dur —
+ * « public.vehicles ne porte pas la génération » — était périmé.
  *
- * Cette fonction est LA COUTURE : le jour où `vehicles.generation` existe, elle
- * appelle `chercheAuReferentiel(brand, model, generation)`, et c'est le seul
- * endroit du lot à changer.
+ * LE RAPPROCHEMENT EST EXACT OU IL N'EST PAS. `chercheAuReferentiel` compare
+ * marque, modèle ET génération, normalisés. Marque et modèle seuls ne désignent
+ * pas une puissance : une 911 « Carrera » couvre trois cents chevaux d'écart
+ * selon la génération. Un rapprochement approximatif produirait une classe
+ * fausse, donc des formules ouvertes à tort — et la classe est le pivot du
+ * périmètre de service. On ne devine pas.
+ *
+ * TANT QUE LA DONNÉE MANQUE, LA FICHE DIT « NON ÉTABLI », ET C'EST JUSTE.
+ * Les six véhicules du parc ont ces colonnes vides au 27/08/2026 : le site les
+ * écrit à la confirmation d'une réservation, et ce code n'est pas encore en
+ * production. La fiche affichera donc les mêmes tirets qu'avant — mais mesurés
+ * sur la donnée au lieu d'être posés par une constante. L'un se résorbe seul à
+ * la première réservation ; l'autre serait resté là indéfiniment.
  */
 export function ficheDepuisVehicule(v: Vehicle): SourceFiche {
-  return { entree: null, masseDeclareeKg: v.massKg };
+  const { brand, model, generation } = v;
+  const entree =
+    brand && model && generation ? chercheAuReferentiel(brand, model, generation) : null;
+  return { entree, masseDeclareeKg: v.massKg };
 }
 
 // ---------------------------------------------------------------------------

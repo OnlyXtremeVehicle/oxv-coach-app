@@ -92,6 +92,30 @@ function decimalFr(n: number, decimales: number): string {
   return n.toFixed(decimales).replace('.', ',');
 }
 
+/**
+ * Une masse telle qu'elle a été mesurée : entière si elle l'est, à la décimale
+ * sinon. « 2 400 » ou « 2 400,4 », jamais l'un pour l'autre.
+ *
+ * `vehicles.mass_kg` est un `numeric(6,1)` : les décimales existent en base.
+ * C4 compare la masse BRUTE, ce qui est juste — 2 400,4 kg est bien au-delà de
+ * 2 400. Mais le motif l'énonçait via `entierFr`, donc arrondie, et produisait
+ * littéralement « Masse de 2 400 kg, au-delà du plafond de 2 400 kg. »
+ *
+ * Un motif d'écart qui affiche deux fois le même nombre en affirmant que l'un
+ * dépasse l'autre ne se contente pas d'être laid : il se détruit lui-même. Or
+ * toute la parade de l'article L121-11 repose sur des motifs objectifs et
+ * VÉRIFIABLES par celui qu'ils concernent. Un motif invérifiable ne vaut pas
+ * mieux qu'une absence de motif.
+ *
+ * `decimalFr` ne suffisait pas : il ne pose pas les séparateurs de milliers, et
+ * rendrait « 2400,4 ».
+ */
+function masseFr(kg: number): string {
+  if (Number.isInteger(kg)) return entierFr(kg);
+  const [entiere, decimale] = kg.toFixed(1).split('.');
+  return `${entierFr(Number(entiere))},${decimale}`;
+}
+
 // ===========================================================================
 // Les bornes du périmètre — C3 et C4
 // ===========================================================================
@@ -510,7 +534,7 @@ function evalueC4(v: VehiculeAExaminer): ResultatCondition {
     return condition(
       'C4',
       'hors_du_perimetre',
-      `Masse de ${entierFr(masse)} kg, au-delà du plafond de ${entierFr(MASSE_MAX_KG)} kg.`
+      `Masse de ${masseFr(masse)} kg, au-delà du plafond de ${entierFr(MASSE_MAX_KG)} kg.`
     );
   }
   return condition('C4', 'satisfaite', null);

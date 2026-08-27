@@ -35,6 +35,16 @@ export interface Vehicle {
    * est nulle, la fiche affiche « — » — et c'est l'état normal aujourd'hui.
    */
   massKg: number | null;
+  /**
+   * Génération telle que désignée au référentiel lors d'une réservation
+   * (« 991.2 », « F82 »…). Le site l'écrit sur `public.vehicles` à la
+   * confirmation ; elle est la CLÉ de rapprochement avec le référentiel
+   * publié — marque et modèle ne suffisent pas à désigner une puissance.
+   *
+   * Nulle sur les six véhicules du parc au 27/08/2026 : la colonne existe,
+   * le code qui la remplit n'est pas encore en production.
+   */
+  generation: string | null;
 }
 
 export interface VehicleSetup {
@@ -60,6 +70,7 @@ function mapVehicle(r: Record<string, unknown>): Vehicle {
     notes: (r.notes as string | null) ?? null,
     isPrimary: r.is_primary === true,
     massKg: r.mass_kg != null ? Number(r.mass_kg) : null,
+    generation: (r.generation as string | null) ?? null,
   };
 }
 
@@ -92,23 +103,23 @@ export interface MutationResult {
 export async function listMyVehicles(): Promise<Vehicle[]> {
   const { data, error } = await supabase
     .from('vehicles')
-    .select('id, brand, model, year, color, notes, is_primary, mass_kg')
+    .select('id, brand, model, year, color, notes, is_primary, mass_kg, generation')
     .order('created_at', { ascending: true });
   if (error) {
     console.warn('[OXV][garage] listMyVehicles :', error.message);
     return [];
   }
-  return (data ?? []).map((r) => mapVehicle(r as Record<string, unknown>));
+  return (data ?? []).map((r) => mapVehicle(r as unknown as Record<string, unknown>));
 }
 
 export async function getVehicle(id: string): Promise<Vehicle | null> {
   const { data, error } = await supabase
     .from('vehicles')
-    .select('id, brand, model, year, color, notes, is_primary, mass_kg')
+    .select('id, brand, model, year, color, notes, is_primary, mass_kg, generation')
     .eq('id', id)
     .maybeSingle();
   if (error || !data) return null;
-  return mapVehicle(data as Record<string, unknown>);
+  return mapVehicle(data as unknown as Record<string, unknown>);
 }
 
 export interface AddVehicleInput {
