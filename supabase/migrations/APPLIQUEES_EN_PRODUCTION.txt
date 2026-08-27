@@ -296,3 +296,9 @@
 20260827143455|lot13_classes_admises_liste_vide_vraiment_impossible (array_length rend NULL sur tableau vide, donc CHECK satisfaite : cardinality)
 
 20260827144603|lot13_sessions_public_porte_les_classes_admises (la vue enumerait 20 colonnes : la restriction n atteignait pas le pilote)
+
+20260827150316|lot14_heritage_suit_signature_et_journee_vendable (Heritage suit Signature, source unique + verrou journee invendable + classe inscrite protegee)
+
+20260827150507|lot14_intentions_journee_la_demande_ecartee_se_mesure (la demande ecartee cesse d etre un cul-de-sac ; purge RGPD patchee par ancrage)
+
+20260827150555|lot14_impact_restriction_mesure_avant_le_geste (rend TOUJOURS la part d inconnu : « zero exclu » n est pas « on ne sait pas »)
