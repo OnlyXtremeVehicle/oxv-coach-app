@@ -279,5 +279,8 @@
 20260826133914|rapport_periodique_atelier_et_consentement_pointage (oxv-site : migration_rapport_periodique.sql)
 20260826150000|lot10a_biometry_source_consents  (accord par source ; ceinture liee a un coach affilie — arbitrage 26/08)
 
-20260826160000|lot11_eligibilite_vehicules_schema        (puissance, generation, HistoVec, table du referentiel)
-20260826160001|lot11_referentiel_vehicules_millesime_2026 (93 entrees, classe GENEREE — jamais saisie)
+20260826160000|lot11_eligibilite_vehicules_schema        (puissance, generation, HistoVec, table du referentiel)
+
+20260826160001|lot11_referentiel_vehicules_millesime_2026 (93 entrees, classe GENEREE — jamais saisie)
+
+20260826170000|lot11_offres_classes_et_recours_vehicule (ouverture par classe + trigger de rejet + recours 72 h)
