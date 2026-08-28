@@ -326,3 +326,5 @@
 20260828014046|lot19_le_plancher_ne_bloque_plus_le_pack_heritage (regression du jour : le produit a 2 490 EUR etait devenu inreservable)
 
 20260828020000|lot20_une_journee_reservee_a_une_ecurie (privatiser n est pas cacher : la journee reste visible a l ecurie, fermee aux autres)
+
+20260828022000|lot20_impact_restriction_reserve_a_l_administration (advisor securite : la fonction parlait a tout compte authentifie — parc, inscriptions, intentions)
