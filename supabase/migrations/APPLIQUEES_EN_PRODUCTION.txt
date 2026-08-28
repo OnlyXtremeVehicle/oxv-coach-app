@@ -316,3 +316,11 @@
 20260827152630|lot17_le_capitanat_ne_peut_plus_diverger (crews.captain_id fait foi ; crew_members.role en devient un reflet pose par la base)
 
 20260827153153|lot17_insertion_sans_journee_imposee_au_capitaine (le capitaine annonce un effectif, OXV arrete la date — symetrie avec la privatisation)
+
+20260827154930|lot18_file_administration_une_seule_liste (quatre domaines en une file ; la base rend des FAITS, l urgence se calcule cote app)
+
+20260827160202|lot19_correctifs_audit_du_27_08 (7 defauts de l audit adverse : privileges de la vue, controle inerte sur colonne generee, annonce sans dates, purge destructrice, insertion au nom d un tiers, intention non corrigeable)
+
+20260827160305|lot19_tarif_manquant_refuse_a_la_creation_pas_a_la_vente (la config PAR DEFAUT d une journee etait invendable ; le refus remonte a la creation)
+
+20260828014046|lot19_le_plancher_ne_bloque_plus_le_pack_heritage (regression du jour : le produit a 2 490 EUR etait devenu inreservable)

@@ -47,6 +47,7 @@ import {
 } from '@/features/club/filEcurieLogic';
 import { useEcurie } from '@/features/club/useEcurie';
 import {
+  MESSAGES_PAR_PAGE,
   type ReservationEcurie,
   deposerReservationEcurie,
   envoyerMessage,
@@ -58,9 +59,20 @@ import { colors, radius, space, StateView, tabBarSpace, typo } from '@/ui/v2';
 
 export default function FilEcurieScreen() {
   const insets = useSafeAreaInsets();
-  const { ecurie, userId, loading: chargeEcurie, erreur } = useEcurie();
+  // `rechargerEcurie` est celui du hook. L'écran d'erreur DOIT l'appeler :
+  // le `recharger` local sort immédiatement quand `crewId` est nul, ce qui
+  // est précisément le cas quand le hook a échoué — le bouton « Réessayer »
+  // était donc inerte, et le pilote pouvait appuyer indéfiniment.
+  const {
+    ecurie,
+    userId,
+    loading: chargeEcurie,
+    erreur,
+    recharger: rechargerEcurie,
+  } = useEcurie();
 
   const [messages, setMessages] = useState<MessageFil[]>([]);
+  const [tronque, setTronque] = useState(false);
   const [demande, setDemande] = useState<ReservationEcurie | null>(null);
   const [chargeFil, setChargeFil] = useState(true);
   const [saisie, setSaisie] = useState('');
@@ -85,7 +97,8 @@ export default function FilEcurieScreen() {
       listerMessagesFil(crewId),
       reservationEnCours(crewId),
     ]);
-    setMessages(fil);
+    setMessages(fil.messages);
+    setTronque(fil.tronque);
     setDemande(encours);
     setChargeFil(false);
   }, [crewId]);
@@ -165,7 +178,7 @@ export default function FilEcurieScreen() {
       <StateView
         state="error"
         errorMessage="Le fil de votre écurie n’a pas pu être chargé."
-        onRetry={recharger}
+        onRetry={rechargerEcurie}
       />
     );
   }
@@ -215,7 +228,13 @@ export default function FilEcurieScreen() {
             Rien n’a encore été dit ici. Le fil porte vos échanges et les réponses d’OXV.
           </Text>
         ) : (
-          journees.map((j) => (
+          <>
+            {tronque ? (
+              <Text style={s.vide}>
+                Seuls les {MESSAGES_PAR_PAGE} derniers messages sont affichés.
+              </Text>
+            ) : null}
+            {journees.map((j) => (
             <View key={j.jour}>
               <Text style={s.jour}>{j.libelle}</Text>
               {j.messages.map((m) => {
@@ -230,7 +249,8 @@ export default function FilEcurieScreen() {
                 );
               })}
             </View>
-          ))
+            ))}
+          </>
         )}
       </ScrollView>
 

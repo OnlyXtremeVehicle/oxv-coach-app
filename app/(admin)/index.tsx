@@ -171,10 +171,22 @@ const VIEWS: { href: string; label: string; description: string; famille: Famill
     description: 'Les disponibilités proposées par les coachs, en attente d’ouverture.',
   },
   {
+    href: '/(admin)/file',
+    famille: 'a-faire' as FamilleAdmin,
+    label: 'La file',
+    description: 'Tout ce qui attend une main, en une seule liste, trié par ce qui presse.',
+  },
+  {
     href: '/(admin)/examens-vehicule',
     famille: 'a-faire' as FamilleAdmin,
     label: 'Examens véhicule',
     description: 'Véhicules hors référentiel à examiner. Réponse due sous 72 h ouvrées.',
+  },
+  {
+    href: '/(admin)/ecuries',
+    famille: 'a-faire' as FamilleAdmin,
+    label: 'Sorties d’écurie',
+    description: 'Demandes groupées à instruire. Confirmer ouvre la remise de 10 %.',
   },
   {
     href: '/(admin)/partenaires',

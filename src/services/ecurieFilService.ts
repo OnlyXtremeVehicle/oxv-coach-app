@@ -38,32 +38,54 @@ function natureSure(brut: string): MessageFil['nature'] {
   return brut === 'systeme' ? 'systeme' : 'membre';
 }
 
+/** La borne du fil. Au-delà, on pagine — mais on le DIT. */
+export const MESSAGES_PAR_PAGE = 200;
+
+export interface FilCharge {
+  messages: MessageFil[];
+  /** Vrai quand des messages plus anciens existent et ne sont pas là. */
+  tronque: boolean;
+}
+
 /**
- * Le fil d'une écurie, du plus ancien au plus récent.
+ * Le fil d'une écurie, du plus ancien au plus récent À L'AFFICHAGE — mais
+ * lu du plus RÉCENT en base.
  *
- * Borné à 200 messages : au-delà, un fil se pagine. La borne est explicite
- * plutôt que laissée au défaut de PostgREST, qui tronquerait en silence — et
- * un fil tronqué sans le dire donne l'impression que des messages ont disparu.
+ * L'ORDRE DE LA REQUÊTE N'EST PAS COSMÉTIQUE. PostgREST trie PUIS coupe :
+ * `ascending: true` avec une limite gardait les 200 messages LES PLUS ANCIENS.
+ * Au-delà de deux cents, le fil se figeait sur son début et tout nouveau
+ * message devenait invisible — y compris l'annonce système de la formule,
+ * c'est-à-dire la raison d'être du dispositif.
+ *
+ * On lit donc du plus récent, puis on remet dans l'ordre de lecture. Et quand
+ * la borne est atteinte, `tronque` le dit : un fil coupé en silence donne
+ * l'impression que des messages ont disparu.
  */
-export async function listerMessagesFil(crewId: string): Promise<MessageFil[]> {
+export async function listerMessagesFil(crewId: string): Promise<FilCharge> {
   const { data, error } = await supabase
     .from('ecurie_messages' as never)
     .select('id, auteur_id, nature, texte, cree_le' as never)
     .eq('crew_id', crewId)
-    .order('cree_le', { ascending: true })
-    .limit(200);
+    .order('cree_le', { ascending: false })
+    .limit(MESSAGES_PAR_PAGE);
 
   if (error || !data) {
     if (error) console.warn('[ecurieFil] listerMessagesFil:', error.message);
-    return [];
+    return { messages: [], tronque: false };
   }
-  return (data as unknown as LigneMessage[]).map((l) => ({
-    id: l.id,
-    auteurId: l.auteur_id,
-    nature: natureSure(l.nature),
-    texte: l.texte,
-    creeLe: l.cree_le,
-  }));
+
+  const lignes = data as unknown as LigneMessage[];
+  return {
+    // Lu du plus récent, rendu du plus ancien : c'est l'ordre de lecture d'un fil.
+    messages: [...lignes].reverse().map((l) => ({
+      id: l.id,
+      auteurId: l.auteur_id,
+      nature: natureSure(l.nature),
+      texte: l.texte,
+      creeLe: l.cree_le,
+    })),
+    tronque: lignes.length === MESSAGES_PAR_PAGE,
+  };
 }
 
 /**
