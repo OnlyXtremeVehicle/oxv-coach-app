@@ -38,6 +38,7 @@ import {
   type JourneeChoisissable,
   clore,
   confirmerDemandeEcurie,
+  creerJourneePourEcurie,
   listerDemandesEcurie,
   listerJourneesAVenir,
 } from '@/services/ecurieAdminService';
@@ -97,6 +98,30 @@ export default function EcuriesAdminScreen() {
       }
       Toast.show({ type: 'success', text1: 'Sortie confirmée' });
       await reload();
+    } finally {
+      setBusyId(null);
+    }
+  }
+
+  /**
+   * Crée la journée à l'une des dates proposées, puis la retient d'office.
+   *
+   * Créer sans retenir obligerait à chercher la journée qu'on vient de créer
+   * dans une liste de soixante — un geste en deux temps dont le second se
+   * perd. La création EST le choix.
+   */
+  async function creerEtRetenir(d: DemandeEcurie, date: string) {
+    setBusyId(d.id);
+    try {
+      const r = await creerJourneePourEcurie(date);
+      if ('motif' in r) {
+        Toast.show({ type: 'error', text1: 'Journée non créée', text2: r.motif });
+        return;
+      }
+      setChoix((c) => ({ ...c, [d.id]: r.id }));
+      Toast.show({ type: 'success', text1: 'Journée créée et retenue' });
+      const j = await listerJourneesAVenir();
+      setJournees(j);
     } finally {
       setBusyId(null);
     }
@@ -165,10 +190,52 @@ export default function EcuriesAdminScreen() {
                     {` · déposée le ${dateFr(d.creeLe)}`}
                   </Text>
 
+                  {/* Les trois dates souhaitées, actionnables. Celle qui existe
+                      déjà se retient ; celle qui n'existe pas se crée. Le
+                      capitaine propose des dates libres — il n'y a le plus
+                      souvent aucune journée à ces dates-là. */}
                   {d.dates.length > 0 ? (
-                    <Text style={s.meta}>
-                      {`Dates souhaitées : ${d.dates.map(dateFr).join(' · ')}`}
-                    </Text>
+                    <>
+                      <Text style={s.question}>Les trois dates souhaitées</Text>
+                      <View style={s.journees}>
+                        {d.dates.map((jour) => {
+                          const existante = journees.find((j) => j.date === jour);
+                          const actif = existante ? retenue === existante.id : false;
+                          return (
+                            <Pressable
+                              key={jour}
+                              accessibilityRole="button"
+                              accessibilityLabel={
+                                existante
+                                  ? `Retenir la journée du ${dateFr(jour)}`
+                                  : `Créer la journée du ${dateFr(jour)}`
+                              }
+                              accessibilityState={{ selected: actif, disabled: busy, busy }}
+                              disabled={busy || confirmee}
+                              hitSlop={theme.hitSlop}
+                              onPress={() =>
+                                existante
+                                  ? setChoix((c) => ({
+                                      ...c,
+                                      [d.id]: actif ? '' : existante.id,
+                                    }))
+                                  : creerEtRetenir(d, jour)
+                              }
+                              style={({ pressed }) => [
+                                s.journee,
+                                actif ? s.journeeActive : null,
+                                { opacity: pressed || busy ? 0.6 : 1 },
+                              ]}
+                            >
+                              <Text style={[s.journeeT, actif ? s.journeeTActive : null]}>
+                                {dateFr(jour)}
+                                {existante ? '' : ' · à créer'}
+                              </Text>
+                            </Pressable>
+                          );
+                        })}
+                      </View>
+                    </>
                   ) : null}
 
                   {d.message ? <Text style={s.message}>{d.message}</Text> : null}

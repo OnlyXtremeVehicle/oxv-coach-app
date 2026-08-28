@@ -134,6 +134,68 @@ export interface EchecInstruction {
 }
 
 /**
+ * Crée la journée qu'une écurie a demandée, à l'une des dates qu'elle propose.
+ *
+ * ===========================================================================
+ * POURQUOI CE GESTE EXISTE ICI
+ * ===========================================================================
+ *
+ * Le capitaine propose trois dates LIBRES — c'est tout l'objet d'une
+ * privatisation. Il n'y a donc, le plus souvent, aucune journée existante à
+ * retenir : l'écran d'instruction listait soixante journées à venir et n'en
+ * trouvait aucune qui corresponde. L'administrateur devait alors ouvrir le
+ * site pour créer la journée, revenir dans l'application, puis confirmer —
+ * un aller-retour entre deux applications que rien ne signalait à l'écran.
+ *
+ * ===========================================================================
+ * CE QUE LA JOURNÉE PORTE, ET POURQUOI
+ * ===========================================================================
+ *
+ * Journée complète Signature — donc Heritage aussi, la base l'impose : une
+ * journée Signature EST une journée Heritage, au choix du client. C'est le
+ * format d'une privatisation d'écurie.
+ *
+ * Les trois classes sont admises : une écurie rassemble des véhicules
+ * disparates, et restreindre par défaut en amputerait une partie. Si le plateau
+ * demande une restriction, elle se pose ensuite, en voyant qui elle écarte.
+ *
+ * La saison se déduit du mois — haute de mai à octobre — comme le fait le site.
+ * La dupliquer ici est un pis-aller assumé : la règle est d'une ligne et n'a
+ * jamais bougé, mais le jour où elle change, deux endroits devront suivre.
+ */
+export async function creerJourneePourEcurie(
+  date: string,
+): Promise<{ id: string } | EchecInstruction> {
+  const mois = Number.parseInt(date.slice(5, 7), 10);
+  const saison = mois >= 5 && mois <= 10 ? 'high' : 'low';
+
+  const { data, error } = await supabase
+    .from('sessions' as never)
+    .insert({
+      date,
+      status: 'scheduled',
+      is_private: false,
+      format: 'full_day',
+      available_offers: { access: false, signature: true },
+      max_capacity: 20,
+      capacity_access: 0,
+      capacity_signature: 20,
+      season_type: saison,
+      classes_admises: ['I', 'II', 'III'],
+    } as never)
+    .select('id' as never)
+    .single();
+
+  if (error || !data) {
+    // Le motif vient de la base — journée invendable, tarif manquant — et il
+    // dit quoi corriger. Le remplacer perdrait la seule information utile.
+    console.warn('[ecurieAdmin] creerJourneePourEcurie:', error?.message);
+    return { motif: error?.message || 'La journée n’a pas pu être créée.' };
+  }
+  return { id: (data as unknown as { id: string }).id };
+}
+
+/**
  * Confirme une demande en arrêtant la journée.
  *
  * Les deux écritures partent ENSEMBLE : poser la journée puis confirmer en deux
