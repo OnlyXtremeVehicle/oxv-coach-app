@@ -324,3 +324,5 @@
 20260827160305|lot19_tarif_manquant_refuse_a_la_creation_pas_a_la_vente (la config PAR DEFAUT d une journee etait invendable ; le refus remonte a la creation)
 
 20260828014046|lot19_le_plancher_ne_bloque_plus_le_pack_heritage (regression du jour : le produit a 2 490 EUR etait devenu inreservable)
+
+20260828020000|lot20_une_journee_reservee_a_une_ecurie (privatiser n est pas cacher : la journee reste visible a l ecurie, fermee aux autres)
