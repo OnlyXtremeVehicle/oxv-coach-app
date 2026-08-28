@@ -120,6 +120,8 @@ describe('les libellés', () => {
       'ecurie',
       'inscription_modifiee',
       'intentions',
+      'calendrier',
+      'tarif',
     ] as const) {
       expect(LIBELLE_DOMAINE[d]).toBeTruthy();
       expect(GESTE_DOMAINE[d]).toBeTruthy();
@@ -130,6 +132,25 @@ describe('les libellés', () => {
   it('le geste est un verbe', () => {
     expect(GESTE_DOMAINE.examen_vehicule).toBe('Instruire');
     expect(GESTE_DOMAINE.ecurie).toBe('Répondre');
+  });
+
+  /**
+   * Les deux constats ne sont demandés par personne : ils disent ce qui EMPÊCHE
+   * de vendre. Un calendrier vide ne produit aucun signal — c'est précisément
+   * pour cela qu'il doit en produire un ici.
+   */
+  it('les constats disent ce qui empêche de vendre', () => {
+    const file = classerFile(
+      [
+        poste({ domaine: 'calendrier', refId: 'cal', sousEngagement: false }),
+        poste({ domaine: 'tarif', refId: 'tar', sousEngagement: false }),
+      ],
+      MAINTENANT,
+    );
+    // Aucun engagement de délai : ce ne sont pas des recours.
+    expect(file.every((p) => p.etat === 'sans_engagement')).toBe(true);
+    expect(LIBELLE_DOMAINE.calendrier).toBe('Calendrier');
+    expect(GESTE_DOMAINE.tarif).toBe('Activer la ligne');
   });
 
   it('aucun mot de refus dans les libellés', () => {

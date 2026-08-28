@@ -29,6 +29,8 @@ const DOMAINES: readonly DomaineFile[] = [
   'ecurie',
   'inscription_modifiee',
   'intentions',
+  'calendrier',
+  'tarif',
 ];
 
 /**

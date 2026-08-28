@@ -5,14 +5,20 @@
  * POURQUOI UNE FILE ET NON QUATRE ÉCRANS
  * ===========================================================================
  *
- * Quatre choses attendent aujourd'hui : des examens de véhicule, des sorties
- * d'écurie, des inscriptions à véhicule modifié, et des pilotes écartés qui
- * ont demandé à être prévenus.
+ * Six choses attendent : des examens de véhicule, des sorties d'écurie, des
+ * inscriptions à véhicule modifié, des pilotes écartés qui ont demandé à être
+ * prévenus — et deux CONSTATS, qui ne sont demandés par personne : un
+ * calendrier vide, un tarif inactif.
  *
- * Leur donner un écran chacun produirait quatre files qu'il faut penser à
- * ouvrir. Or ce qui se perd, en administration, n'est jamais ce qu'on regarde :
- * c'est ce qu'on oublie de regarder. Le hub porte déjà vingt-trois entrées ;
- * en ajouter quatre, c'est diluer.
+ * Leur donner un écran chacun produirait six files qu'il faut penser à ouvrir.
+ * Or ce qui se perd, en administration, n'est jamais ce qu'on regarde : c'est
+ * ce qu'on oublie de regarder. Le hub porte déjà vingt-quatre entrées ; en
+ * ajouter six, c'est diluer.
+ *
+ * Les deux constats méritent une mention particulière. Une file qui ne montre
+ * que ce qui EST ARRIVÉ ne montre jamais ce qui N'ARRIVERA PAS — et une
+ * boutique fermée ne produit aucun signal, par définition. Mesuré le
+ * 28/08/2026 : zéro journée publique au calendrier, et personne pour le voir.
  *
  * ===========================================================================
  * L'ENGAGEMENT DE DÉLAI NE S'APPLIQUE PAS À TOUT, ET LES MÊLER FERAIT CRIER
@@ -44,7 +50,12 @@ export type DomaineFile =
   | 'examen_vehicule'
   | 'ecurie'
   | 'inscription_modifiee'
-  | 'intentions';
+  | 'intentions'
+  // Deux constats, pas deux demandes : ils disent ce qui EMPECHE de vendre.
+  // Une file qui ne montre que ce qui est arrive ne montre jamais ce qui
+  // n'arrivera pas — et une boutique fermee ne produit aucun signal.
+  | 'calendrier'
+  | 'tarif';
 
 export interface PosteFile {
   domaine: DomaineFile;
@@ -70,6 +81,8 @@ export const LIBELLE_DOMAINE: Readonly<Record<DomaineFile, string>> = {
   ecurie: 'Sortie d’écurie',
   inscription_modifiee: 'Véhicule modifié',
   intentions: 'Pilotes écartés',
+  calendrier: 'Calendrier',
+  tarif: 'Grille tarifaire',
 };
 
 /**
@@ -81,6 +94,10 @@ export const GESTE_DOMAINE: Readonly<Record<DomaineFile, string>> = {
   ecurie: 'Répondre',
   inscription_modifiee: 'Regarder',
   intentions: 'Voir la journée',
+  // Ces deux-là se règlent sur le site : publier une journée, activer un tarif.
+  // Le geste est nommé pour dire OU aller, pas pour promettre un bouton ici.
+  calendrier: 'Publier une journée',
+  tarif: 'Activer la ligne',
 };
 
 /**

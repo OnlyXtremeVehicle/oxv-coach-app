@@ -55,6 +55,11 @@ const DESTINATION: Readonly<Record<PosteClasse['domaine'], string | null>> = {
   inscription_modifiee: '/(admin)/examens-vehicule',
   ecurie: '/(admin)/ecuries',
   intentions: null,
+  // Publier une journée et activer un tarif se font sur le site : aucun écran
+  // de l'application ne les porte. Un bouton qui n'irait nulle part se lirait
+  // comme une panne — le détail du poste dit déjà quoi faire, et où.
+  calendrier: null,
+  tarif: null,
 };
 
 function dateFr(iso: string): string {

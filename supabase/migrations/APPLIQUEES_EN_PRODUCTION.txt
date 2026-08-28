@@ -330,3 +330,5 @@
 20260828022000|lot20_impact_restriction_reserve_a_l_administration (advisor securite : la fonction parlait a tout compte authentifie — parc, inscriptions, intentions)
 
 20260828030000|lot21_purge_des_demandes_deposees_anonymement (email et plaque survivaient a l effacement du compte cree ensuite ; rapprochement par email AVANT l anonymisation)
+
+20260828040000|lot22_la_file_voit_ce_qui_empeche_de_vendre (calendrier vide et tarif inactif deviennent des postes : une boutique fermee ne produit aucun signal)
