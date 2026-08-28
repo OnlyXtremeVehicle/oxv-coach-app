@@ -235,3 +235,51 @@ export function peutDeposer(estCapitaine: boolean, statutEnCours: StatutReservat
   if (!estCapitaine) return false;
   return statutEnCours === null || statutEnCours === 'close';
 }
+
+// ===========================================================================
+// L'avancement d'une sortie confirmée
+// ===========================================================================
+
+/**
+ * La phrase que lit l'écurie une fois la sortie confirmée.
+ *
+ * ===========================================================================
+ * C'EST ICI QUE LA CONVERSION SE JOUE
+ * ===========================================================================
+ *
+ * Le capitaine a organisé, OXV a confirmé — et ensuite chacun s'inscrit seul.
+ * Rien ne tient ces inscriptions : ni délai, ni compte, ni relance. Une sortie
+ * organisée à vingt-deux qui se termine à huit inscrits est une journée louée
+ * pour rien, et personne ne l'apprend avant le jour même.
+ *
+ * Deux nombres et une date suffisent à retourner cela. Le compte donne au
+ * capitaine ce qu'OXV n'aura jamais : la mesure exacte de ce qui manque, entre
+ * des mains qui peuvent en parler.
+ *
+ * `null` quand il n'y a rien à dire — une bannière qui répète « 0 sur 0 »
+ * occupe la place sans rien apporter.
+ */
+export function phraseAvancement(
+  effectifAnnonce: number,
+  inscrits: number,
+  restant: number,
+  echeance: string | null,
+): string | null {
+  if (effectifAnnonce < 1) return null;
+
+  const jusquAu = echeance
+    ? ` Les places vous sont réservées jusqu’au ${new Date(echeance).toLocaleDateString('fr-FR', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric',
+      })}.`
+    : '';
+
+  if (restant === 0) {
+    return `${inscrits} pilote${inscrits > 1 ? 's' : ''} inscrit${inscrits > 1 ? 's' : ''} sur ${effectifAnnonce} annoncé${effectifAnnonce > 1 ? 's' : ''}. Le compte y est.`;
+  }
+  return (
+    `${inscrits} pilote${inscrits > 1 ? 's' : ''} inscrit${inscrits > 1 ? 's' : ''} sur ${effectifAnnonce} annoncé${effectifAnnonce > 1 ? 's' : ''} — ` +
+    `il en manque ${restant}.${jusquAu}`
+  );
+}

@@ -21,6 +21,7 @@ const poste = (over: Partial<PosteFile> = {}): PosteFile => ({
   detail: '',
   depuis: '2026-08-24T00:00:00Z',
   sousEngagement: true,
+  echeance: null,
   ...over,
 });
 
@@ -113,6 +114,88 @@ describe('le résumé compte ce qui compte', () => {
   });
 });
 
+describe('l’échéance datée — le second délai', () => {
+  /**
+   * Deux délais coexistent et ne se confondent pas : l'engagement de CGV se
+   * compte en heures OUVRÉES et se calcule, la validation d'une journée
+   * proposée se compte en jours de calendrier et se LIT — elle a été écrite en
+   * base au moment où elle était posée.
+   */
+  it('une échéance dépassée passe devant tout ce qui n’en a pas', () => {
+    const file = classerFile(
+      [
+        poste({ refId: 'sans', sousEngagement: false, echeance: null }),
+        poste({
+          refId: 'depassee',
+          domaine: 'journee_a_valider',
+          sousEngagement: false,
+          echeance: '2026-08-25T00:00:00Z',
+        }),
+      ],
+      MAINTENANT,
+    );
+    expect(file[0].refId).toBe('depassee');
+    expect(file[0].etat).toBe('depassee');
+  });
+
+  /** Prévenu deux jours avant, on a le temps d'agir. La veille, non. */
+  it('sous deux jours, l’échéance est signalée proche', () => {
+    const file = classerFile(
+      [
+        poste({
+          domaine: 'journee_a_valider',
+          sousEngagement: false,
+          echeance: '2026-08-27T12:00:00Z', // J+1
+        }),
+      ],
+      MAINTENANT,
+    );
+    expect(file[0].etat).toBe('echeance_proche');
+  });
+
+  it('au-delà, elle est dans les temps', () => {
+    const file = classerFile(
+      [
+        poste({
+          domaine: 'journee_a_valider',
+          sousEngagement: false,
+          echeance: '2026-09-02T12:00:00Z',
+        }),
+      ],
+      MAINTENANT,
+    );
+    expect(file[0].etat).toBe('dans_les_temps');
+  });
+
+  /**
+   * L'ENGAGEMENT PRIME SUR LA DATE. Un poste sous engagement de CGV ne se lit
+   * jamais sur une échéance écrite : les 72 h ouvrées sont la seule règle qui
+   * vaille pour lui, et une date parasite la contredirait en silence.
+   */
+  it('un poste sous engagement ignore l’échéance écrite', () => {
+    const file = classerFile(
+      [
+        poste({
+          sousEngagement: true,
+          depuis: '2026-08-24T00:00:00Z',
+          echeance: '2030-01-01T00:00:00Z',
+        }),
+      ],
+      MAINTENANT,
+    );
+    // 12 h ouvrées restantes sur les 72 : proche, malgré l'échéance lointaine.
+    expect(file[0].etat).toBe('echeance_proche');
+  });
+
+  it('une échéance illisible ne fabrique pas d’urgence', () => {
+    const file = classerFile(
+      [poste({ sousEngagement: false, echeance: 'pas-une-date' })],
+      MAINTENANT,
+    );
+    expect(file[0].etat).toBe('sans_engagement');
+  });
+});
+
 describe('les libellés', () => {
   it('chaque domaine porte un nom et un geste', () => {
     for (const d of [
@@ -122,6 +205,7 @@ describe('les libellés', () => {
       'intentions',
       'calendrier',
       'tarif',
+      'journee_a_valider',
     ] as const) {
       expect(LIBELLE_DOMAINE[d]).toBeTruthy();
       expect(GESTE_DOMAINE[d]).toBeTruthy();

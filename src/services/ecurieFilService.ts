@@ -172,6 +172,59 @@ export async function reservationEnCours(crewId: string): Promise<ReservationEcu
   };
 }
 
+export interface AvancementEcurie {
+  effectifAnnonce: number;
+  inscrits: number;
+  restant: number;
+  echeance: string | null;
+  journee: string | null;
+}
+
+interface LigneAvancement {
+  effectif_annonce: number;
+  inscrits: number;
+  restant: number;
+  echeance: string | null;
+  journee: string | null;
+}
+
+/**
+ * Où en est la sortie confirmée : combien annoncés, combien inscrits, combien
+ * restent, jusqu'à quand.
+ *
+ * ===========================================================================
+ * UN COMPTE, JAMAIS DES NOMS
+ * ===========================================================================
+ *
+ * La fonction serveur ne rend que des nombres, et c'est délibéré. Afficher qui
+ * n'est pas encore inscrit ferait du fil un tableau de retardataires — l'inverse
+ * de ce qu'une écurie est. Le capitaine voit combien il en manque ; il sait très
+ * bien qui, et c'est à lui de leur parler.
+ *
+ * C'est aussi le seul levier qui convertisse : OXV ne peut que relancer des
+ * inconnus par courriel, le capitaine relance des amis.
+ */
+export async function avancementEcurie(crewId: string): Promise<AvancementEcurie | null> {
+  const { data, error } = await supabase.rpc('oxv_avancement_ecurie' as never, {
+    p_crew_id: crewId,
+  } as never);
+
+  if (error || !data) {
+    if (error) console.warn('[ecurieFil] avancementEcurie:', error.message);
+    return null;
+  }
+  const l = (Array.isArray(data) ? data[0] : data) as unknown as LigneAvancement | undefined;
+  if (!l) return null;
+
+  return {
+    effectifAnnonce: l.effectif_annonce,
+    inscrits: l.inscrits,
+    restant: l.restant,
+    echeance: l.echeance,
+    journee: l.journee,
+  };
+}
+
 export interface EchecDepot {
   /** Message affichable, tel que la base l'a formulé. */
   motif: string;

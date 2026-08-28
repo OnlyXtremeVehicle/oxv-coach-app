@@ -332,3 +332,15 @@
 20260828030000|lot21_purge_des_demandes_deposees_anonymement (email et plaque survivaient a l effacement du compte cree ensuite ; rapprochement par email AVANT l anonymisation)
 
 20260828040000|lot22_la_file_voit_ce_qui_empeche_de_vendre (calendrier vide et tarif inactif deviennent des postes : une boutique fermee ne produit aucun signal)
+
+20260828021352|lot23_valeur_proposee (l etat d attente d une journee ; valeur seule — Postgres refuse qu on l utilise dans la meme transaction)
+
+20260828021426|lot23_validation_sous_sept_jours (echeance portee par la donnee ; journee proposee invisible du catalogue et inreservable)
+
+20260828021516|lot23_le_depot_cree_les_journees_manquantes (le dernier geste manuel disparait ; la confirmation en garde une, libere les autres)
+
+20260828021619|lot23_la_file_porte_les_echeances_datees (deux delais coexistent : 72 h ouvrees CALCULEES, 7 jours calendaires LUS)
+
+20260828022007|lot24_de_l_organisation_a_l_inscription (echeance sur les inscriptions + avancement : un COMPTE, jamais des noms)
+
+20260828022052|lot24_les_places_non_prises_reviennent_seules (evalue a la LECTURE : pas de tache planifiee, donc pas d etat qui derive)

@@ -22,6 +22,7 @@ interface LigneFile {
   detail: string | null;
   depuis: string;
   sous_engagement: boolean;
+  echeance: string | null;
 }
 
 const DOMAINES: readonly DomaineFile[] = [
@@ -31,6 +32,7 @@ const DOMAINES: readonly DomaineFile[] = [
   'intentions',
   'calendrier',
   'tarif',
+  'journee_a_valider',
 ];
 
 /**
@@ -70,6 +72,7 @@ export async function listerFileAdministration(): Promise<PosteFile[]> {
       detail: l.detail ?? '',
       depuis: l.depuis,
       sousEngagement: l.sous_engagement === true,
+      echeance: l.echeance ?? null,
     });
   }
   return postes;

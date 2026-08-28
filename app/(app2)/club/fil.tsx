@@ -43,12 +43,15 @@ import {
   formuleDepuisEffectif,
   grouperParJour,
   peutDeposer,
+  phraseAvancement,
   verifierDates,
 } from '@/features/club/filEcurieLogic';
 import { useEcurie } from '@/features/club/useEcurie';
 import {
   MESSAGES_PAR_PAGE,
+  type AvancementEcurie,
   type ReservationEcurie,
+  avancementEcurie,
   deposerReservationEcurie,
   envoyerMessage,
   listerMessagesFil,
@@ -74,6 +77,7 @@ export default function FilEcurieScreen() {
   const [messages, setMessages] = useState<MessageFil[]>([]);
   const [tronque, setTronque] = useState(false);
   const [demande, setDemande] = useState<ReservationEcurie | null>(null);
+  const [avancement, setAvancement] = useState<AvancementEcurie | null>(null);
   const [chargeFil, setChargeFil] = useState(true);
   const [saisie, setSaisie] = useState('');
   const [envoi, setEnvoi] = useState(false);
@@ -93,13 +97,15 @@ export default function FilEcurieScreen() {
       return;
     }
     setChargeFil(true);
-    const [fil, encours] = await Promise.all([
+    const [fil, encours, avance] = await Promise.all([
       listerMessagesFil(crewId),
       reservationEnCours(crewId),
+      avancementEcurie(crewId),
     ]);
     setMessages(fil.messages);
     setTronque(fil.tronque);
     setDemande(encours);
+    setAvancement(avance);
     setChargeFil(false);
   }, [crewId]);
 
@@ -192,6 +198,14 @@ export default function FilEcurieScreen() {
   }
 
   const bandeau = bandeauDemande(demande?.statut ?? null, demande?.formule ?? null);
+  const phrase = avancement
+    ? phraseAvancement(
+        avancement.effectifAnnonce,
+        avancement.inscrits,
+        avancement.restant,
+        avancement.echeance,
+      )
+    : null;
   const ouvertAuDepot = peutDeposer(capitaine, demande?.statut ?? null);
 
   return (
@@ -213,6 +227,12 @@ export default function FilEcurieScreen() {
       {bandeau ? (
         <View style={s.bandeau}>
           <Text style={s.bandeauTexte}>{bandeau}</Text>
+          {/* LE COMPTE, ET C'EST ICI QUE LA CONVERSION SE JOUE.
+              Le capitaine a organisé, OXV a confirmé — puis chacun s'inscrit
+              seul, et rien ne tient ces inscriptions. Deux nombres et une date
+              donnent au capitaine ce qu'OXV n'aura jamais : la mesure exacte
+              de ce qui manque, entre des mains qui peuvent en parler. */}
+          {phrase ? <Text style={s.avancement}>{phrase}</Text> : null}
         </View>
       ) : null}
 
@@ -387,6 +407,15 @@ const s = StyleSheet.create({
     backgroundColor: colors.bg.card,
   },
   bandeauTexte: { fontFamily: typo.body, fontSize: fontSize.body, color: colors.text.mid },
+  // Le compte prend l'or de l'appartenance, comme l'insigne : c'est l'écurie
+  // qui se compte elle-même, pas une alerte d'OXV.
+  avancement: {
+    fontFamily: typo.bodyMedium,
+    fontSize: fontSize.body,
+    color: colors.heritage.gold,
+    marginTop: space.sm,
+    lineHeight: fontSize.body * 1.5,
+  },
 
   fil: { flex: 1, paddingHorizontal: space.lg },
   vide: {

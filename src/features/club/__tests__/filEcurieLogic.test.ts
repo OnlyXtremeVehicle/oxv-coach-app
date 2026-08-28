@@ -15,6 +15,7 @@ import {
   formuleDepuisEffectif,
   grouperParJour,
   peutDeposer,
+  phraseAvancement,
   verifierDates,
 } from '../filEcurieLogic';
 
@@ -153,6 +154,51 @@ describe('le bandeau de demande', () => {
 
   it('le délai de CGV est rappelé au dépôt', () => {
     expect(bandeauDemande('deposee', 'insertion')).toContain('soixante-douze heures ouvrées');
+  });
+});
+
+describe('l’avancement — là où la conversion se joue', () => {
+  /**
+   * Le capitaine a organisé, OXV a confirmé, puis chacun s'inscrit seul. Une
+   * sortie annoncée à vingt-deux qui finit à huit est une journée louée pour
+   * rien — et personne ne l'apprend avant le jour même.
+   */
+  it('dit combien il en manque, et jusqu’à quand', () => {
+    const p = phraseAvancement(22, 8, 14, '2026-09-11T12:00:00Z');
+    expect(p).toContain('8 pilotes inscrits sur 22');
+    expect(p).toContain('il en manque 14');
+    expect(p).toContain('11/09/2026');
+  });
+
+  it('quand le compte y est, il le dit sans relancer', () => {
+    const p = phraseAvancement(12, 12, 0, '2026-09-11T12:00:00Z');
+    expect(p).toContain('Le compte y est');
+    expect(p).not.toContain('manque');
+  });
+
+  it('le singulier est respecté', () => {
+    expect(phraseAvancement(2, 1, 1, null)).toContain('1 pilote inscrit sur 2');
+  });
+
+  /** Une bannière qui répète « 0 sur 0 » occupe la place sans rien apporter. */
+  it('rien à dire sur une sortie sans effectif', () => {
+    expect(phraseAvancement(0, 0, 0, null)).toBeNull();
+  });
+
+  it('sans échéance, la phrase reste juste', () => {
+    const p = phraseAvancement(22, 8, 14, null);
+    expect(p).toContain('il en manque 14');
+    expect(p).not.toContain('jusqu');
+  });
+
+  /**
+   * LE COMPTE, JAMAIS LES NOMS. Afficher qui n'est pas encore inscrit ferait du
+   * fil un tableau de retardataires — l'inverse de ce qu'une écurie est.
+   */
+  it('la phrase ne nomme personne', () => {
+    const p = phraseAvancement(22, 8, 14, '2026-09-11T12:00:00Z') ?? '';
+    expect(p).not.toMatch(/[A-Z][a-zé]+ [A-Z]/); // aucun prénom-nom
+    expect(p).not.toMatch(/retard|oubli|relanc/i);
   });
 });
 

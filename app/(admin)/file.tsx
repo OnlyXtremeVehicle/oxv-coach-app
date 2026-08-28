@@ -60,6 +60,9 @@ const DESTINATION: Readonly<Record<PosteClasse['domaine'], string | null>> = {
   // comme une panne — le détail du poste dit déjà quoi faire, et où.
   calendrier: null,
   tarif: null,
+  // La validation se fait depuis l'écran d'écurie quand la journée y est
+  // rattachée ; le poste dit déjà ce qu'il attend.
+  journee_a_valider: '/(admin)/ecuries',
 };
 
 function dateFr(iso: string): string {

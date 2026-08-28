@@ -55,7 +55,10 @@ export type DomaineFile =
   // Une file qui ne montre que ce qui est arrive ne montre jamais ce qui
   // n'arrivera pas — et une boutique fermee ne produit aucun signal.
   | 'calendrier'
-  | 'tarif';
+  | 'tarif'
+  // Une journee proposee : creee par le depot d'une ecurie, invisible du
+  // catalogue, a valider sous sept jours de calendrier.
+  | 'journee_a_valider';
 
 export interface PosteFile {
   domaine: DomaineFile;
@@ -64,8 +67,18 @@ export interface PosteFile {
   detail: string;
   /** Horodatage ISO de ce qui a déclenché l'attente. */
   depuis: string;
-  /** Le poste court-il sous l'engagement de réponse des CGV ? */
+  /** Le poste court-il sous l'engagement de réponse des CGV (72 h ouvrées) ? */
   sousEngagement: boolean;
+  /**
+   * Une échéance DÉJÀ ARRÊTÉE en base, quand il en existe une — la validation
+   * d'une journée proposée, sept jours de calendrier.
+   *
+   * Elle ne se calcule pas ici : elle a été écrite au moment où elle était
+   * posée. Deux délais coexistent donc, et ils ne se confondent pas — l'un est
+   * un engagement envers un membre et se compte en heures ouvrées, l'autre est
+   * une discipline interne et se compte en jours.
+   */
+  echeance: string | null;
 }
 
 /** Un poste sans engagement n'a pas d'état de délai : il n'en court aucun. */
@@ -83,6 +96,7 @@ export const LIBELLE_DOMAINE: Readonly<Record<DomaineFile, string>> = {
   intentions: 'Pilotes écartés',
   calendrier: 'Calendrier',
   tarif: 'Grille tarifaire',
+  journee_a_valider: 'Journée proposée',
 };
 
 /**
@@ -98,6 +112,7 @@ export const GESTE_DOMAINE: Readonly<Record<DomaineFile, string>> = {
   // Le geste est nommé pour dire OU aller, pas pour promettre un bouton ici.
   calendrier: 'Publier une journée',
   tarif: 'Activer la ligne',
+  journee_a_valider: 'Valider ou libérer',
 };
 
 /**
@@ -105,6 +120,31 @@ export const GESTE_DOMAINE: Readonly<Record<DomaineFile, string>> = {
  * soit leur âge. Un pilote écarté depuis trois semaines n'est pas plus pressant
  * qu'un recours déposé ce matin : l'un est une occasion, l'autre une promesse.
  */
+/**
+ * L'état d'un poste.
+ *
+ * Trois chemins, et l'ordre compte : l'engagement de CGV prime, parce qu'il est
+ * promis à quelqu'un. Vient ensuite l'échéance datée, qui n'est promise à
+ * personne mais qui court. Le reste n'a pas d'échéance du tout.
+ *
+ * Une échéance datée réutilise les MÊMES états — dépassée, proche, dans les
+ * temps — pour que l'œil n'ait pas à apprendre deux vocabulaires. Seul le
+ * calcul diffère : un délai interne se compte en jours de calendrier, pas en
+ * heures ouvrées.
+ */
+function etatDe(p: PosteFile, maintenant: Date): EtatPoste {
+  if (p.sousEngagement) return etatDelai('en_attente', new Date(p.depuis), maintenant);
+  if (!p.echeance) return 'sans_engagement';
+
+  const reste = new Date(p.echeance).getTime() - maintenant.getTime();
+  if (Number.isNaN(reste)) return 'sans_engagement';
+  if (reste <= 0) return 'depassee';
+  // Sous deux jours, l'échéance est proche. Un délai de sept jours prévenu
+  // deux jours avant laisse le temps d'agir ; prévenu la veille, non.
+  if (reste <= 2 * 86_400_000) return 'echeance_proche';
+  return 'dans_les_temps';
+}
+
 const RANG_SANS_ENGAGEMENT = 10;
 
 function rangDe(etat: EtatPoste): number {
@@ -121,9 +161,7 @@ export function classerFile(postes: readonly PosteFile[], maintenant: Date): Pos
   return postes
     .map((p) => ({
       ...p,
-      etat: p.sousEngagement
-        ? etatDelai('en_attente', new Date(p.depuis), maintenant)
-        : ('sans_engagement' as const),
+      etat: etatDe(p, maintenant),
     }))
     .sort((a, b) => {
       const ra = rangDe(a.etat);
