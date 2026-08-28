@@ -51,6 +51,23 @@ import { StateWrapper, type ScreenState } from '@/ui/StateWrapper';
 
 const ADMIN = '#22D3EE';
 
+/**
+ * Une journée où cette écurie peut s'insérer.
+ *
+ * Le déclencheur `reservations_ecurie_journee_ouverte` refuse une insertion sur
+ * une journée qui n'admet pas les trois classes — « une écurie s'y insérerait
+ * amputée ». Proposer ces journées reviendrait à offrir un geste qui échoue :
+ * le défaut que ce dépôt corrige partout ailleurs, et qu'il ne faut pas
+ * réintroduire ici.
+ *
+ * Une journée privée ne se propose pas non plus : elle appartient déjà à
+ * quelqu'un.
+ */
+function accueilleUneInsertion(j: JourneeChoisissable): boolean {
+  if (j.privee) return false;
+  return ['I', 'II', 'III'].every((c) => j.classesAdmises.includes(c));
+}
+
 function dateFr(iso: string): string {
   const d = new Date(iso.length === 10 ? `${iso}T12:00:00Z` : iso);
   return Number.isNaN(d.getTime())
@@ -248,12 +265,23 @@ export default function EcuriesAdminScreen() {
                     <>
                       <Text style={s.question}>La journée retenue</Text>
                       <View style={s.journees}>
-                        {journees.length === 0 ? (
-                          <Text style={s.meta}>
-                            Aucune journée à venir. Créez-en une avant de confirmer.
-                          </Text>
-                        ) : (
-                          journees.map((j) => {
+                        {(() => {
+                          /* Une privatisation ne se pose que sur l'une des trois
+                             dates souhaitées — le capitaine les a choisies, et le
+                             dépôt a créé celles qui manquaient. Une insertion se
+                             pose sur une journée qui accueille tout le monde. */
+                          const candidates =
+                            d.formule === 'privatisation'
+                              ? journees.filter((j) => d.dates.includes(j.date))
+                              : journees.filter(accueilleUneInsertion);
+                          return candidates.length === 0 ? (
+                            <Text style={s.meta}>
+                              {d.formule === 'privatisation'
+                                ? 'Aucune journée aux dates souhaitées. Créez-en une ci-dessus.'
+                                : 'Aucune journée ouverte aux trois classes. Une écurie s’y insérerait amputée.'}
+                            </Text>
+                          ) : (
+                            candidates.map((j) => {
                             const actif = retenue === j.id;
                             return (
                               <Pressable
@@ -273,11 +301,15 @@ export default function EcuriesAdminScreen() {
                               >
                                 <Text style={[s.journeeT, actif ? s.journeeTActive : null]}>
                                   {dateFr(j.date)}
+                                  {/* Une journée proposée n'est pas encore au
+                                      catalogue : la retenir la validera. */}
+                                  {j.statut === 'proposee' ? ' · à valider' : ''}
                                 </Text>
                               </Pressable>
                             );
-                          })
-                        )}
+                            })
+                          );
+                        })()}
                       </View>
 
                       <TextInput

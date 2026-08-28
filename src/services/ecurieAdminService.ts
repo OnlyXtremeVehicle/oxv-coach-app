@@ -91,6 +91,10 @@ export interface JourneeChoisissable {
   date: string;
   format: string;
   placesTotales: number | null;
+  /** `proposee` = créée par un dépôt, pas encore validée, invisible du catalogue. */
+  statut: string;
+  classesAdmises: string[];
+  privee: boolean;
 }
 
 interface LigneSession {
@@ -98,22 +102,30 @@ interface LigneSession {
   date: string;
   format: string | null;
   max_capacity: number | null;
+  status: string | null;
+  classes_admises: string[] | null;
+  is_private: boolean | null;
 }
 
 /**
- * Les journées à venir sur lesquelles poser une écurie.
+ * Les journées à venir, avec de quoi savoir lesquelles la base acceptera.
  *
- * Aucun filtre sur le format ni sur les places : une insertion se pose sur une
- * journée Access, une privatisation transforme la journée en journée privée, et
- * c'est l'administration qui sait. Filtrer ici retirerait des options
- * légitimes sans le dire — le défaut que ce dépôt corrige partout ailleurs.
+ * L'écran ne peut pas filtrer sans ces trois champs — statut, classes admises,
+ * privée — et proposer une journée que le déclencheur refusera est exactement
+ * le défaut que ce dépôt corrige partout ailleurs. Le service les rend ; c'est
+ * l'écran qui trie, parce que la règle dépend de la formule de CHAQUE demande.
+ *
+ * Les journées `proposee` sont incluses : ce sont précisément celles que le
+ * dépôt vient de créer aux dates souhaitées. Les exclure priverait
+ * l'administration de ce qu'elle est venue chercher.
  */
 export async function listerJourneesAVenir(): Promise<JourneeChoisissable[]> {
   const aujourdhui = new Date().toISOString().slice(0, 10);
   const { data, error } = await supabase
-    .from('sessions')
-    .select('id, date, format, max_capacity')
+    .from('sessions' as never)
+    .select('id, date, format, max_capacity, status, classes_admises, is_private' as never)
     .gte('date', aujourdhui)
+    .not('status', 'in', '(cancelled,archived)')
     .order('date', { ascending: true })
     .limit(60);
 
@@ -126,6 +138,12 @@ export async function listerJourneesAVenir(): Promise<JourneeChoisissable[]> {
     date: l.date,
     format: l.format ?? '—',
     placesTotales: l.max_capacity,
+    statut: l.status ?? 'scheduled',
+    classesAdmises:
+      Array.isArray(l.classes_admises) && l.classes_admises.length
+        ? l.classes_admises
+        : ['I', 'II', 'III'],
+    privee: l.is_private === true,
   }));
 }
 
