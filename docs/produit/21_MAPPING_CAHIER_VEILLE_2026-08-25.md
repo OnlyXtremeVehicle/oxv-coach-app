@@ -160,3 +160,63 @@ confiance sur le tracé GPS (projection curviligne à construire — chantier à
 - Validation chrono officiel multi-circuits (phase 1) : terrain.
 - Audio en piste : revue juridique + accord circuits/assureurs (§08 du cahier).
 - Achat du parc Mini S, procédure de montage : fondateur.
+
+---
+
+## F — Remesure du 29/08/2026
+
+> Règle n° 1 du programme v4 : toute affirmation se remesure. Ce document en
+> portait trois devenues fausses en quatre jours.
+
+**Les chiffres de fin du §D sont périmés.** Il annonce « 3 682 tests verts, 0
+échec (291 suites) ». Mesuré ce jour sur la même branche : **4 211 tests verts,
+335 fichiers de suite** (317 passés, 18 ignorés), `tsc` à 0 erreur.
+
+**Deux constats ont changé de nom le 26/08, et le §A cite encore les anciens.**
+`src/components/insights/catalogue.ts` a renommé « Tour idéal composé » en
+**« Potentiel démontré »** et « Diagramme G-G » en **« Appuis combinés »**.
+
+**L'audit M10 réclamé par le §B a eu lieu — et sa réponse est écrite.** Le §B
+posait « sa continuité aux jonctions n'a pas été auditée ». Elle l'a été le
+26/08, et le résultat est consigné dans l'en-tête de
+`src/components/insights/TourIdealViz.tsx` : les deux moteurs qui remplissent le
+bloc `ideal_lap` écrivent le **meilleur tour RÉEL** de la séance, avec `gap_s: 0`
+et `sector_sources: []` — vérifié ce jour à
+`supabase/functions/compute-session-insights-v3/index.ts:267-269`. Aucune
+composition n'est faite, donc aucune jonction n'existe à vérifier.
+
+Ce qu'il faut en retenir n'est PAS que l'application ment : c'est l'inverse. Le
+mot « MICRO-SECTEURS » a été retiré de l'écran, la barre de provenance a été
+**supprimée plutôt que fabriquée**, et la ligne de source dit désormais « aucune
+continuité vérifiée aux jonctions entre morceaux : jamais un tour garanti ». Le
+« tour optimal réaliste » du §03 — blocs entrée-virage-sortie dont la continuité
+vitesse / position / accélération est contrôlée — **n'est pas implémenté**, et
+l'écran le déclare. Cette ligne du §B est donc close : ce n'est plus un audit à
+mener, c'est un module à construire ou à laisser.
+
+### Trois manques confirmés que ce document ne portait pas
+
+- **§03 étape 3 — calibration : absente.** `sessionTelemetryMapping` lit les g
+  bruts et se contente d'inverser un signe. Aucune orientation estimée, aucune
+  compensation de gravité, aucun contrôle à l'arrêt, aucun couple brut/corrigé
+  conservé. Recherché sans résultat dans toute la chaîne d'ingestion
+  (« calibrat », « gravit », « orientation », « biais »). C'est le manque
+  technique le plus substantiel du cahier qui ne soit pas un lot différé : il
+  touche directement les branches Freinage, Accélération et Fluidité du QDI.
+- **M16 apex — deux définitions calculées, une seule étiquette.** L'apex
+  géométrique et la vitesse minimale de trajectoire sont tous deux calculés dans
+  `src/trackviz/analysis.ts` ; l'écran n'en nomme qu'un, et bascule de l'un à
+  l'autre en silence. La fiche demande d'afficher **celle utilisée et leur
+  décalage**.
+- **§09 KPIs produit — sept axes demandés, sept évènements en tout.**
+  `src/services/analyticsEvents.ts` ne porte aucun délai, aucune latence, aucun
+  compteur d'acceptation ou de rejet des propositions IA — alors que la matière
+  existe en base (`coach_ai_drafts.status`). Les portes de sortie du §09 ne sont
+  donc pas mesurables aujourd'hui.
+
+### Le catalogue a désormais son propre état
+
+Voir `docs/produit/22_ETAT_CATALOGUE_PRESENTATIONS_2026-08-29.md`. Le fait
+dominant : les 65 fiches sont transcrites et le moteur de composition est écrit
+et testé, mais **aucune surface ne l'appelle**, et les trois tables dont il
+dépend ne sont pas appliquées en production.
