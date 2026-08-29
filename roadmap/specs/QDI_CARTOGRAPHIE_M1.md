@@ -1,5 +1,13 @@
 # QDI 5 branches — cartographie et plan (Lot M1, PROPOSITION à valider)
 
+> **Le calcul est fait, et il est décrit ailleurs.** Ce document reste la
+> cartographie du lot et les définitions du fondateur (elles font foi). La
+> correspondance branche → formule effectivement implémentée, ses seuils et sa
+> version vivent dans `docs/architecture/21_QDI_METHODOLOGIE.md` — qui absorbe
+> aussi l'ancien `docs/site/QDI_METHODOLOGIE.md` du dépôt site, supprimé le
+> 29/08/2026. Les définitions ci-dessous sont celles d'un pilote ; les formules
+> mesurent les CONSÉQUENCES (point 3), et l'écart entre les deux se lit là-bas.
+
 > Décision fondateur 2026-07-04 : QDI réintroduit, visible pilote, self-only.
 > Branches définies par le fondateur (font foi) :
 >
