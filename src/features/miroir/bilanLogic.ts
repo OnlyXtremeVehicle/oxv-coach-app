@@ -346,6 +346,19 @@ export interface AnnotationLite {
   body: string;
   /** Séance rattachée — null = note GÉNÉRIQUE du coach (« Repère général »). */
   telemetrySessionId: string | null;
+  /**
+   * Chemin de la note vocale attachée à CE virage, ou `null`.
+   *
+   * P36 du catalogue : « vocal 10–20 s déclenché sur la preuve, réécoutable au
+   * bon endroit ». La colonne existait, le service la rendait déjà — et ce
+   * modèle la laissait tomber. Le pilote n'entendait donc que la note de
+   * SÉANCE, jamais celle posée sur le virage qu'il regarde.
+   *
+   * FACULTATIF EN ENTRÉE, obligatoire en sortie (`CoachNoteModel`) : une source
+   * qui ne connaît pas encore ce champ reste valide, et l'écran, lui, teste
+   * toujours une valeur — jamais une clé absente.
+   */
+  audioUrl?: string | null;
 }
 
 export interface ThreadLite {
@@ -368,6 +381,8 @@ export interface CoachNoteModel {
    * SUR cette séance (la parole du coach n'est pas datée faussement).
    */
   generic: boolean;
+  /** La voix du coach sur CE virage, quand elle existe (P36). */
+  audioUrl: string | null;
 }
 
 /**
@@ -401,6 +416,10 @@ export function buildCoachNotes(
     body: a.body,
     coachName: nameByCoach.get(a.coachId) ?? null,
     generic: a.telemetrySessionId === null,
+    // La voix suit sa note. `?? null` parce qu'une annotation ancienne, lue
+    // avant que le champ n'existe, ne doit pas devenir `undefined` — l'écran
+    // teste une valeur, pas une absence de clé.
+    audioUrl: a.audioUrl ?? null,
   }));
 }
 

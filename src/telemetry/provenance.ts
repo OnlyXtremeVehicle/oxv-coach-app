@@ -182,6 +182,40 @@ export const BANQUE: readonly Grandeur[] = [
     source: 'Reprise d’accélération après le point de vitesse minimale.',
   },
   {
+    cle: 'calibration.tangage',
+    nom: 'Tangage du boîtier',
+    prov: 'D',
+    source: 'Direction de la gravité mesurée pendant les arrêts de la capture.',
+    convention:
+      'Un arrêt est une vitesse sous 2 km/h tenue au moins trois secondes sans trou d’acquisition. Si la norme mesurée s’écarte de 1 g de plus d’un quart, aucune orientation n’est établie.',
+  },
+  {
+    cle: 'calibration.roulis',
+    nom: 'Roulis du boîtier',
+    prov: 'D',
+    source: 'Même mesure que le tangage : la gravité, vue de travers.',
+    convention:
+      'Tangage et roulis se lisent sur la décomposition classique. À l’arrêt, un décalage du capteur et une inclinaison sont INDISCERNABLES : ce qui est rendu est la somme des deux, et non un boîtier dont on saurait qu’il penche.',
+  },
+  {
+    cle: 'calibration.lacet',
+    nom: 'Orientation avant/arrière du boîtier',
+    prov: 'I',
+    source:
+      'Direction moyenne de l’accélération horizontale pendant les phases mesurées en ligne droite. Suppose qu’en ligne droite toute l’accélération est longitudinale — une dérive, un dévers ou un vent de travers rendraient cette hypothèse fausse.',
+    convention:
+      'Exige au moins cinquante mesures sous 0,05 rad/s de lacet et au-dessus de 0,15 g. À défaut, la grandeur vaut « non établi » — jamais zéro. Le repos, lui, ne dit RIEN du lacet : un boîtier tourné voit la même gravité.',
+  },
+  {
+    cle: 'calibration.gCorrige',
+    nom: 'Accélérations redressées',
+    prov: 'D',
+    source:
+      'Mesures brutes tournées dans le repère véhicule, gravité retirée du vertical. Le brut est conservé à côté.',
+    convention:
+      'Le redressement n’applique le lacet que s’il a été établi. Sans calibration, les valeurs corrigées valent null — jamais les brutes renommées.',
+  },
+  {
     cle: 'marqueur.tour',
     nom: 'Tour d’un marqueur',
     prov: 'D',

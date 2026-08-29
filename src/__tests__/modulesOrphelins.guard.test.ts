@@ -252,6 +252,20 @@ const CONNUS: readonly string[] = [
   // La validation pure (`validateOverlayOffset`) redevient atteignable par
   // le service qui l'appelle.
   '/src/telemetry/accel.ts',
+  // CALIBRATION INERTIELLE (§03 du cahier de veille), écrite le 29/08/2026 et
+  // délibérément non branchée. Elle entre ici avec sa raison, pas par défaut.
+  //
+  // Ce qu'elle fait : elle trouve les arrêts, lit l'orientation du boîtier sur
+  // la gravité, retire cette gravité et rend les valeurs corrigées À CÔTÉ des
+  // brutes. Elle refuse d'inventer le lacet, que le repos ne peut pas dire.
+  //
+  // Pourquoi elle attend : la brancher change les g qui alimentent les branches
+  // Freinage, Accélération et Fluidité du QDI. Toutes les analyses déjà
+  // persistées deviendraient incomparables aux nouvelles — c'est un incrément
+  // de `QDI_ALGO_VERSION` et un recalcul de l'historique, donc une décision du
+  // fondateur, pas un effet de bord de lot. Le brancher en silence ferait
+  // exactement ce que ce dépôt refuse : déplacer des chiffres sans le dire.
+  '/src/telemetry/calibration.ts',
   '/src/telemetry/gg.ts',
   '/src/telemetry/segment.ts',
   '/src/types/index.ts',

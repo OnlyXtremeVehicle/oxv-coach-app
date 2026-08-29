@@ -67,13 +67,18 @@ describe('le registre couvre la banque', () => {
    * qu'il doit faire. Un module de calcul nouveau ne peut pas rejoindre la
    * banque sans que quelqu'un dise ce qu'il produit et d'où ça vient.
    */
-  it('les dix modules de calcul sont bien là', () => {
+  it('les onze modules de calcul sont bien là', () => {
     expect(MODULES.sort()).toEqual(
       [
         'accel',
         'adaptation',
         'bande',
         'braking',
+        // `calibration` a rejoint la banque le 29/08/2026 : elle produit des
+        // chiffres (deux angles, un lacet inféré, des g redressés), donc elle
+        // doit dire d'où ils viennent. Le test est tombé à sa création — c'est
+        // exactement ce qu'il doit faire.
+        'calibration',
         'delta',
         'gg',
         'kinematics',

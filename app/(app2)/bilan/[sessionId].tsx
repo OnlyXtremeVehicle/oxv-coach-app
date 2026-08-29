@@ -266,6 +266,10 @@ export default function BilanScreen() {
       </Text>
       <Text style={styles.noteCorner}>{note.cornerName}</Text>
       <Text style={styles.noteBody}>« {note.body} »</Text>
+      {/* P36 — la voix du coach se réécoute LÀ OÙ elle a été posée. Le lecteur
+          suit la note affichée : changer de virage change de voix. Absent
+          quand il n'y en a pas — jamais un bouton mort. */}
+      {note.audioUrl ? <EcouteNoteCoach audioPath={note.audioUrl} /> : null}
       {noteCount > 1 ? (
         <View style={styles.noteDots}>
           {data.coachNotes.map((n, i) => (

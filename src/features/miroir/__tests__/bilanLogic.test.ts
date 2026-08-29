@@ -387,6 +387,7 @@ describe('buildCoachNotes', () => {
       body: 'Appui franc observé ici.',
       coachName: 'Marc Delage',
       generic: false,
+      audioUrl: null,
     });
   });
 
@@ -404,6 +405,35 @@ describe('buildCoachNotes', () => {
       threads
     );
     expect(notes[0].coachName).toBeNull();
+  });
+
+  /**
+   * P36 — LA VOIX SUIT SA NOTE.
+   *
+   * `coach_annotations.audio_url` existait, `coachAnnotationsService` la rendait
+   * déjà, et ce modèle la laissait tomber : le pilote n'entendait que la note de
+   * SÉANCE, jamais celle posée sur le virage qu'il regarde. La fiche demande
+   * l'inverse — « réécoutable au bon endroit ».
+   */
+  it('la voix du coach suit le virage sur lequel elle a été posée', () => {
+    const notes = buildCoachNotes(
+      [
+        {
+          id: 'v1',
+          coachId: 'coach-1',
+          cornerIndex: 3,
+          body: 'Ici.',
+          telemetrySessionId: 's1',
+          audioUrl: 'coach-audio/v1.m4a',
+        },
+        { id: 'v2', coachId: 'coach-1', cornerIndex: 5, body: 'Là.', telemetrySessionId: 's1' },
+      ],
+      threads
+    );
+    expect(notes[0].audioUrl).toBe('coach-audio/v1.m4a');
+    // ABSENCE DE CLÉ ET ABSENCE DE VOIX SE RENDENT PAREIL : `null`. L'écran
+    // teste une valeur ; `undefined` y aurait produit un lecteur fantôme.
+    expect(notes[1].audioUrl).toBeNull();
   });
 
   it('notes triées par virage ; virage hors topologie → « Virage N »', () => {

@@ -283,7 +283,8 @@
 
 20260826160001|lot11_referentiel_vehicules_millesime_2026 (93 entrees, classe GENEREE — jamais saisie)
 
-20260826170000|lot11_offres_classes_et_recours_vehicule (ouverture par classe + trigger de rejet + recours 72 h)
+20260826170000|lot11_offres_classes_et_recours_vehicule (ouverture par classe + trigger de rejet + recours 72 h)
+
 
 20260827104959|lot12_examen_technique_plaque_figee_et_alerte (valeur 'en_examen' + registrations.immatriculation FIGEE + alerte Resend)
 
@@ -344,3 +345,5 @@
 20260828022007|lot24_de_l_organisation_a_l_inscription (echeance sur les inscriptions + avancement : un COMPTE, jamais des noms)
 
 20260828022052|lot24_les_places_non_prises_reviennent_seules (evalue a la LECTURE : pas de tache planifiee, donc pas d etat qui derive)
+
+20260829000000|lot10c_presentations_vues_travail_actif_repere_memoire (les trois pieces du moteur de composition : ce qui a ete ouvert, le chantier UNIQUE en cours, le repere memoire ; purge RGPD patchee a l ancre)
