@@ -105,14 +105,16 @@ export const LIBELLE_DOMAINE: Readonly<Record<DomaineFile, string>> = {
  */
 export const GESTE_DOMAINE: Readonly<Record<DomaineFile, string>> = {
   examen_vehicule: 'Instruire',
-  ecurie: 'Répondre',
+  ecurie: 'Répondre au bureau',
   inscription_modifiee: 'Regarder',
   intentions: 'Voir la journée',
   // Ces deux-là se règlent sur le site : publier une journée, activer un tarif.
   // Le geste est nommé pour dire OU aller, pas pour promettre un bouton ici.
   calendrier: 'Publier une journée',
   tarif: 'Activer la ligne',
-  journee_a_valider: 'Valider ou libérer',
+  // Ces gestes se font au BUREAU. Le libellé dit où aller, pas qu'un bouton
+  // attend ici : l'app fait le paddock.
+  journee_a_valider: 'Valider au bureau',
 };
 
 /**

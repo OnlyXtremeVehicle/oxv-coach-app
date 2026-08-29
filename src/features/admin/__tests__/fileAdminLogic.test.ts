@@ -215,7 +215,19 @@ describe('les libellés', () => {
   /** Le geste dit l'action, jamais l'objet : « Instruire » se comprend seul. */
   it('le geste est un verbe', () => {
     expect(GESTE_DOMAINE.examen_vehicule).toBe('Instruire');
-    expect(GESTE_DOMAINE.ecurie).toBe('Répondre');
+  });
+
+  /**
+   * L'APP FAIT LE PADDOCK, LE SITE FAIT LE BUREAU — arbitrage du fondateur,
+   * 28/08/2026.
+   *
+   * Un geste qui se fait au bureau le DIT dans son libellé. Sans cela,
+   * l'administrateur cherche dans l'application un bouton qui vit sur le site,
+   * et conclut à une panne là où il n'y a qu'un partage de rôles.
+   */
+  it('les gestes de bureau disent qu’ils sont de bureau', () => {
+    expect(GESTE_DOMAINE.ecurie).toContain('bureau');
+    expect(GESTE_DOMAINE.journee_a_valider).toContain('bureau');
   });
 
   /**

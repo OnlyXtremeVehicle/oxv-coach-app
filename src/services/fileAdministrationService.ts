@@ -25,9 +25,25 @@ interface LigneFile {
   echeance: string | null;
 }
 
+/**
+ * Les domaines que L'APPLICATION affiche.
+ *
+ * ===========================================================================
+ * L'APP FAIT LE PADDOCK, LE SITE FAIT LE BUREAU
+ * ===========================================================================
+ *
+ * Arbitrage du fondateur, 28/08/2026. L'instruction d'une sortie d'écurie est
+ * un travail de bureau : elle se fait assis, avant la journée, en arbitrant des
+ * dates et un tarif. Le site la porte depuis le 28/08 — et l'application l'a
+ * portée aussi, quelques heures, avant que cette règle ne soit posée.
+ *
+ * `ecurie` est donc écarté ICI plutôt qu'en base : la fonction serveur reste
+ * complète, et le site pourra l'adopter telle quelle pour les postes qu'il ne
+ * couvre pas encore. Retirer le domaine de la base aurait détruit ce que
+ * l'autre surface pourra reprendre.
+ */
 const DOMAINES: readonly DomaineFile[] = [
   'examen_vehicule',
-  'ecurie',
   'inscription_modifiee',
   'intentions',
   'calendrier',
@@ -45,7 +61,12 @@ const DOMAINES: readonly DomaineFile[] = [
  */
 function domaineConnu(brut: string): DomaineFile | null {
   if ((DOMAINES as readonly string[]).includes(brut)) return brut as DomaineFile;
-  console.warn('[fileAdmin] domaine inconnu, poste écarté :', brut);
+  // `ecurie` arrive de la base et n'est pas une erreur : il appartient au
+  // bureau. On l'écarte en silence, sans avertir — un avertissement répété
+  // sur un cas normal finit par masquer les vrais.
+  if (brut !== 'ecurie') {
+    console.warn('[fileAdmin] domaine inconnu, poste écarté :', brut);
+  }
   return null;
 }
 

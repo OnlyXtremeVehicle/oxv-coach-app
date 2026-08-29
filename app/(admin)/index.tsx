@@ -183,12 +183,6 @@ const VIEWS: { href: string; label: string; description: string; famille: Famill
     description: 'Véhicules hors référentiel à examiner. Réponse due sous 72 h ouvrées.',
   },
   {
-    href: '/(admin)/ecuries',
-    famille: 'a-faire' as FamilleAdmin,
-    label: 'Sorties d’écurie',
-    description: 'Demandes groupées à instruire. Confirmer ouvre la remise de 10 %.',
-  },
-  {
     href: '/(admin)/partenaires',
     famille: 'structure' as FamilleAdmin,
     label: 'Partenaires',

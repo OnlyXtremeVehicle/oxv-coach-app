@@ -53,16 +53,19 @@ const ADMIN = '#22D3EE';
 const DESTINATION: Readonly<Record<PosteClasse['domaine'], string | null>> = {
   examen_vehicule: '/(admin)/examens-vehicule',
   inscription_modifiee: '/(admin)/examens-vehicule',
-  ecurie: '/(admin)/ecuries',
+  // L'instruction des écuries est un travail de BUREAU : elle vit sur le site
+  // depuis le 28/08. L'application ne la montre plus (voir DOMAINES), et cette
+  // entrée ne subsiste que parce que le type l'exige.
+  ecurie: null,
   intentions: null,
   // Publier une journée et activer un tarif se font sur le site : aucun écran
   // de l'application ne les porte. Un bouton qui n'irait nulle part se lirait
   // comme une panne — le détail du poste dit déjà quoi faire, et où.
   calendrier: null,
   tarif: null,
-  // La validation se fait depuis l'écran d'écurie quand la journée y est
-  // rattachée ; le poste dit déjà ce qu'il attend.
-  journee_a_valider: '/(admin)/ecuries',
+  // La validation d'une journée proposée se fait au bureau, avec la demande
+  // d'écurie qui l'a fait naitre. Le poste dit ce qu'il attend et où.
+  journee_a_valider: null,
 };
 
 function dateFr(iso: string): string {
