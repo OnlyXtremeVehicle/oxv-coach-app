@@ -294,15 +294,47 @@ secteurs officiels, l'ouverture du coach.
 | Compte écurie | Voit tout par défaut — **pas avant Le Mans** | 30/08 |
 | Taille de texte | Plancher 21 pt, cible 29 pt à 600 mm | 30/08 |
 | Fond sombre | Conservé, payé en taille | 30/08 |
+| **Signal inertiel** | **Calibration d'abord, filtre ensuite.** On redresse avant de lisser : superposer deux corrections sans mesurer entre les deux rendrait chacune indémontrable | 30/08 |
+| **Fonte** | **Une paire assumée** — une grotesque de caractère pour les mots-clés, une fonte à axe `GRAD` pour les nombres. Le nombre est la mesure, le mot-clé l'étiquette ; les distinguer est honnête. Reste à faire coïncider les chasses de chiffres | 30/08 |
+| **Débrief IA** | **Opt-out** — il se rédige par défaut, le pilote peut le couper | 30/08 |
 
 ## Décisions en attente, à ne pas contourner
 
 | Sujet | Ce qu'il bloque | Butée |
 |---|---|---|
-| Filtrage du signal inertiel (QDI) | Deux branches à zéro devant un professionnel | 19/09 |
-| Débrief IA : opt-out ou opt-in | Le comportement par défaut au Mans | 25/09 |
 | Identifiants OSM du Bugatti et d'Albi | Les deux circuits en base | 05/09 |
-| Choix de la fonte (critères dans `design/71`) | Fige 178 écrans | 12/09 |
+| **Geste de calibration au prévol** | Le redressement du signal, donc le filtre, donc les deux branches à zéro | 19/09 |
+
+### Ce que la calibration a mesuré sur Bouteville — 30/08
+
+La décision « calibration d'abord » a été exécutée, et elle rend un résultat
+net : **la calibration ne peut PAS être établie sur cette séance.**
+
+`etablirCalibration` exige un arrêt de trois secondes sous 2 km/h. La séance en
+compte 182 trames sous ce seuil, mais **la plus longue plage continue fait
+2,01 s**. Le module rend donc `null`, et refuse — comme il doit.
+
+Desserrer le seuil ne sauve rien, et le tableau dit pourquoi :
+
+| Seuil | Plage la plus longue | Plages ≥ 3 s | Tangage lu | Roulis lu |
+|---|---|---|---|---|
+| 2 km/h | 2,01 s | **0** | −1,32° | +0,87° |
+| 5 km/h | 3,42 s | 2 | −9,18° | −3,79° |
+| 8 km/h | 9,21 s | 4 | −4,95° | −4,16° |
+| 15 km/h | 21,48 s | 7 | −7,09° | −2,04° |
+
+**Les angles se contredisent d'un seuil à l'autre — de −1,3° à −9,2°.** C'est la
+démonstration que ces plages ne mesurent pas la gravité seule : elles mesurent
+la gravité PLUS l'accélération de la voiture. Un seuil desserré produirait une
+correction d'apparence sûre et fausse.
+
+Deux conséquences, à porter au 19/09 :
+
+1. **Le prévol doit porter un geste de calibration** — cinq secondes à l'arrêt,
+   moteur tournant, avant l'armement. C'est un poste d'écran, pas un calcul.
+2. **La norme au repos vaut 0,972 à 0,982 g**, soit 2 à 3 % sous 1 g de façon
+   constante. Le module le signale déjà (« zéro du capteur suspect ») ; c'est la
+   seule composante du zéro qu'un arrêt permette de lire.
 
 Ne pas contourner une décision manquante par une hypothèse. La signaler et
 attendre.
