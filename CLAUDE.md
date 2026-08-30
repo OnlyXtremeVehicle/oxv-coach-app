@@ -1,263 +1,308 @@
-# Instructions pour Claude Code — Projet OXV Mirror
+# OXV Mirror — brief de dépôt
 
-> Ce fichier est ton point d'entrée. Lis-le complètement avant tout travail.
-
-> **PROGRAMME COURANT : `docs/programme-v4/PROGRAMME_V4.md` (15/08/2026).**
-> C'est l'état audité et le plan d'exécution — lis-le APRÈS ce fichier et
-> AVANT tout lot. Sa règle n° 1 s'applique à lui-même : toute affirmation de
-> plus de deux semaines se REMESURE (base, dépôt, journaux) avant d'être
-> traitée. Quatre chantiers d'août étaient déjà faits quand on a mesuré.
-> Deux pièges de données à ne jamais recroiser : `telemetry_frames.created_at`
-> est un ordre d'INSERTION (trier sur `elapsed_ms`), et aucune migration ne
-> s'applique hors de la chaîne `schema_migrations`.
+*À placer à la racine de `oxv-app`. Lu au début de chaque session de Claude Code.*
+*Version du 30/08/2026, après lecture du dépôt et de la base de production.*
 
 ---
 
-## Qui je suis
+## Ce qu'est ce produit, en trois phrases
 
-Tu es Claude Code, assistant développement intégré à ce projet OXV Mirror. Tu vas coder une **application mobile React Native** complète à partir d'un dossier de spécifications produites en amont par Claude (conversation chat) et son utilisateur Gabin Dupont.
+OXV Mirror enregistre ce qu'un pilote fait en piste, à 25 Hz, et le lui montre.
+Il ne conseille pas, il ne classe pas, il n'explique pas. **Il montre.**
 
-Le projet est mature : 26 écrans maquettés, architecture technique complète en 3 parties, dispositif juridique en 5 documents, et un plan de test alpha pour juillet 2026. **Tu ne pars pas de zéro.** Tu implémentes une vision qui existe déjà.
-
----
-
-## Le projet en une phrase
-
-OXV Mirror est l'**application mobile compagnon** d'OXV (Only Xtreme Vehicle), plateforme premium de track day au Circuit de Haute Saintonge en France. L'app fournit aux pilotes une lecture posée et qualitative de leur conduite **après chaque session**, à partir de données télémétriques collectées par un boîtier Bluetooth (RaceBox Mini).
-
-**Doctrine fondatrice** : *"L'app est un miroir. Elle vous montre. Elle ne vous dirige pas. La piste est à vous. Les décisions aussi."*
+Cette retenue n'est pas une modestie de façade : OXV n'est pas agréé pour
+l'enseignement du pilotage, et c'est elle qui autorise l'outil à entrer dans la
+cabine d'un professionnel sans entrer dans le champ du coaching sportif.
 
 ---
 
-## Principes non négociables
+## LA RÈGLE DE TRAVAIL NUMÉRO UN
 
-Ces principes sont issus de mois de réflexion produit. **Tu ne les remets pas en cause.** Si tu trouves qu'un principe pose problème, tu poses la question à Gabin avant de t'écarter.
+**Avant d'écrire une fonction, cherchez si elle existe déjà.**
 
-### Principe 1 — Sécurité avant performance
+Cinq manques ont été signalés dans ce dossier par une lecture faite sans le
+dépôt. **Les cinq existaient** : le rééchantillonnage en distance, la projection
+curviligne, le chemin d'ingestion `.ubx`, le lien public révocable, et la garde
+contre les moteurs de démonstration. Environ dix-huit jours de plan se sont
+évaporés à la lecture.
 
-L'app ne pousse jamais le pilote à dépasser ses limites. Elle identifie à chaque session **une seule zone** à explorer en sécurité, et **une zone** à conserver en l'état. Le mot "limite" est volontairement remplacé par "marge" partout dans l'app.
+Trois endroits à consulter avant toute écriture :
 
-### Principe 2 — L'app est un miroir, pas un coach
+1. **`src/__tests__/modulesOrphelins.guard.test.ts`** — quarante modules écrits,
+   testés et **dormants**, chacun avec sa raison et sa condition de sortie. Si
+   ce que vous alliez écrire y figure, il ne reste qu'à le brancher.
+2. **`src/features/presentations/registrePresentations.ts`** — les 65 fiches, et
+   `compositionLogic.ts` qui décide de ce qui s'ouvre.
+3. **La liste des migrations et des fonctions edge** — 34 fonctions actives.
 
-Aucune instruction de pilotage, jamais. L'app décrit ce qui s'est passé, propose des observations qualitatives, pose des questions ouvertes. Les conclusions appartiennent au pilote.
-
-**Verbes interdits dans le contenu :**
-- "Freinez plus tôt", "Accélérez à la sortie", "Prenez une trajectoire plus serrée"
-- "Vous devriez", "Il faut", "Évitez de"
-
-**Verbes autorisés :**
-- "Une zone à observer", "À creuser la prochaine fois"
-- "Était-ce volontaire ?", "Que sentez-vous ?"
-- "Confortable", "Terrain serré", "Apprivoisé"
-
-### Principe 3 — Silence en piste
-
-Pendant que le véhicule est en mouvement, **aucun écran n'est affiché**. Aucune notification. Aucun son. Aucun HUD. Le pilote conduit, l'équipement enregistre, l'app dort.
-
-### Principe 4 — Ton OXV
-
-- **Vouvoiement systématique** (clientèle premium)
-- **Pas d'emojis** sauf si explicitement demandé
-- **Pas de marketing creux** ("Découvrez la révolution du pilotage" → interdit)
-- **Phrases courtes, mots qui pèsent**
-- **Style "Ferrari sec et minimaliste"**
-
-### Principe 5 — Un seul chiffre par écran
-
-Chaque écran a un seul indicateur central majeur (la marge globale en %). Tout le reste est qualitatif : couleurs, étiquettes humaines, indicateurs visuels.
+**Ne nommez jamais un défaut sans citer sa garde.** Si vous ne trouvez pas la
+garde, cherchez encore avant d'affirmer qu'elle manque.
 
 ---
 
-## Plan de travail hebdomadaire
+## Les interdits — ils ne se négocient pas ligne par ligne
 
-Tu vas développer l'app **par étapes hebdomadaires**, validées par Gabin à chaque fin de semaine. Le plan détaillé est dans `roadmap/SEMAINES.md`.
+**Jamais de conseil.** Aucun texte, aucune étiquette, aucune notification ne dit
+au pilote quoi faire. Lexique proscrit : *devrait, il faut, essayez, améliorez,
+optimisez, corrigez*. Le filtre existe : `src/services/aiSafetyFilter.ts`,
+52 termes. On l'étend, on ne le double pas.
 
-**Vue d'ensemble** :
-- Semaines 1-2 : Fondations (setup, Supabase, auth)
-- Semaines 3-4 : BLE RaceBox + parser UBX
-- Semaines 5-7 : Cœur de l'app (5 écrans principaux + algorithmes V1)
-- Semaines 8-10 : Écrans secondaires (onboarding, settings, comparateur)
-- Semaines 11-12 : Écrans de bord, polish, tests
-- Semaines 13-14 : Soumission App Store + Google Play
+**Jamais de causalité.** On pose les faits côte à côte, on ne les relie pas.
+Proscrit : *parce que, donc, grâce à, à cause de, ce qui explique, la raison
+est*. Cela vaut pour le visuel : ni trait, ni flèche, ni couleur partagée entre
+une note et un tour.
 
-À chaque fin de semaine :
-1. Tu produis un **rapport hebdomadaire** dans `roadmap/rapports/semaine-N.md`
-2. Tu commits ton travail sur Git
-3. Tu attends la validation de Gabin avant de passer à la semaine suivante
+**Jamais de classement entre pilotes.** Un pilote se compare à lui-même et au
+plateau officiel de l'épreuve — jamais à un autre pilote nommé, teammate
+compris. Les murs publics n'affichent ni chrono, ni classement, ni donnée de
+plateau.
 
----
+**Jamais de nom sur une surface publique.** Numéros de course et pseudonymes.
+La table `plateau` ne contient aucun nom de tiers.
 
-## Stack technique imposée
+**Jamais un chiffre qui ne vient pas de la base.** Un modèle de langage écrit une
+requête ; il ne produit pas de valeur.
 
-Tu n'as pas le choix sur la stack. Elle est définie dans `docs/architecture/01_PARTIE_1_stack_supabase.md`.
+**Jamais de phrase sur une feuille de données.** Voir la règle des mots-clés
+ci-dessous.
 
-**Pour rappel rapide** :
-- **Framework** : React Native + Expo SDK 51 + TypeScript
-- **State management** : Zustand
-- **Persistance locale** : WatermelonDB (offline-first)
-- **Backend** : Supabase Pro (déjà existant chez Gabin, project Frankfurt)
-- **BLE** : react-native-ble-plx
-- **Parser UBX** : Rust compilé en WASM (ou parser JavaScript pur si trop complexe — à discuter)
-- **CI/CD** : GitHub Actions + EAS Build
+**Jamais un écran blanc.** Cinq états obligatoires ; l'état vide nomme le champ
+manquant.
 
-**Important** : utilise les **conventions de code suivantes** :
-- TypeScript strict mode activé
-- Pas de `any` sauf cas exceptionnel justifié
-- Hooks fonctionnels, pas de classes
-- Tests unitaires Jest sur la business logic uniquement
-- Pas de localStorage/sessionStorage (cassent l'offline-first)
+**Jamais de biométrie hors du canal coach.** `liveHealthGate.ts` est
+fail-closed, liste blanche stricte. Données de santé au sens de l'article 9.
+
+**Jamais dormir sans le dire.** Brancher, ou inscrire dans la liste des
+orphelins avec la raison et la condition de sortie. Un drapeau sans déclencheur
+nommé ni date est du code mort déguisé.
 
 ---
 
-## Documents à lire dans l'ordre
+## La règle des mots-clés
 
-Quand tu démarres, tu lis les documents dans cet ordre **strict** :
+**Toute feuille de données ne montre que des mots-clés, jamais de phrase.**
 
-### Étape 1 — Comprendre la doctrine
-1. `docs/screens/00_OVERVIEW_26_ECRANS.md` — Vue d'ensemble des écrans
-2. `docs/screens/01_DESIGN_TOKENS.md` — Charte graphique complète (couleurs, typo, espacements)
-3. `docs/juridique/01_PACTE_DE_PILOTAGE.md` — La doctrine OXV en clair
+Une chaîne est une phrase si elle compte **plus de trois mots ET** contient un
+mot outil : `le la les un une des du de` · `vous votre vos` ·
+`est sont a ont était sera` · `dans avec pour que qui sur sans` ·
+`plus moins ce cette`.
 
-### Étape 2 — Comprendre l'architecture
-4. `docs/architecture/01_PARTIE_1_stack_supabase.md` — Stack et schéma Supabase (vision globale)
-5. `docs/architecture/02_PARTIE_2_algorithmes.md` — Modèles physiques et algos
-6. `docs/architecture/03_PARTIE_3_deploiement.md` — Déploiement et coûts
-7. `docs/architecture/04_SUPABASE_CONNECTION_GUIDE.md` — Comment se connecter à la base existante
-8. **`docs/architecture/05_SCHEMA_SUPABASE_ACTUEL.md`** — **SCHÉMA RÉEL DE PRODUCTION** (CRITIQUE)
-9. **`docs/architecture/06_RLS_POLICIES_ACTUELLES.sql`** — Policies de sécurité déjà en place
-10. **`docs/architecture/07_CODE_V1_RECUPERE.md`** — **CODE V1 RÉUTILISÉ** (parser UBX, BLE, services)
-11. **`docs/architecture/08_CONNEXION_PROGRESSION_SITE_APP.md`** — Cahier des charges progression site web
+Quatre règles d'écriture d'un mot-clé : majuscules, forme `SUJET` ou
+`SUJET · PRÉCISION`, jamais de verbe conjugué ; trois mots au plus de chaque
+côté du point médian ; il résume le sujet, il ne paraphrase pas ;
+**aucun mot outil, jamais** — les mots-clés se composent, et deux fragments
+licites peuvent produire une chaîne qui ne l'est plus.
 
-### Étape 3 — Comprendre les écrans et la navigation
-8. `docs/sitemap/01_architecture_statique.md` — Quels écrans existent
-9. `docs/sitemap/02_parcours_temporel.md` — Quand ils apparaissent
-10. `docs/sitemap/03_flux_navigation.md` — Comment on y accède
-11. `docs/sitemap/04_state_machine.md` — Logique métier des états
-
-### Étape 4 — Suivre le plan
-12. `roadmap/SEMAINES.md` — Ta feuille de route hebdomadaire
-13. `roadmap/SETUP_SUPABASE.md` — Checklist détaillée semaine 1
-
-### Étape 5 — Connaître le cadre légal
-14. `docs/juridique/02_CGU_APP_OXV_COACH.md` — Limites légales du produit
-15. `docs/juridique/04_POLITIQUE_CONFIDENTIALITE.md` — Obligations RGPD
-
-### Fichiers templates à utiliser
-- `src/lib/supabase.ts.template` — À renommer en `.ts` et adapter
-- `src/theme/tokens.ts.template` — À renommer en `.ts` et utiliser partout
-- `.env.example` — À copier en `.env` (Gabin remplit les valeurs)
-- `.gitignore` — Déjà configuré pour exclure les secrets
-
-### Code V1 récupéré dans src/ (À RÉUTILISER TEL QUEL)
-- `src/ubx/parser.ts` — Parser UBX RaceBox Mini S (150 lignes, validé en prod)
-- `src/ble/bluetoothService.ts` — Service BLE complet (274 lignes)
-- `src/types/telemetry.ts` — Types télémétrie (190 lignes)
-- `src/types/index.ts` — Types métier généraux
-- `src/utils/geo.ts` — Calculs géographiques (Haversine)
-- `src/utils/lapDetection.ts` — Détection automatique des tours
-- `src/utils/validation.ts` — Validations email/téléphone/handle
-- `src/services/weatherService.ts` — Service météo Open-Meteo
-- `src/services/sessionsService.ts` — CRUD sessions télémétrie
-- `src/supabase/client.ts` — Client Supabase avec SecureStore
-
-**Important** : ne PAS réécrire ces fichiers, ils sont déjà fonctionnels et testés.
-Voir `docs/architecture/07_CODE_V1_RECUPERE.md` pour les détails et la stratégie de réutilisation.
-
-### Configuration projet récupérée
-- `app.json` — Config Expo (bundle ID, permissions, plugins)
-- `package.json.v1` — Liste des dépendances V1 à reprendre
-- `babel.config.js`, `metro.config.js`, `tsconfig.json`, `eas.json`
-
-### Migrations Supabase de référence
-- `supabase/migrations/0001-0006_*.sql` — DÉJÀ APPLIQUÉES en production, ne PAS ré-exécuter
+**Les feuilles de récit** — le débrief rédigé, la phrase du coach, les notes du
+pilote — gardent la prose, sous le filtre existant. Le manifeste des deux
+familles vit dans `src/lib/surfacesRestitution.ts` ; une surface absente des
+deux est elle-même une violation.
 
 ---
 
-## Ce que tu peux faire en autonomie
+## La règle de taille — mesurée, pas choisie
 
-Tu peux décider seul de :
-- L'**organisation du code** (structure des dossiers, conventions de nommage)
-- Les **bibliothèques tierces** (à condition qu'elles soient open source et maintenues)
-- Les **tests unitaires** (couverture, choix des tests à écrire)
-- La **gestion d'erreurs** (try/catch, fallbacks)
-- Les **micro-décisions UX** (animations, transitions, espacements précis)
+`ISO 9241-303` fixe la hauteur de capitale en minutes d'arc : plancher **16′**,
+cible **20 à 22′**. À **600 mm** — bras tendu, debout au camion — sur une tablette
+à 264 ppi :
 
----
+**Rien sous 21 pt. Tout ce qui doit être lu de façon fiable à 29 pt.**
 
-## Ce que tu dois faire valider par Gabin
+La maquette de console actuelle porte ses mots-clés à 7,3′-12,3′, soit la moitié
+du plancher, pendant que ses nombres sont à 28-45′. **Elle rend les nombres
+lisibles et le sens illisible** — or la règle des mots-clés fait des mots-clés le
+contenu.
 
-Tu dois demander avant de :
-- Changer une **règle de doctrine** (par exemple : "et si on ajoutait un classement entre pilotes ?")
-- Modifier le **schéma Supabase existant** (Gabin a déjà une base en production sur oxvehicle.fr)
-- Ajouter une **dépendance critique** (paiement, analytics, cloud)
-- Supprimer ou fusionner un **écran maquetté**
-- Modifier un **texte juridique** (CGU, pacte, etc.)
-- Dévier du **planning hebdomadaire** établi
+Conséquence à ne pas contourner : **on ne peut pas seulement grossir, il faut
+couper.** Voir `design/72_lisibilite.html` — la même feuille passe de trente-quatre
+valeurs à douze. La contrainte de taille est une contrainte éditoriale déguisée.
 
----
-
-## Rapport de fin de semaine
-
-À la fin de chaque semaine, crée un fichier `roadmap/rapports/semaine-N.md` avec :
-
-```markdown
-# Rapport de fin de semaine N
-
-## Ce que j'ai fait
-- [liste des tâches accomplies]
-
-## Ce qui est testé et fonctionnel
-- [liste des fonctionnalités validées]
-
-## Ce qui reste en suspens
-- [liste avec raisons]
-
-## Questions pour Gabin
-- [questions à valider avant la semaine suivante]
-
-## Recommandations
-- [suggestions d'amélioration ou ajustements de roadmap]
-
-## Estimation pour la semaine suivante
-- [tâches prévues + temps estimé]
-```
+**Le fond sombre reste** : en forte lumière ambiante l'effet de polarité disparaît
+(Dobres 2017). Il se paie en taille, pas en couleur. Et sur fond sombre, un texte
+clair paraît plus gras — la correction est l'axe **`GRAD`** d'une fonte variable,
+jamais une baisse de `font-weight`, qui décalerait les chasses.
 
 ---
 
-## Particularités du projet à connaître
+## Le ton, dans tout ce qui s'affiche
 
-**Sur les algorithmes** : la Partie 2 de l'architecture mentionne des modèles physiques complexes (Pacejka, filtre de Kalman, etc.). Pour la V1, tu peux implémenter des **versions simplifiées** qui ne nécessitent pas de calibration extensive. Le but est d'avoir une app fonctionnelle, pas un simulateur de F1.
+Minimalisme sec. Vouvoiement. Aucun emoji, aucune exclamation, aucun
+encouragement, aucune félicitation.
 
-**Sur le RaceBox** : si tu n'as pas accès à un vrai RaceBox pendant le dev, **utilise des fichiers UBX de test** (dataset à demander à Gabin ou à générer artificiellement). La sortie publique de RaceBox propose des exemples sur GitHub.
+Vocabulaire de télémétrie **figé** : Cap, Trajectoire, Anticipation, Visée,
+Plongée. Pas de renommage avant données réelles.
 
-**Sur les écrans** : les maquettes V3 sont dans `docs/screens/` sous forme de descriptions textuelles (les visuels SVG/HTML originaux étaient dans la conversation chat). Tu implémentes en React Native en respectant l'esprit décrit.
+**Ne dites jamais « tour idéal ».** Le catalogue a tranché le 26/08 : la lecture
+s'appelle **« Potentiel démontré »**, et sa méthode dit *« Aucune continuité
+vérifiée aux jonctions entre morceaux : jamais un tour garanti. »* La garde
+`idealLapNonBranche` échoue le jour où `idealLapTime` est câblé à un écran.
 
-**Sur le déploiement** : tu ne déploies pas en production sans accord explicite. Tu peux faire des builds de développement et de preview (TestFlight interne), mais la soumission App Store réelle attend.
-
----
-
-## En cas de doute
-
-Si tu hésites sur un choix, voici l'ordre de priorité des sources d'information :
-
-1. **Ce fichier CLAUDE.md** (les principes non négociables)
-2. **Les documents `docs/`** (les spécifications)
-3. **Le sitemap `docs/sitemap/04_state_machine.md`** (la logique métier)
-4. **Le ton OXV** (vouvoiement, sec, sans emoji)
-5. **Si vraiment bloqué** : pose une question dans le rapport hebdomadaire, ne fais pas de choix arbitraire
-
-**Règle d'or** : *en cas de doute, fais simple et conforme à la doctrine, pas complexe et innovant.*
+L'assistant s'appelle « Questionner ses données ». Pas de nom propre, pas de
+personnalité, pas de voix. Le faucon est un totem interne : jamais dans un
+contenu client, sous aucun nom.
 
 ---
 
-## Démarrage
+## Les sept règles de structure
 
-Quand tu es prêt :
-1. Lis les documents dans l'ordre étape 1 → 5
-2. Crée un rapport `roadmap/rapports/semaine-0-onboarding.md` qui montre que tu as bien compris le projet
-3. Pose toutes les questions de clarification à Gabin
-4. Démarre la semaine 1 selon `roadmap/SEMAINES.md`
+| # | Règle | Garde | État au 30/08 |
+|---|---|---|---|
+| R1 | Tout écran a **deux** entrées. Exceptions listées, justifiées, datées | `deuxEntrees` | **à écrire** |
+| R2 | Aucun orphelin **neuf**, et aucune entrée périmée dans la liste connue | `modulesOrphelins` | en place |
+| R3 | Les deux univers visuels ne se mélangent pas ; seule la couche 2 traverse | `frontiereUnivers` | **à écrire** |
+| R4 | L'assistant ne conseille jamais | `aiSafetyFilter`, étendu | en place |
+| R5 | Toute requête de trajectoire trie sur `elapsed_ms`, jamais `created_at` | `triElapsedMs` | **à écrire** |
+| R6 | Tout écran de donnée monte les cinq états et nomme le champ attendu | `cinqEtats` | **à écrire** |
+| R7 | Aucun mur public ne porte de classement ni de donnée de plateau | `murSansClassement`, `plateauNonPublic` | **à écrire** |
+| R8 | Aucune phrase sur une feuille de données | `check-doctrine`, 2ᵉ passe | script en place, 2ᵉ passe à écrire |
 
-Bienvenue dans OXV Mirror.
+**La colonne d'état a été ajoutée le 30/08, à l'installation du brief, et c'est
+une correction de spécification — la règle du dossier l'exige.** Le tableau
+d'origine nommait huit gardes comme si elles existaient ; **six n'existent sous
+aucun nom**, vérifié par recherche sur `src/` et `app/`. Deux fichiers cités
+ailleurs dans ce brief sont dans le même cas : `src/lib/surfacesRestitution.ts`
+(le manifeste des deux familles de surfaces) et `src/services/liveHealthGate.ts`
+— ce dernier est *invoqué* par deux modules de `features/biometrie` sans exister.
 
-— Claude (l'autre, dans le chat)
+C'est exactement la « spécification fausse qu'on suit » contre laquelle ce
+document met en garde : une règle qui s'appuie sur une garde absente n'arrête
+rien, et une session qui la cite croit s'appuyer sur un cliquet. **Écrire ces
+gardes est du travail, pas une formalité** — chacune vaut un lot.
+
+**Une garde rouge arrête le travail.** On ne la contourne pas, on ne la
+commente pas, on ne l'ajoute pas à une liste d'exclusions. Si elle gêne, c'est
+la conception qu'on rediscute.
+
+**R2 a une subtilité** : la garde exige `mesures.length > 0`, pour qu'un
+résolveur cassé ne rende pas la liste artificiellement verte. « Zéro orphelin »
+n'est donc pas un objectif atteignable ni souhaitable. Le bon geste est : un
+module branché **sort de `CONNUS` dans le même commit**.
+
+---
+
+## L'état réel, mesuré le 30/08/2026
+
+**Ce qui tourne.** Une capture réelle existe : séance
+`ff384ace-d6ce-414b-8338-cef030218ee0`, Bouteville, 12/08/2026 — **26 999 trames
+à 25,0 Hz exactement**, trois tours (360,485 / **327,542** / 339,483 s) de
+5 875 / 5 874 / 5 875 m, 100 % de fixes valides, 15,4 satellites, 0,23 m de
+précision, gyroscope et trois G sur chaque trame.
+
+**C'est la séance de référence.** Toute vérification d'écran se fait sur elle.
+Réserve : c'est une boucle **routière**, roulée de nuit, avec deux arrêts à 7,8
+et 12,2 km/h. Elle valide la chaîne ; elle ne calibre pas un seuil de piste.
+
+**Ce qui ne tourne pas.**
+
+- `heading` est **nul sur 100 % des trames**. Le parseur est juste — vérifié
+  offset par offset contre le protocole RaceBox rev 8 — c'est le boîtier qui
+  laisse le bit 5 des *Fix Status Flags* à zéro. **N'affichez aucune
+  orientation.**
+- `heading_accuracy`, `speed_accuracy`, `pdop` : trois colonnes créées par
+  migration et **jamais écrites**. Ce sont elles qui rendraient la question du
+  cap décidable.
+- QDI sur la vraie séance : `fluidité 0`, `accélération 0`, `freinage 7`.
+  Les branches inertielles dérivent un signal **brut** : jerk latéral de médiane
+  0,286 g/s mais de moyenne 2,240 (p95 14,0). Lissé sur 13 trames, la moyenne
+  tombe à 0,629 → fluidité 78. **Ne touchez pas aux seuils sans décision
+  explicite du fondateur** : c'est un incrément de `QDI_ALGO_VERSION` et un
+  recalcul de l'historique.
+- `session_insights` ne contient qu'une ligne, `mirror-insights-demo`, sur une
+  séance à zéro trame. **L'application la filtre trois fois** — rien à coder.
+- `cycle_steps` et `coach_annotations` : **zéro ligne**. Les fiches P36 et
+  P46–P51 resteront écartées.
+- Bouteville n'a **aucun virage détecté** (`corners` nul) alors qu'il porte 139
+  points de tracé médian.
+- L'intention du 12/08 existe dans `session_intentions` mais son `session_id`
+  est **nul** : rattachée au circuit, pas à la séance. P01 est écartée pour rien.
+
+---
+
+## Ce qui existe déjà et qu'il ne faut pas réécrire
+
+| Besoin | Ce qui le porte |
+|---|---|
+| Rééchantillonnage en distance | `src/telemetry/resample.ts` |
+| Projection curviligne | `src/telemetry/projectionCurviligne.ts` |
+| Lien public révocable | `app_progression_shares` + 3 fonctions `SECURITY DEFINER` |
+| Filtre doctrinal de sortie | `src/services/aiSafetyFilter.ts` |
+| Débrief déterministe | `src/services/debriefGenerator.ts` |
+| Détection de virages | `detect-circuit-corners` + `circuitGenerator.ts` |
+| Choix de la lecture à ouvrir | `compositionLogic` + `registrePresentations` |
+| Sources du moteur | `sourcesCompositionService` + `pilot_presentation_*` |
+| Garde des moteurs de démo | `MOTEURS_INSIGHTS_REELS` + `insightsMesures` |
+| Santé de la liaison | `onCaptureLinkStatus`, `getCaptureLinkStatus` |
+| Récupération OSM | `fetchOsmWay` dans `circuitGenerator.ts` |
+
+---
+
+## Comment travailler ici
+
+**Branche.** `migration/sdk-55`. `main` protégée, intégration continue verte
+avant fusion.
+
+**Les spécifications.** `docs/specs/A_Terrain.md` à `G_MotsCles.md`. Chaque
+interface y donne sa route, ses deux appelants, ses données, ses cinq états, ses
+interdits, ses critères d'acceptation et sa garde.
+
+**Quand la spécification se trompe.** Les blocs C et F ont été corrigés le 30/08
+après lecture. Les autres peuvent porter des erreurs du même genre. Vérifier
+dans le code, **corriger la spécification**, et le dire. Une spécification fausse
+qu'on suit est pire qu'une spécification absente.
+
+**Mesurer avant de croire.** Toute affirmation de plus de deux semaines se
+remesure. Le registre de disposition compte 697 lignes.
+
+**Un écran = un objet.** Pas de composant qui sert deux écrans en changeant de
+forme. La couche 2 est la seule exception, et elle est explicite.
+
+---
+
+## Le calendrier
+
+| Date | Ce qui doit être vrai |
+|---|---|
+| 02/09 | Pièces de la passerelle commandées ; courriers ITS et FFSA partis |
+| 05/09 | Circuit du Bugatti en base, virages détectés |
+| 08/09 | Chemin d'ingestion unique |
+| 12/09 | Coach ouvert au multi-circuit ; secteurs officiels ; cinq états |
+| 15/09 | Passerelle assemblée, deux heures de route sans perte |
+| **19/09** | **Répétition de Bouteville. Point de non-retour du matériel** |
+| 20/09 | Pass équipe obtenu par écrit |
+| 26-27/09 | Le Mans — 24 Heures Camions, devant une écurie professionnelle |
+| 10-11/10 | Albi — finale du championnat |
+
+**Ce qui n'est pas prouvé le 19 septembre ne part pas au Mans.** Une
+fonctionnalité à moitié faite qui s'ouvre devant un pilote professionnel coûte
+plus cher que son absence.
+
+**Ordre de sacrifice.** Tiennent en dernier : les circuits en base, le chemin
+d'ingestion, la passerelle, la répétition. Tombent en premier : le référentiel
+plateau (il se relève à la main sur la feuille officielle), la page J+1, les
+secteurs officiels, l'ouverture du coach.
+
+---
+
+## Décisions prises, à ne pas rouvrir
+
+| Sujet | Décision | Date |
+|---|---|---|
+| Mots-clés | Champ `court` obligatoire ; la phrase reste au second geste | 30/08 |
+| Débrief rédigé | Reste une feuille de récit, prose sous filtre | 30/08 |
+| Tour idéal | Vocabulaire rétrogradé en « Potentiel démontré » | 26/08 |
+| Lecture plateau ITS | Automatisée dès Le Mans, avec ses garde-fous | 30/08 |
+| Compte écurie | Voit tout par défaut — **pas avant Le Mans** | 30/08 |
+| Taille de texte | Plancher 21 pt, cible 29 pt à 600 mm | 30/08 |
+| Fond sombre | Conservé, payé en taille | 30/08 |
+
+## Décisions en attente, à ne pas contourner
+
+| Sujet | Ce qu'il bloque | Butée |
+|---|---|---|
+| Filtrage du signal inertiel (QDI) | Deux branches à zéro devant un professionnel | 19/09 |
+| Débrief IA : opt-out ou opt-in | Le comportement par défaut au Mans | 25/09 |
+| Identifiants OSM du Bugatti et d'Albi | Les deux circuits en base | 05/09 |
+| Choix de la fonte (critères dans `design/71`) | Fige 178 écrans | 12/09 |
+
+Ne pas contourner une décision manquante par une hypothèse. La signaler et
+attendre.

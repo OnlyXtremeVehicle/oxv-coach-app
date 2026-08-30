@@ -53,7 +53,10 @@ export interface TelemetryFrameInsert {
   altitude_m: number | null;
   speed_kmh: number | null;
   speed_ms: number | null;
+  speed_accuracy: number | null;
   heading: number | null;
+  heading_accuracy: number | null;
+  pdop: number | null;
   gps_fix: number | null;
   fix_valid: boolean | null;
   gps_accuracy_m: number | null;
@@ -86,7 +89,13 @@ export function raceBoxToFrameInsert(
     speed_kmh: frame.motion.speed,
     // RaceBox renvoie la vitesse en km/h ; on dérive m/s pour la colonne dédiée.
     speed_ms: frame.motion.speed / 3.6,
+    speed_accuracy: frame.motion.speedAccuracy ?? null,
+    // Le cap reste conditionné au drapeau du constructeur : on n'invente pas une
+    // validité qu'il ne déclare pas. La PRÉCISION, elle, est écrite dans tous les
+    // cas — c'est elle qui dira si le cap écarté était exploitable.
     heading: frame.motion.headingValid ? frame.motion.heading : null,
+    heading_accuracy: frame.motion.headingAccuracy ?? null,
+    pdop: frame.motion.pdop ?? null,
     gps_fix: frame.gps.fix,
     fix_valid: frame.gps.fix >= GpsFix.Fix3D,
     gps_accuracy_m: frame.gps.accuracy,

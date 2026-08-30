@@ -316,6 +316,12 @@ function framesOp(sessionId: string, n = 3): CaptureQueueOp {
     rotation_y: 0,
     rotation_z: 0,
     battery_level: 80,
+    // Les trois champs de qualité du lot P0.1. Ils restent OBLIGATOIRES dans
+    // `TelemetryFrameInsert` — le mappage les écrit toujours, `null` compris —
+    // pour qu'un chemin d'écriture qui les oublierait cesse de compiler.
+    speed_accuracy: null,
+    heading_accuracy: null,
+    pdop: null,
     itow_ms: i * 40,
   }));
   return { type: 'frames', sessionId, batch };

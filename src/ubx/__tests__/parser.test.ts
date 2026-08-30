@@ -223,3 +223,70 @@ describe('UbxFrameBuffer', () => {
     expect(buf.size).toBe(0);
   });
 });
+
+// ---------------------------------------------------------------------------
+// LE PAQUET D'EXEMPLE DU CONSTRUCTEUR — lot P0.1
+// ---------------------------------------------------------------------------
+
+/**
+ * Toutes les trames ci-dessus sont SYNTHÉTISÉES : elles vérifient que le parseur
+ * relit ce que le test a écrit, ce qui ne prouve pas que les offsets soient les
+ * bons. Le seul juge extérieur est le paquet publié dans le *RaceBox BLE
+ * Protocol Description rev 8*, avec ses valeurs attendues.
+ *
+ * Il est aussi la démonstration du problème que P0 rend décidable : le cap y
+ * vaut 0°, le bit 5 des *Fix Status Flags* est à zéro — donc `headingValid` est
+ * faux — et la précision de cap vaut 145°. Sans elle, on ne saurait pas si le
+ * cap écarté valait quelque chose. Elle dit que non.
+ */
+const PAQUET_CONSTRUCTEUR = new Uint8Array(
+  (
+    'B5 62 FF 01 50 00 A0 E7 0C 07 E6 07 01 0A 08 33 ' +
+    '08 37 19 00 00 00 2A AD 4D 0E 03 01 EA 0B C6 93 ' +
+    'E1 0D 3B 37 6F 19 61 8C 09 00 0F 01 09 00 9C 03 ' +
+    '00 00 2C 07 00 00 23 00 00 00 00 00 00 00 D0 00 ' +
+    '00 00 88 A9 DD 00 2C 01 00 59 FD FF 71 00 CE 03 ' +
+    '2F FF 56 00 FC FF 06 DB'
+  )
+    .split(' ')
+    .filter((o) => o.length > 0)
+    .map((o) => parseInt(o, 16))
+);
+
+describe('paquet d’exemple du constructeur (rev 8)', () => {
+  it('la trame est reconnue et son checksum est juste', () => {
+    expect(PAQUET_CONSTRUCTEUR).toHaveLength(RACEBOX_PROTOCOL.RACEBOX_DATA_TOTAL_SIZE);
+    expect(isRaceBoxDataMessage(PAQUET_CONSTRUCTEUR)).toBe(true);
+    expect(isChecksumValid(PAQUET_CONSTRUCTEUR)).toBe(true);
+  });
+
+  it('les trois champs de qualité valent ce que le constructeur publie', () => {
+    const t = parseRaceBoxDataMessage(PAQUET_CONSTRUCTEUR);
+    expect(t).not.toBeNull();
+    expect(t!.motion.speedAccuracy).toBeCloseTo(0.208, 3);
+    expect(t!.motion.headingAccuracy).toBeCloseTo(145.26856, 5);
+    expect(t!.motion.pdop).toBeCloseTo(3, 2);
+  });
+
+  /**
+   * LE CAP EST ÉCARTÉ, ET LA PRÉCISION DIT POURQUOI. C'est tout l'objet du lot :
+   * les deux se lisent ensemble, jamais l'une sans l'autre.
+   */
+  it('cap nul, drapeau à zéro, précision de 145° — les trois ensemble', () => {
+    const t = parseRaceBoxDataMessage(PAQUET_CONSTRUCTEUR);
+    expect(t!.motion.heading).toBeCloseTo(0, 5);
+    expect(t!.motion.headingValid).toBe(false);
+    expect(t!.motion.headingAccuracy).toBeGreaterThan(90);
+  });
+
+  it('les valeurs voisines restent justes — les offsets n’ont pas glissé', () => {
+    const t = parseRaceBoxDataMessage(PAQUET_CONSTRUCTEUR);
+    expect(t!.motion.speed).toBeCloseTo(0.126, 3);
+    expect(t!.imu.gForceY).toBeCloseTo(0.113, 3);
+    // Le dossier P0 annonce « Rotation Z 0,04 °/s » : la valeur brute est -4,
+    // donc -0,04 °/s. Le signe manquait au dossier, pas au parseur.
+    expect(t!.imu.rotRateZ).toBeCloseTo(-0.04, 2);
+    expect(t!.battery.level).toBe(89);
+    expect(t!.gps.satellites).toBe(11);
+  });
+});

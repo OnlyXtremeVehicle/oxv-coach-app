@@ -82,8 +82,16 @@ export function parseRaceBoxDataMessage(bytes: Uint8Array): RaceBoxData | null {
     },
     motion: {
       speed: (dv.getUint32(54, LE) * 3.6) / 1000,
+      // Précision de vitesse (charge utile 56 → +6 = 62, en mm/s) et précision
+      // de cap (charge utile 60 → +6 = 66, en degrés × 1e5), rev 8 p. 5-6.
+      // Elles ne changent aucun calcul : elles rendent décidable la question
+      // « le cap écarté par le drapeau était-il exploitable ? ».
+      speedAccuracy: dv.getUint32(62, LE) / 1000,
       heading: dv.getUint32(58, LE) / 1e5,
       headingValid: (fixStatusFlags & 0x20) !== 0,
+      headingAccuracy: dv.getUint32(66, LE) / 1e5,
+      // PDOP (charge utile 64 → +6 = 70, facteur 100).
+      pdop: dv.getUint16(70, LE) / 100,
     },
     imu: {
       gForceX: dv.getInt16(74, LE) / 1000,

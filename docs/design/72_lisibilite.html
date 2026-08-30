@@ -1,0 +1,285 @@
+<title>Lisibilité au camion</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto+Flex:opsz,wght,GRAD@8..144,100..900,-200..150&family=JetBrains+Mono:wght@300;400;600&display=swap">
+<style>
+  :root{
+    --ground:#14151A; --card:#1B1D24; --edge:#262A33;
+    --hi:#E8E9ED; --mid:#8E94A0; --low:#5A606C;
+    --oxv:#C8102E; --gold:#C4A459; --cool:#5E86B8;
+    --note:#4B5563; --note-hi:#7C8698;
+    --sans:'Roboto Flex','Helvetica Neue',Arial,sans-serif;
+    --mono:'JetBrains Mono','SF Mono',ui-monospace,monospace;
+    --grad:0;
+  }
+  *{box-sizing:border-box}
+  body{background:var(--ground);color:var(--hi);font-family:var(--sans);margin:0;
+       font-variation-settings:'GRAD' var(--grad);-webkit-font-smoothing:antialiased}
+  .wrap{max-width:1260px;margin:0 auto;padding:40px 24px 96px}
+
+  header.page{border-bottom:1px solid var(--edge);padding-bottom:28px;margin-bottom:36px}
+  .eyebrow{font-family:var(--mono);font-size:11px;letter-spacing:.22em;text-transform:uppercase;
+           color:var(--low);display:block;margin-bottom:14px}
+  h1{font-size:38px;font-weight:600;letter-spacing:-.015em;margin:0 0 14px;text-wrap:balance}
+  .lede{color:var(--mid);font-size:16px;line-height:1.55;max-width:64ch;margin:0}
+  .lede b{color:var(--hi);font-weight:600}
+
+  .rule{display:flex;gap:0;margin:28px 0 0;border:1px solid var(--edge);border-radius:2px;overflow:hidden}
+  .rule div{flex:1;padding:14px 16px;border-right:1px solid var(--edge)}
+  .rule div:last-child{border-right:0}
+  .rule .k{font-family:var(--mono);font-size:10px;letter-spacing:.18em;color:var(--low);text-transform:uppercase}
+  .rule .v{font-family:var(--mono);font-size:22px;margin-top:6px;font-variant-numeric:tabular-nums}
+  .rule .v small{font-size:12px;color:var(--mid);margin-left:6px}
+
+  .ctl{display:flex;gap:10px;align-items:center;margin:32px 0 8px;flex-wrap:wrap}
+  button{font-family:var(--mono);font-size:11px;letter-spacing:.14em;text-transform:uppercase;
+         background:transparent;color:var(--mid);border:1px solid var(--edge);padding:9px 14px;
+         border-radius:2px;cursor:pointer}
+  button[aria-pressed="true"]{color:var(--ground);background:var(--hi);border-color:var(--hi)}
+  button:focus-visible{outline:2px solid var(--cool);outline-offset:2px}
+
+  .frames{display:flex;flex-direction:column;gap:44px;margin-top:26px}
+  figure{margin:0}
+  figcaption{display:flex;align-items:baseline;gap:14px;margin-bottom:12px}
+  figcaption .n{font-family:var(--mono);font-size:11px;letter-spacing:.2em;color:var(--low)}
+  figcaption .t{font-size:19px;font-weight:600}
+  figcaption .s{font-family:var(--mono);font-size:12px;color:var(--mid);margin-left:auto;
+                font-variant-numeric:tabular-nums}
+  .bad{color:var(--oxv)} .ok{color:var(--gold)}
+
+  .tablet{width:100%;max-width:1180px;aspect-ratio:1180/820;background:var(--card);
+          border:1px solid var(--edge);border-radius:10px;padding:34px 38px;position:relative;
+          display:flex;flex-direction:column;overflow:hidden}
+  .scroller{overflow-x:auto}
+
+  /* ---- grille de la feuille ---- */
+  .top{display:flex;align-items:baseline;gap:18px;border-bottom:1px solid var(--edge);padding-bottom:14px}
+  .top .sep{color:var(--low)}
+  .hero{display:flex;align-items:flex-end;gap:34px;padding:26px 0 22px;border-bottom:1px solid var(--edge)}
+  .laps{display:flex;gap:26px;padding:20px 0;border-bottom:1px solid var(--edge)}
+  .lap{display:flex;flex-direction:column;gap:5px}
+  .zones{position:relative;flex:1;display:flex;flex-direction:column;padding:20px 0;border-bottom:1px solid var(--edge);min-height:0}
+  .zrow{flex:1;display:flex;gap:9px;align-items:stretch;margin-top:14px;min-height:0}
+  .z{flex:1;display:flex;flex-direction:column;align-items:center;gap:6px;min-height:0}
+  .z .num{order:2}
+  .z .kw{order:3}
+  .z .colwrap{order:1;flex:1;width:100%;position:relative;min-height:0}
+  .z .col{position:absolute;left:0;right:0;bottom:0;background:#252A34;
+          border-top:2px solid var(--cool);border-radius:1px}
+  .z.lent .col{border-top-color:var(--gold)}
+  .qdi{display:flex;gap:30px;padding:18px 0}
+  .qb{display:flex;flex-direction:column;gap:5px}
+  .state{margin-top:16px;padding-top:14px;border-top:1px solid var(--edge)}
+
+  .kw{font-family:var(--sans);text-transform:uppercase;letter-spacing:.09em;color:var(--mid);
+      font-weight:500;display:block}
+  .num{font-family:var(--mono);font-variant-numeric:tabular-nums;color:var(--hi);
+       font-weight:400;line-height:1;display:block}
+  .unit{font-family:var(--mono);color:var(--low)}
+
+  /* ================= RÉGIME ACTUEL — tailles mesurées dans console.html ========== */
+  .r-act .kw{font-size:10px}
+  .r-act .top .kw{font-size:13px}
+  .r-act .num{font-size:25px}
+  .r-act .hero .num{font-size:59px}
+  .r-act .hero .kw{font-size:13px}
+  .r-act .z .kw{font-size:9.5px}
+  .r-act .z .num{font-size:16px}
+  .r-act .z{gap:3px}
+  .r-act .qb .num{font-size:22px}
+  .r-act .unit{font-size:12px}
+  .r-act .state .kw{font-size:11px}
+
+  /* ================= RÉGIME CORRIGÉ — plancher 16′ / cible 20-22′ ================ */
+  .r-cor .kw{font-size:21px}
+  .r-cor .top .kw{font-size:26px}
+  .r-cor .num{font-size:34px}
+  .r-cor .hero .num{font-size:72px}
+  .r-cor .hero .kw{font-size:26px}
+  .r-cor .z .kw{font-size:21px}
+  .r-cor .z .num{font-size:29px}
+  .r-cor .qb .num{font-size:34px}
+  .r-cor .unit{font-size:18px}
+  .r-cor .state .kw{font-size:26px}
+  .r-cor .zrow{gap:14px}
+
+  /* ---- annotations en minutes d'arc ---- */
+  .tag{position:absolute;font-family:var(--mono);font-size:10px;letter-spacing:.06em;
+       color:var(--note-hi);background:#0F1014;border:1px solid var(--note);border-radius:2px;
+       padding:2px 5px;pointer-events:none;opacity:0;transition:opacity .18s}
+  body.tags .tag{opacity:1}
+  .tag.under{color:#E4808F;border-color:#5C2028;background:#1C0F12}
+
+  .verdict{margin-top:46px;border-top:1px solid var(--edge);padding-top:30px;
+           display:grid;grid-template-columns:1fr 1fr;gap:34px}
+  .verdict h2{font-size:22px;font-weight:600;margin:0 0 12px}
+  .verdict p{color:var(--mid);font-size:15px;line-height:1.6;margin:0 0 12px}
+  .verdict p b{color:var(--hi);font-weight:600}
+  .verdict ul{color:var(--mid);font-size:15px;line-height:1.6;margin:0;padding-left:18px}
+  .verdict li{margin-bottom:7px}
+  @media (max-width:900px){.verdict{grid-template-columns:1fr}}
+
+  footer{margin-top:52px;border-top:1px solid var(--edge);padding-top:20px;
+         font-family:var(--mono);font-size:11px;color:var(--low);letter-spacing:.05em}
+  .insigne{display:inline-block;width:7px;height:7px;background:var(--oxv);border-radius:1px;
+           margin-right:9px;vertical-align:middle}
+  @media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+
+<div class="wrap">
+  <header class="page">
+    <span class="eyebrow">Étude de lisibilité · séance ff384ace · Bouteville 12.08</span>
+    <h1>La même feuille, à deux régimes de taille</h1>
+    <p class="lede">Norme <b>ISO 9241-303</b> : la hauteur de capitale se mesure en minutes d'arc.
+      Plancher <b>16′</b>, cible <b>20 à 22′</b> pour un usage soutenu. À <b>600 mm</b> — bras tendu,
+      debout au camion — sur une tablette à 264 ppi, cela donne un plancher à <b>21 pt</b> et une
+      cible à <b>29 pt</b>. Les deux feuilles ci-dessous portent la même donnée réelle.</p>
+
+    <div class="rule">
+      <div><span class="k">Distance</span><span class="v">600<small>mm</small></span></div>
+      <div><span class="k">Plancher 16′</span><span class="v">21<small>pt</small></span></div>
+      <div><span class="k">Cible 22′</span><span class="v">29<small>pt</small></span></div>
+      <div><span class="k">Mots-clés actuels</span><span class="v bad">10,0<small>′</small></span></div>
+      <div><span class="k">Écart</span><span class="v bad">×2,2<small>à combler</small></span></div>
+    </div>
+
+    <div class="ctl">
+      <button id="bt" aria-pressed="true">Minutes d'arc</button>
+      <button id="bg" aria-pressed="false">Correction GRAD</button>
+      <span class="eyebrow" style="margin:0">GRAD corrige l'irradiation sur fond sombre sans décaler les chasses</span>
+    </div>
+  </header>
+
+  <div class="frames">
+
+    <figure>
+      <figcaption>
+        <span class="n">A</span><span class="t">Régime actuel</span>
+        <span class="s bad">mots-clés 7,3′ à 12,3′ — sous le plancher</span>
+      </figcaption>
+      <div class="scroller"><div class="tablet r-act">
+        <div class="top">
+          <span class="kw">BOUTEVILLE</span><span class="sep">·</span>
+          <span class="kw">12.08 · 23:35</span><span class="sep">·</span>
+          <span class="kw">3 TOURS</span>
+          <span class="tag under" style="top:30px;right:34px">13 px · 10,0′</span>
+        </div>
+        <div class="hero">
+          <div><span class="kw">MEILLEUR TOUR</span><span class="num">5:27.542</span></div>
+          <div><span class="kw">DISTANCE</span><span class="num">5&#8239;874<span class="unit"> m</span></span></div>
+          <div><span class="kw">V MAX</span><span class="num">106,3<span class="unit"> km/h</span></span></div>
+          <span class="tag" style="top:110px;right:34px">59 px · 45,5′</span>
+        </div>
+        <div class="laps">
+          <div class="lap"><span class="kw">TOUR 1</span><span class="num">6:00.485</span></div>
+          <div class="lap"><span class="kw">TOUR 2 · MEILLEUR</span><span class="num">5:27.542</span></div>
+          <div class="lap"><span class="kw">TOUR 3</span><span class="num">5:39.483</span></div>
+          <div class="lap"><span class="kw">ÉCART MAX</span><span class="num">32.943</span></div>
+        </div>
+        <div class="zones">
+          <span class="kw">DOUZE ZONES · VITESSE MINIMALE · KM/H</span><span class="tag under" style="top:-2px;right:0">9,5 px · 7,3′</span>
+          <div class="zrow">
+            <div class="z lent"><span class="num">38,6</span><span class="colwrap"><span class="col" style="height:66.3%"></span></span><span class="kw">V1</span></div>
+            <div class="z"><span class="num">48,9</span><span class="colwrap"><span class="col" style="height:84.0%"></span></span><span class="kw">V2</span></div>
+            <div class="z"><span class="num">55,8</span><span class="colwrap"><span class="col" style="height:95.9%"></span></span><span class="kw">V3</span></div>
+            <div class="z lent"><span class="num">12,2</span><span class="colwrap"><span class="col" style="height:21.0%"></span></span><span class="kw">V4</span></div>
+            <div class="z"><span class="num">58,0</span><span class="colwrap"><span class="col" style="height:99.7%"></span></span><span class="kw">V5</span></div>
+            <div class="z"><span class="num">58,2</span><span class="colwrap"><span class="col" style="height:100.0%"></span></span><span class="kw">V6</span></div>
+            <div class="z"><span class="num">57,0</span><span class="colwrap"><span class="col" style="height:97.9%"></span></span><span class="kw">V7</span></div>
+            <div class="z lent"><span class="num">7,8</span><span class="colwrap"><span class="col" style="height:13.4%"></span></span><span class="kw">V8</span></div>
+            <div class="z lent"><span class="num">34,0</span><span class="colwrap"><span class="col" style="height:58.4%"></span></span><span class="kw">V9</span></div>
+            <div class="z lent"><span class="num">26,0</span><span class="colwrap"><span class="col" style="height:44.7%"></span></span><span class="kw">V10</span></div>
+            <div class="z"><span class="num">50,6</span><span class="colwrap"><span class="col" style="height:86.9%"></span></span><span class="kw">V11</span></div>
+            <div class="z"><span class="num">53,3</span><span class="colwrap"><span class="col" style="height:91.6%"></span></span><span class="kw">V12</span></div>
+          </div>
+        </div>
+        <div class="qdi">
+          <div class="qb"><span class="kw">TRAJECTOIRE</span><span class="num">97</span></div>
+          <div class="qb"><span class="kw">RÉGULARITÉ</span><span class="num">34</span></div>
+          <div class="qb"><span class="kw">FREINAGE</span><span class="num">7</span></div>
+          <div class="qb"><span class="kw">FLUIDITÉ</span><span class="num">0</span></div>
+          <div class="qb"><span class="kw">ACCÉLÉRATION</span><span class="num">0</span></div>
+          <div class="qb" style="margin-left:auto"><span class="kw">CONFIANCE</span><span class="num">100<span class="unit"> %</span></span></div>
+        </div>
+        <div class="state"><span class="kw">SIGNATURE · 1 / 3 SÉANCES</span></div>
+      </div></div>
+    </figure>
+
+    <figure>
+      <figcaption>
+        <span class="n">B</span><span class="t">Régime corrigé</span>
+        <span class="s ok">mots-clés 16,0′ à 19,9′ — conforme, au prix de quatre coupes</span>
+      </figcaption>
+      <div class="scroller"><div class="tablet r-cor">
+        <div class="top">
+          <span class="kw">BOUTEVILLE</span><span class="sep">·</span>
+          <span class="kw">3 TOURS</span>
+          <span class="tag" style="top:30px;right:34px">26 px · 19,9′</span>
+        </div>
+        <div class="hero">
+          <div><span class="kw">MEILLEUR TOUR</span><span class="num">5:27.542</span></div>
+          <div><span class="kw">ÉCART MAX</span><span class="num">32,9<span class="unit"> s</span></span></div>
+          <span class="tag" style="top:140px;right:34px">72 px · 55,5′</span>
+        </div>
+        <div class="zones">
+          <span class="kw">ZONES LES PLUS LENTES · KM/H</span><span class="tag" style="top:-2px;right:0">21 px · 16,0′</span>
+          <div class="zrow">
+            <div class="z lent"><span class="num">7,8</span><span class="colwrap"><span class="col" style="height:13.4%"></span></span><span class="kw">V8</span></div>
+            <div class="z lent"><span class="num">12,2</span><span class="colwrap"><span class="col" style="height:21.0%"></span></span><span class="kw">V4</span></div>
+            <div class="z lent"><span class="num">26,0</span><span class="colwrap"><span class="col" style="height:44.7%"></span></span><span class="kw">V10</span></div>
+            <div class="z lent"><span class="num">34,0</span><span class="colwrap"><span class="col" style="height:58.4%"></span></span><span class="kw">V9</span></div>
+            <div class="z lent"><span class="num">38,6</span><span class="colwrap"><span class="col" style="height:66.3%"></span></span><span class="kw">V1</span></div>
+          </div>
+        </div>
+        <div class="qdi">
+          <div class="qb"><span class="kw">TRAJECTOIRE</span><span class="num">97</span></div>
+          <div class="qb"><span class="kw">RÉGULARITÉ</span><span class="num">34</span></div>
+          <div class="qb" style="margin-left:auto"><span class="kw">CONFIANCE</span><span class="num">100<span class="unit"> %</span></span></div>
+        </div>
+        <div class="state"><span class="kw">SIGNATURE · 1 / 3 SÉANCES</span></div>
+      </div></div>
+    </figure>
+
+  </div>
+
+  <div class="verdict">
+    <div>
+      <h2>Ce que la règle impose vraiment</h2>
+      <p>On ne peut pas <b>seulement grossir</b>. À 21 pt, un mot-clé occupe la place de deux ;
+        à 26 pt il concurrence le nombre qu'il étiquette. La feuille A porte
+        <b>trente-quatre valeurs</b>, la feuille B en porte <b>douze</b>.</p>
+      <p>La contrainte de taille est donc une <b>contrainte éditoriale déguisée</b> : elle force
+        à choisir ce qui mérite d'être au camion. C'est exactement ce que le moteur de composition
+        fait déjà pour les fiches, appliqué aux valeurs.</p>
+    </div>
+    <div>
+      <h2>Les quatre coupes de la feuille B</h2>
+      <ul>
+        <li><b>L'heure et la distance</b> — lisibles ailleurs, jamais regardées debout au camion.</li>
+        <li><b>Les trois temps au tour</b> — remplacés par le meilleur et l'écart maximal, qui
+          disent la même chose en deux valeurs.</li>
+        <li><b>Sept zones sur douze</b> — les cinq plus lentes suffisent à désigner où regarder ;
+          les douze restent à un geste.</li>
+        <li><b>Trois branches du QDI</b> — freinage, fluidité et accélération sont retirées tant
+          que le signal inertiel n'est pas filtré. Montrer deux zéros serait pire que se taire.</li>
+      </ul>
+    </div>
+  </div>
+
+  <footer>
+    <span class="insigne"></span>OXV MIRROR · ISO 9241-303 · TABLETTE 264 PPI À 600 MM ·
+    ROBOTO FLEX (GRAD, OPSZ) + JETBRAINS MONO · DONNÉES RÉELLES DE LA SÉANCE DU 12.08.2026
+  </footer>
+</div>
+
+<script>
+  const b = document.body, bt = document.getElementById('bt'), bg = document.getElementById('bg');
+  b.classList.add('tags');
+  bt.addEventListener('click', () => {
+    const on = b.classList.toggle('tags');
+    bt.setAttribute('aria-pressed', String(on));
+  });
+  bg.addEventListener('click', () => {
+    const on = bg.getAttribute('aria-pressed') !== 'true';
+    bg.setAttribute('aria-pressed', String(on));
+    document.documentElement.style.setProperty('--grad', on ? '-90' : '0');
+  });
+</script>

@@ -50,8 +50,16 @@ export interface RaceBoxData {
   };
   motion: {
     speed: number;
+    /** Erreur estimée de la vitesse, en m/s. Optionnel : les fixtures de test
+     *  antérieures ne le portent pas. */
+    speedAccuracy?: number;
     heading: number;
     headingValid: boolean;
+    /** Erreur estimée du cap, en degrés. C'est ce champ qui dit si un cap
+     *  écarté par `headingValid` était malgré tout exploitable. */
+    headingAccuracy?: number;
+    /** Position Dilution of Precision. */
+    pdop?: number;
   };
   imu: {
     gForceX: number;
