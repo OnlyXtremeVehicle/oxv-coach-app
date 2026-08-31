@@ -90,6 +90,117 @@ export async function fetchOsmWay(wayId: number, fetchImpl?: typeof fetch): Prom
   return parseOsmWay(osm);
 }
 
+// --- 1 bis. Récupération d'un tracé porté par une RELATION -------------------
+//
+// POURQUOI CE CHEMIN EXISTE, mesuré le 30/08/2026 sur les deux circuits qui
+// restaient à mettre en base.
+//
+//   Albi passe par `fetchOsmWay` : le way 95802415 « Circuit d'Albi » est un
+//   anneau FERMÉ de 137 points, 3 562 m. Un seul way suffit.
+//
+//   Le Bugatti, non. Ses cinq ways nommés « Circuit Bugatti » totalisent
+//   1 690 m — le circuit en fait 4 185. Le reste de la boucle porte les noms
+//   des virages (Chicane Dunlop, Virage du Musée, Le « S » du Garage Bleu…) et
+//   se partage avec le circuit des 24 Heures. Ce qui tient le tracé complet est
+//   la RELATION 2725877 : dix-huit ways, 4 164 m cumulés, et zéro extrémité
+//   impaire — donc une boucle qui se referme réellement.
+//
+// Une relation ne donne AUCUN ordre : ses membres sont dans le désordre et
+// certains sont orientés à l'envers. Le chaînage se fait donc par les nœuds
+// partagés, pas par la position dans la liste.
+
+interface OsmRelationMember {
+  type: string;
+  ref: number;
+  role?: string;
+}
+
+interface OsmRelation {
+  type: 'relation';
+  id: number;
+  members: OsmRelationMember[];
+  tags?: Record<string, string>;
+}
+
+export async function fetchOsmRelation(
+  relationId: number,
+  fetchImpl?: typeof fetch
+): Promise<OsmWayParsed> {
+  const f = fetchImpl ?? (typeof fetch !== 'undefined' ? fetch : null);
+  if (!f) throw new Error('Aucune implémentation fetch disponible.');
+  const url = `https://api.openstreetmap.org/api/0.6/relation/${relationId}/full.json`;
+  const res = await f(url);
+  if (!res.ok) throw new Error(`OSM a répondu ${res.status} pour la relation ${relationId}.`);
+  const osm = (await res.json()) as OsmResponse;
+  return parseOsmRelation(osm);
+}
+
+/**
+ * Assemble les ways d'une relation en un tracé continu.
+ *
+ * L'algorithme suit les NŒUDS PARTAGÉS : on part d'un segment, on cherche
+ * celui dont une extrémité rejoint la fin du chemin en cours, on le retourne
+ * s'il faut, on l'ajoute, et on recommence.
+ *
+ * S'IL RESTE DES SEGMENTS ORPHELINS, ON REFUSE. Rendre le morceau chaîné
+ * serait rendre un circuit amputé qui a l'air complet — et le générateur en
+ * tirerait des virages, une longueur et des positions curvilignes fausses, sans
+ * que rien ne le signale. L'erreur nomme le compte : c'est ce qui permet de
+ * savoir qu'il manque une bretelle plutôt que de croire à un bug.
+ */
+export function parseOsmRelation(osm: OsmResponse): OsmWayParsed {
+  const relation = osm.elements.find((e): e is OsmRelation => e.type === 'relation');
+  if (!relation) throw new Error('Aucune relation dans la réponse OSM.');
+
+  const parWayId = new Map<number, OsmWay>();
+  for (const e of osm.elements) if (e.type === 'way') parWayId.set(e.id, e as OsmWay);
+
+  const nodesById = new Map<number, OsmNode>();
+  for (const e of osm.elements) if (e.type === 'node') nodesById.set(e.id, e as OsmNode);
+
+  const segments = relation.members
+    .filter((m) => m.type === 'way')
+    .map((m) => parWayId.get(m.ref))
+    .filter((w): w is OsmWay => w !== undefined && Array.isArray(w.nodes) && w.nodes.length >= 2)
+    .map((w) => w.nodes.slice());
+
+  if (segments.length === 0) throw new Error('La relation ne porte aucun way exploitable.');
+
+  const restants = segments.slice();
+  let chaine = restants.shift() as number[];
+
+  // Chaque tour ajoute un segment ; à défaut on sort et le compte parlera.
+  for (let garde = 0; garde < segments.length + 1 && restants.length > 0; garde++) {
+    const fin = chaine[chaine.length - 1];
+    const i = restants.findIndex((s) => s[0] === fin || s[s.length - 1] === fin);
+    if (i === -1) break;
+    const s = restants.splice(i, 1)[0];
+    const suite = s[0] === fin ? s.slice(1) : s.slice(0, -1).reverse();
+    chaine = chaine.concat(suite);
+  }
+
+  if (restants.length > 0) {
+    throw new Error(
+      `Relation ${relation.id} : ${restants.length} segment(s) sur ${segments.length} ne se raccordent pas au tracé. Le circuit ne serait pas complet.`
+    );
+  }
+
+  const points: LatLon[] = chaine
+    .map((id) => nodesById.get(id))
+    .filter((n): n is OsmNode => n != null && n.lat != null && n.lon != null)
+    .map((n) => ({ lat: n.lat as number, lon: n.lon as number }));
+
+  return {
+    name: relation.tags?.name ?? null,
+    points,
+    closed: chaine.length > 1 && chaine[0] === chaine[chaine.length - 1],
+    // L'identifiant rendu est celui de la RELATION. Le champ s'appelle
+    // `osmWayId` par héritage ; le renommer casserait les tracés déjà
+    // enregistrés, qui le portent.
+    osmWayId: relation.id,
+  };
+}
+
 // Parse la réponse OSM /full.json en {name, points:[{lat,lon}], closed}
 export function parseOsmWay(osm: OsmResponse): OsmWayParsed {
   const ways = osm.elements.filter((e): e is OsmWay => e.type === 'way');

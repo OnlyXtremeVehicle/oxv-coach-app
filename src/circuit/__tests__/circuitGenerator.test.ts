@@ -5,6 +5,7 @@ import {
   resampleByDistance,
   detectCorners,
   type LatLon,
+  parseOsmRelation,
 } from '../circuitGenerator';
 import { HAUTE_SAINTONGE_POINTS } from '../hauteSaintonge';
 
@@ -106,5 +107,127 @@ describe('briques pures du générateur', () => {
         10 - 1e-9
       );
     }
+  });
+});
+
+// ===========================================================================
+// LES CIRCUITS PORTÉS PAR UNE RELATION — lot P2, 30/08/2026
+// ===========================================================================
+
+/**
+ * POURQUOI CE CHEMIN EXISTE, et ce que la mesure a dit.
+ *
+ * Albi tient dans un seul way — 95802415, anneau fermé de 137 points, 3 562 m.
+ * Le Bugatti, non : ses cinq ways nommés « Circuit Bugatti » totalisent 1 690 m
+ * pour un circuit qui en fait 4 185. Le reste de la boucle porte les noms des
+ * virages et se partage avec le circuit des 24 Heures.
+ *
+ * La relation 2725877 tient le tracé complet : dix-huit ways, zéro extrémité
+ * impaire, et une fois chaînée — vérifié le 30/08 contre l'API réelle —
+ * 589 points, fermée, 4 165 m, neuf virages. Le Bugatti mesure 4 185 m.
+ *
+ * Les cas ci-dessous sont SYNTHÉTIQUES : ils testent le chaînage, pas la
+ * géographie. Un carré de quatre segments suffit à prouver les trois règles qui
+ * comptent — le désordre, l'inversion, et le refus.
+ */
+describe('parseOsmRelation — chaîner ce qu’OSM livre en désordre', () => {
+  /** Quatre coins d'un carré : 1 → 2 → 3 → 4 → 1. */
+  const NOEUDS = [
+    { type: 'node' as const, id: 1, lat: 0, lon: 0 },
+    { type: 'node' as const, id: 2, lat: 0, lon: 1 },
+    { type: 'node' as const, id: 3, lat: 1, lon: 1 },
+    { type: 'node' as const, id: 4, lat: 1, lon: 0 },
+  ];
+
+  const relation = (membres: number[], tags?: Record<string, string>) => ({
+    type: 'relation' as const,
+    id: 999,
+    members: membres.map((ref) => ({ type: 'way', ref })),
+    tags: tags ?? { name: 'Circuit d’essai' },
+  });
+
+  const way = (id: number, nodes: number[]) => ({ type: 'way' as const, id, nodes });
+
+  it('remet les segments dans l’ordre, quel que soit celui de la relation', () => {
+    const r = parseOsmRelation({
+      elements: [
+        relation([30, 10, 40, 20]), // volontairement mélangés
+        way(10, [1, 2]),
+        way(20, [2, 3]),
+        way(30, [3, 4]),
+        way(40, [4, 1]),
+        ...NOEUDS,
+      ],
+    });
+    expect(r.points).toHaveLength(5); // le carré, premier point répété à la fin
+    expect(r.closed).toBe(true);
+    expect(r.name).toBe('Circuit d’essai');
+    expect(r.osmWayId).toBe(999);
+  });
+
+  /**
+   * OSM n'oriente pas les membres d'une relation. Un segment décrit à l'envers
+   * doit être retourné, jamais rejeté — sinon la moitié des circuits réels
+   * échouerait au chaînage.
+   */
+  it('retourne un segment décrit à l’envers', () => {
+    const r = parseOsmRelation({
+      elements: [
+        relation([10, 20, 30, 40]),
+        way(10, [1, 2]),
+        way(20, [3, 2]), // à l'envers
+        way(30, [3, 4]),
+        way(40, [1, 4]), // à l'envers
+        ...NOEUDS,
+      ],
+    });
+    expect(r.closed).toBe(true);
+    expect(r.points.map((p) => `${p.lat},${p.lon}`)).toEqual([
+      '0,0',
+      '0,1',
+      '1,1',
+      '1,0',
+      '0,0',
+    ]);
+  });
+
+  /**
+   * LE REFUS EST LE POINT. Rendre le morceau chaîné donnerait un circuit amputé
+   * qui a l'air complet : le générateur en tirerait des virages, une longueur et
+   * des positions curvilignes fausses, sans que rien ne le signale.
+   */
+  it('refuse un tracé incomplet, et dit combien de segments manquent', () => {
+    expect(() =>
+      parseOsmRelation({
+        elements: [
+          relation([10, 20, 40]),
+          way(10, [1, 2]),
+          way(20, [2, 3]),
+          way(40, [7, 8]), // orphelin : ne touche rien
+          { type: 'node' as const, id: 7, lat: 5, lon: 5 },
+          { type: 'node' as const, id: 8, lat: 5, lon: 6 },
+          ...NOEUDS,
+        ],
+      })
+    ).toThrow(/1 segment\(s\) sur 3/);
+  });
+
+  it('une relation sans way exploitable est refusée, pas rendue vide', () => {
+    expect(() => parseOsmRelation({ elements: [relation([])] })).toThrow(/aucun way/i);
+  });
+
+  it('une réponse sans relation est refusée', () => {
+    expect(() => parseOsmRelation({ elements: [way(10, [1, 2]), ...NOEUDS] })).toThrow(
+      /aucune relation/i
+    );
+  });
+
+  /** Un tracé ouvert reste possible et se DIT ouvert — il n'est pas refermé d'office. */
+  it('un tracé qui ne se referme pas le dit', () => {
+    const r = parseOsmRelation({
+      elements: [relation([10, 20]), way(10, [1, 2]), way(20, [2, 3]), ...NOEUDS],
+    });
+    expect(r.closed).toBe(false);
+    expect(r.points).toHaveLength(3);
   });
 });
