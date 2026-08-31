@@ -30,14 +30,13 @@ import { useCoachThread } from '@/hooks/useCoachThread';
 import { aUnCoachAffilieActif } from '@/services/pilotConsentService';
 import { focusVirage, margeModel, type MargeBilan } from '@/features/miroir/margeLogic';
 import { colors } from '@/ui/v2/tokens';
-import { BELTOISE_CORNERS } from '@/lib/circuitTopology';
 import { nombresDeSeance } from '@/lib/numeriquesPostgrest';
 import { supabase } from '@/lib/supabase';
 import { getAnalysisForSession } from '@/services/analysesService';
 import { fetchSessionCircuitCenterlineExact } from '@/services/circuitsService';
 import {
   listSessionNotes,
-  listVisibleAnnotationsForCorner,
+  listVisibleCornerAnnotations,
 } from '@/services/coachAnnotationsService';
 import {
   listMyThreads,
@@ -49,6 +48,7 @@ import {
 import { decisionCapture } from '@/features/biometrie/consentementSource';
 import { sourceParId } from '@/features/biometrie/sourcesBiometrie';
 import { loadBiometryConsents } from '@/services/consentService';
+import { fetchSessionCircuitCorners } from '@/services/circuitsService';
 import { getIntentionForSession, type SessionIntention } from '@/services/intentionsService';
 import { isFlagEnabled } from '@/services/featureFlagsService';
 import { computeKeyMoments, type KeyMoment } from '@/services/keyMomentsLogic';
@@ -268,6 +268,7 @@ export function useBilan(sessionId: string | undefined): UseBilanResult {
         centerlineR,
         threadsR,
         annotationsR,
+        viragesR,
         noteSeanceR,
         intentionR,
         videoFlagR,
@@ -288,11 +289,13 @@ export function useBilan(sessionId: string | undefined): UseBilanResult {
         // le circuit par défaut : circuit inconnu → carte tracé masquée.
         fetchSessionCircuitCenterlineExact(sessionId),
         listMyThreads(userId),
-        // Annotations visibles (RLS : shared, non supprimées) — le service
-        // existant est par virage : on interroge la topologie réelle (7).
-        Promise.all(
-          BELTOISE_CORNERS.map((c) => listVisibleAnnotationsForCorner(userId, c.index, sessionId))
-        ).then((lists) => lists.flat()),
+        // Annotations visibles (RLS : shared, non supprimées). UNE requête pour
+        // toutes les notes qui portent un virage — la topologie ne décide plus
+        // de ce qu'on va chercher, elle sert seulement à nommer et à placer.
+        listVisibleCornerAnnotations(userId, sessionId),
+        // Les virages du circuit RÉELLEMENT roulé. Douze à Bouteville, neuf au
+        // Bugatti, huit à Albi — et plus jamais les sept de Haute Saintonge.
+        fetchSessionCircuitCorners(sessionId),
         // LA NOTE DE SÉANCE — le bilan que le coach écrit sur la séance
         // ENTIÈRE, depuis le 14/08/2026. Elle ne passe pas par la requête
         // ci-dessus : celle-ci interroge virage par virage, et une note de
@@ -341,6 +344,10 @@ export function useBilan(sessionId: string | undefined): UseBilanResult {
       const centerline = settled(centerlineR, null);
       const threads = settled(threadsR, []);
       const annotations = settled(annotationsR, []);
+      // Liste VIDE si le circuit n'a jamais ete passe au detecteur : les puces
+      // coach disparaissent, les noms retombent sur « Virage N ». Jamais les
+      // virages d'un autre circuit.
+      const virages = settled(viragesR, []);
       const videoOverlayEnabled = settled(videoFlagR, false);
       const biometryFlag = settled(biometryFlagR, false);
       const consents = settled(consentsR, { capture: false, coachShare: false });
@@ -471,7 +478,7 @@ export function useBilan(sessionId: string | undefined): UseBilanResult {
         })),
       });
 
-      const coachNotes = buildCoachNotes(annotations, threads);
+      const coachNotes = buildCoachNotes(annotations, threads, virages);
 
       /**
        * LE BILAN DU COACH SUR LA SÉANCE — voix ATTRIBUÉE, jamais celle de l'app.
@@ -500,6 +507,7 @@ export function useBilan(sessionId: string | undefined): UseBilanResult {
       const traceMarkers = buildTraceMarkers({
         segments,
         annotatedCornerIndexes: coachNotes.map((n) => n.cornerIndex),
+        virages,
         centerline,
       });
       // Le virage à creuser — `next_focus_corner_index` était persisté à

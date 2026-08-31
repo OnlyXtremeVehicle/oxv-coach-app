@@ -11,6 +11,7 @@
 
 import { cacheGet, cacheGetStale, cacheSet, STORAGE_KEYS } from '@/lib/mmkv';
 import { supabase } from '@/lib/supabase';
+import { lireViragesCircuit, type VirageCircuit } from '@/features/data/viragesCircuit';
 import type { LatLon } from '@/circuit/circuitGenerator';
 
 export interface Circuit {
@@ -242,6 +243,40 @@ export async function fetchSessionCircuitCenterlineExact(
   const circuitId = !error && data?.circuit_id ? (data.circuit_id as string) : null;
   if (!circuitId) return null;
   return fetchCircuitCenterline(circuitId);
+}
+
+/**
+ * LES VIRAGES du circuit réel d'une séance — pendant STRICT des deux fonctions
+ * ci-dessus : aucun repli sur le circuit par défaut.
+ *
+ * Ce chemin remplace `BELTOISE_CORNERS`, sept virages écrits en dur qui étaient
+ * ceux de Haute Saintonge. Sur une séance de Bouteville, du Bugatti ou d'Albi,
+ * l'application cherchait des notes de coach sur des virages qui n'existent pas
+ * là — et en nommait un « Saintonge 3 ».
+ *
+ * Liste VIDE dans les quatre cas que l'appelant n'a pas à distinguer, parce
+ * qu'ils appellent la même conduite — n'interroger aucun virage : séance sans
+ * `circuit_id`, circuit introuvable, circuit jamais passé au détecteur, ou
+ * lecture en erreur.
+ */
+export async function fetchSessionCircuitCorners(sessionId: string): Promise<VirageCircuit[]> {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const sessions = supabase.from('telemetry_sessions') as any;
+  const { data: s, error: eS } = await sessions
+    .select('circuit_id')
+    .eq('id', sessionId)
+    .maybeSingle();
+  const circuitId = !eS && s?.circuit_id ? (s.circuit_id as string) : null;
+  if (!circuitId) return [];
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const circuits = supabase.from('circuits') as any;
+  const { data, error } = await circuits.select('corners').eq('id', circuitId).maybeSingle();
+  if (error) {
+    console.warn('[OXV][circuits] fetchSessionCircuitCorners :', error.message);
+    return [];
+  }
+  return lireViragesCircuit(data?.corners ?? null);
 }
 
 /**

@@ -78,6 +78,16 @@ function mapRow(row: RawRow): CoachAnnotation {
  * supprimées. On renvoie d'abord celles attachées à la session courante
  * (plus contextuelles), puis les notes génériques (sessionId=null).
  */
+/**
+ * PLUS AUCUN APPELANT DE PRODUCTION depuis le 30/08/2026, et on le dit plutôt
+ * que de la laisser dormir en silence.
+ *
+ * Le bilan l'appelait sept fois — une par virage de `BELTOISE_CORNERS` — et
+ * `listVisibleCornerAnnotations` fait désormais le travail en une requête, sans
+ * dépendre d'une liste de virages. Elle n'est PAS supprimée parce que
+ * `archive/arbre-v1/app-app/virage.tsx` la référence encore : un écran d'arbre
+ * v1 restauré la retrouverait. Elle sort le jour où cet arbre est retiré.
+ */
 export async function listVisibleAnnotationsForCorner(
   pilotId: string,
   cornerIndex: number,
@@ -99,6 +109,45 @@ export async function listVisibleAnnotationsForCorner(
   const { data, error } = await query;
   if (error) {
     console.warn('[OXV][annotations] list :', error.message);
+    return [];
+  }
+  return (data as unknown as RawRow[]).map(mapRow);
+}
+
+/**
+ * TOUTES les notes de virage visibles du pilote pour une séance, en UNE
+ * requête.
+ *
+ * Le bilan interrogeait la topologie virage par virage — sept appels, un par
+ * virage de `BELTOISE_CORNERS`. Deux défauts, et le second est le grave :
+ *
+ *   • sept requêtes là où une suffit ;
+ *   • et surtout, une note posée sur un virage ABSENT de la liste interrogée
+ *     disparaissait sans bruit. Un coach annotant le virage 11 de Bouteville
+ *     écrivait dans le vide : la boucle n'allait que jusqu'à sept.
+ *
+ * Ici on demande toutes les notes QUI PORTENT UN VIRAGE, quel qu'il soit. La
+ * liste des virages du circuit sert ensuite à les NOMMER et à les placer — elle
+ * ne décide plus de ce qu'on va chercher.
+ */
+export async function listVisibleCornerAnnotations(
+  pilotId: string,
+  sessionId?: string | null
+): Promise<CoachAnnotation[]> {
+  let query = supabase
+    .from('coach_annotations')
+    .select('*')
+    .eq('pilot_id', pilotId)
+    .not('corner_index', 'is', null)
+    .order('created_at', { ascending: false });
+
+  if (sessionId) {
+    query = query.or(`telemetry_session_id.eq.${sessionId},telemetry_session_id.is.null`);
+  }
+
+  const { data, error } = await query;
+  if (error) {
+    console.warn('[OXV][annotations] listVisibleCornerAnnotations :', error.message);
     return [];
   }
   return (data as unknown as RawRow[]).map(mapRow);

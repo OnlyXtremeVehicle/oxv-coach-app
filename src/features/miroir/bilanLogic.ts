@@ -17,7 +17,8 @@ import {
 } from '@/features/biometrie/arbitrageSources';
 import type { IdSource } from '@/features/biometrie/sourcesBiometrie';
 import { projectToMeters, type LatLon } from '@/circuit/circuitGenerator';
-import { getCorner } from '@/lib/circuitTopology';
+import { nomVirage, type VirageCircuit } from '@/features/data/viragesCircuit';
+import { SIGNATURE_LABEL_BY_BRANCH } from '@/features/miroir/signatureLogic';
 import { isDoctrineSafe } from '@/services/aiSafetyFilter';
 import type { MarginBase } from '@/services/marginCalculator';
 import { colors } from '@/ui/v2/tokens';
@@ -178,11 +179,27 @@ export interface BilanPillar {
   value: number | null;
 }
 
+/**
+ * LES LIBELLÉS NE SONT PAS ÉCRITS ICI. Ils viennent du vocabulaire figé, dont
+ * `SIGNATURE_LABEL_BY_BRANCH` est la seule table — arbitrage du fondateur du
+ * 30/08/2026, et le brief le posait déjà : « Vocabulaire de télémétrie figé :
+ * Cap, Trajectoire, Anticipation, Visée, Plongée. »
+ *
+ * Ce qu'une seconde table coûtait, mesuré le 30/08 sur la séance de Bouteville :
+ * le bilan appelait « Fluidité » la branche que la Signature appelle
+ * « Anticipation », et `margeLogic` appelait « Fluidité » un TROISIÈME calcul —
+ * la composante `smoothness` de la marge. Les deux se retrouvaient sur le même
+ * écran, à quelques centimètres, valant **100 et 0**.
+ *
+ * Un pilote professionnel ne lit pas cela comme une nuance de méthode : il le
+ * lit comme une panne. Dériver de la table figée rend la collision impossible,
+ * et « Fluidité » ne désigne plus qu'une chose — la composante de marge.
+ */
 const PILLAR_LABELS: Record<BilanPillarKey, string> = {
-  trajectoire: 'Trajectoire',
-  freinage: 'Freinage',
-  acceleration: 'Accélération',
-  fluidite: 'Fluidité',
+  trajectoire: SIGNATURE_LABEL_BY_BRANCH.trajectoire,
+  freinage: SIGNATURE_LABEL_BY_BRANCH.freinage,
+  acceleration: SIGNATURE_LABEL_BY_BRANCH.acceleration,
+  fluidite: SIGNATURE_LABEL_BY_BRANCH.fluidite,
 };
 
 /**
@@ -306,6 +323,8 @@ export interface BilanTraceMarker {
 export function buildTraceMarkers(args: {
   segments: readonly SegmentProgressLite[];
   annotatedCornerIndexes: readonly number[];
+  /** Les virages du circuit RÉELLEMENT roulé. Liste vide = aucune puce coach. */
+  virages: readonly VirageCircuit[];
   centerline: readonly LatLon[] | null;
 }): BilanTraceMarker[] {
   const markers: BilanTraceMarker[] = [];
@@ -315,14 +334,23 @@ export function buildTraceMarkers(args: {
     markers.push({ t: engaged, color: colors.qdi.freinage, kind: 'engaged' });
   }
 
+  // LES VIRAGES VIENNENT DU CIRCUIT ROULÉ, plus d'une topologie écrite en dur.
+  //
+  // L'ancien chemin cherchait l'apex dans `BELTOISE_CORNERS` puis le projetait
+  // sur la centerline. Deux défauts : sur un circuit qui n'est pas Haute
+  // Saintonge il ne trouvait rien (marqueur muet), et quand il trouvait, il
+  // plaçait la note sur l'apex d'un AUTRE circuit.
+  //
+  // La base porte directement la position curviligne de la corde
+  // (`apex_s_norm`), donc plus rien à projeter : le marqueur se pose où le
+  // détecteur a mesuré la corde.
   const seen = new Set<number>();
   for (const index of args.annotatedCornerIndexes) {
     if (seen.has(index)) continue;
     seen.add(index);
-    const corner = getCorner(index);
-    if (!corner) continue;
-    const t = centerlineRatioForLatLon(args.centerline, corner.apexLat, corner.apexLon);
-    if (t === null) continue;
+    const v = args.virages.find((x) => x.index === index);
+    const t = v?.positionNormalisee ?? null;
+    if (t === null || !Number.isFinite(t) || t < 0 || t > 1) continue;
     markers.push({ t, color: colors.heritage.gold, kind: 'coach' });
   }
 
@@ -426,7 +454,13 @@ export interface CoachNoteModel {
  */
 export function buildCoachNotes(
   annotations: readonly AnnotationLite[],
-  threads: readonly ThreadLite[]
+  threads: readonly ThreadLite[],
+  /**
+   * Les virages du circuit roulé. Par défaut vide : le nom retombe alors sur
+   * « Virage N », ce qui est vrai partout — jamais un toponyme emprunte a un
+   * autre circuit, ce que faisait `getCorner` sans le dire.
+   */
+  virages: readonly VirageCircuit[] = []
 ): CoachNoteModel[] {
   const nameByCoach = new Map(threads.map((t) => [t.coachId, t.otherName]));
 
@@ -444,7 +478,7 @@ export function buildCoachNotes(
   return [...specific, ...generic].map((a) => ({
     id: a.id,
     cornerIndex: a.cornerIndex,
-    cornerName: getCorner(a.cornerIndex)?.name ?? `Virage ${a.cornerIndex}`,
+    cornerName: nomVirage(virages, a.cornerIndex),
     body: a.body,
     coachName: nameByCoach.get(a.coachId) ?? null,
     generic: a.telemetrySessionId === null,

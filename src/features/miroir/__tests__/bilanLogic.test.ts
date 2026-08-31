@@ -39,6 +39,7 @@ import {
   validLapsOf,
   viewerShouldDismiss,
 } from '../bilanLogic';
+import { SIGNATURE_LABEL_BY_BRANCH } from '../signatureLogic';
 
 // ---------------------------------------------------------------------------
 // Gating biométrie — fail-closed
@@ -367,29 +368,47 @@ describe('buildCoachNotes', () => {
     expect(notes).toEqual([]);
   });
 
-  it('annotation présente → note mappée : virage réel + nom réel du coach', () => {
-    const notes = buildCoachNotes(
-      [
-        {
-          id: 'n1',
-          coachId: 'coach-1',
-          cornerIndex: 3,
-          body: 'Appui franc observé ici.',
-          telemetrySessionId: 's1',
-        },
-      ],
-      threads
-    );
+  const uneNote = [
+    {
+      id: 'n1',
+      coachId: 'coach-1',
+      cornerIndex: 3,
+      body: 'Appui franc observé ici.',
+      telemetrySessionId: 's1',
+    },
+  ];
+
+  it('annotation présente → note mappée : nom du virage DU CIRCUIT ROULÉ', () => {
+    const notes = buildCoachNotes(uneNote, threads, [
+      { index: 3, nom: 'Chicane Dunlop', sens: 'droite', positionNormalisee: 0.31, rayonM: 50 },
+    ]);
     expect(notes).toHaveLength(1);
     expect(notes[0]).toEqual({
       id: 'n1',
       cornerIndex: 3,
-      cornerName: "L'épingle Est",
+      cornerName: 'Chicane Dunlop',
       body: 'Appui franc observé ici.',
       coachName: 'Marc Delage',
       generic: false,
       audioUrl: null,
     });
+  });
+
+  /**
+   * LE NOM N'EST JAMAIS EMPRUNTÉ. Avant le 30/08/2026, cette même note rendait
+   * « L'épingle Est » — un virage de Haute Saintonge — quel que soit le circuit
+   * réellement roulé. Le détecteur, lui, ne nomme pas : il rend `name: null`,
+   * parce que nommer un virage est un acte éditorial et pas un calcul.
+   */
+  it('virage sans nom en base → « Virage N », jamais un toponyme d’ailleurs', () => {
+    const sansNom = buildCoachNotes(uneNote, threads, [
+      { index: 3, nom: null, sens: 'droite', positionNormalisee: 0.31, rayonM: 50 },
+    ]);
+    expect(sansNom[0].cornerName).toBe('Virage 3');
+
+    // Circuit jamais passé au détecteur : même repli, même honnêteté.
+    expect(buildCoachNotes(uneNote, threads)[0].cornerName).toBe('Virage 3');
+    expect(buildCoachNotes(uneNote, threads)[0].cornerName).not.toContain('épingle');
   });
 
   it('coach hors binôme résolu → coachName null (jamais un nom inventé)', () => {
@@ -533,25 +552,58 @@ describe('buildTraceMarkers', () => {
     { lat: 45.2390839, lon: -0.0889951 },
   ];
 
-  it('puce engagée (donnée) + puce OR par virage annoté', () => {
+  /**
+   * LES VIRAGES VIENNENT DU CIRCUIT ROULÉ — arbitrage du 30/08/2026.
+   *
+   * L'ancien chemin cherchait l'apex dans `BELTOISE_CORNERS`, sept virages
+   * écrits en dur. Sur une séance de Bouteville, du Bugatti ou d'Albi, il
+   * plaçait la note du coach sur l'apex d'un AUTRE circuit, ou ne la plaçait
+   * pas du tout — sans que rien ne le dise.
+   *
+   * La base porte la position curviligne de la corde : plus rien à projeter.
+   */
+  const viragesBouteville = [
+    { index: 1, nom: null, sens: 'gauche' as const, positionNormalisee: 0.0469, rayonM: 36 },
+    { index: 4, nom: null, sens: 'droite' as const, positionNormalisee: 0.3594, rayonM: 12 },
+    { index: 12, nom: null, sens: 'gauche' as const, positionNormalisee: 0.9766, rayonM: 95 },
+  ];
+
+  it('puce engagée (donnée) + puce OR à la corde MESURÉE du virage annoté', () => {
     const markers = buildTraceMarkers({
       segments: [{ segmentIndex: 2, maxGLateral: 1.2, startProgress: 0.3, endProgress: 0.4 }],
-      annotatedCornerIndexes: [1],
+      annotatedCornerIndexes: [4],
+      virages: viragesBouteville,
       centerline: beltoiseLoop,
     });
     expect(markers).toHaveLength(2);
     expect(markers[0]).toMatchObject({ kind: 'engaged', color: colors.qdi.freinage });
     expect(markers[1].kind).toBe('coach');
     expect(markers[1].color).toBe(colors.heritage.gold);
-    expect(markers[1].t).toBeGreaterThanOrEqual(0);
-    expect(markers[1].t).toBeLessThanOrEqual(1);
+    // La position est celle que le détecteur a mesurée, pas une projection.
+    expect(markers[1].t).toBeCloseTo(0.3594, 4);
   });
 
-  it('sans centerline : les puces coach n’ont pas de position → absentes', () => {
+  /**
+   * LE VIRAGE 11 DE BOUTEVILLE. C'est le cas qui motivait tout le lot : une
+   * note posée sur un virage que le circuit ne porte pas ne doit RIEN placer —
+   * ni sur l'apex d'un autre circuit, ni ailleurs.
+   */
+  it('un virage absent du circuit ne place aucune puce', () => {
+    const markers = buildTraceMarkers({
+      segments: [],
+      annotatedCornerIndexes: [11],
+      virages: viragesBouteville,
+      centerline: beltoiseLoop,
+    });
+    expect(markers).toEqual([]);
+  });
+
+  it('circuit jamais passé au détecteur → aucune puce coach', () => {
     const markers = buildTraceMarkers({
       segments: [],
       annotatedCornerIndexes: [1, 2],
-      centerline: null,
+      virages: [],
+      centerline: beltoiseLoop,
     });
     expect(markers).toEqual([]);
   });
@@ -560,9 +612,21 @@ describe('buildTraceMarkers', () => {
     const markers = buildTraceMarkers({
       segments: [],
       annotatedCornerIndexes: [1, 1],
+      virages: viragesBouteville,
       centerline: beltoiseLoop,
     });
     expect(markers).toHaveLength(1);
+  });
+
+  /** Une corde sans position mesurée ne se place pas au hasard. */
+  it('virage sans position mesurée → aucune puce', () => {
+    const markers = buildTraceMarkers({
+      segments: [],
+      annotatedCornerIndexes: [7],
+      virages: [{ index: 7, nom: null, sens: null, positionNormalisee: null, rayonM: null }],
+      centerline: beltoiseLoop,
+    });
+    expect(markers).toEqual([]);
   });
 });
 
@@ -740,5 +804,44 @@ describe('libelleIntention', () => {
     for (const d of ['2026-08-12T22:00:00Z', '2026-08-13T02:00:00Z']) {
       expect(libelleIntention(d, DEBUT)).not.toMatch(/tenu|réussi|atteint|manqué|échec/i);
     }
+  });
+});
+
+// ===========================================================================
+// LE VOCABULAIRE EST FIGÉ, ET IL N'A QU'UNE TABLE
+// ===========================================================================
+
+/**
+ * Arbitrage du fondateur, 30/08/2026 : le vocabulaire figé s'applique PARTOUT.
+ *
+ * Ce que la seconde table coûtait, mesuré sur la séance de Bouteville : le
+ * bilan appelait « Fluidité » la branche que la Signature appelle
+ * « Anticipation », pendant que `margeLogic` appelait « Fluidité » un
+ * TROISIÈME calcul — la composante `smoothness` de la marge. Les deux
+ * s'affichaient sur le même écran, à quelques centimètres, valant 100 et 0.
+ */
+describe('les libellés des piliers viennent du vocabulaire figé', () => {
+  it('chaque pilier porte le mot de la table figée, jamais un doublon local', () => {
+    const byKey = new Map(mapPillars({}).map((p) => [p.key, p.label]));
+    expect(byKey.get('trajectoire')).toBe(SIGNATURE_LABEL_BY_BRANCH.trajectoire);
+    expect(byKey.get('freinage')).toBe(SIGNATURE_LABEL_BY_BRANCH.freinage);
+    expect(byKey.get('acceleration')).toBe(SIGNATURE_LABEL_BY_BRANCH.acceleration);
+    expect(byKey.get('fluidite')).toBe(SIGNATURE_LABEL_BY_BRANCH.fluidite);
+  });
+
+  /**
+   * LA COLLISION NE DOIT PAS POUVOIR REVENIR. `margeLogic` garde « Fluidité »
+   * pour sa composante `smoothness` ; aucun pilier du bilan ne peut donc
+   * porter ce mot, sans quoi les deux se retrouveraient côte à côte.
+   */
+  it('aucun pilier ne s’appelle « Fluidité » — le mot appartient à la marge', () => {
+    for (const p of mapPillars({})) {
+      expect(p.label).not.toBe('Fluidité');
+    }
+  });
+
+  it('les quatre libellés sont distincts', () => {
+    const labels = mapPillars({}).map((p) => p.label);
+    expect(new Set(labels).size).toBe(labels.length);
   });
 });
