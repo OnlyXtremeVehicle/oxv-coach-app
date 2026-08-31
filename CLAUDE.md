@@ -263,7 +263,7 @@ forme. La couche 2 est la seule exception, et elle est explicite.
 | Date | Ce qui doit être vrai |
 |---|---|
 | 02/09 | Pièces de la passerelle commandées ; courriers ITS et FFSA partis |
-| 05/09 | Circuit du Bugatti en base, virages détectés |
+| ~~05/09~~ | ~~Circuit du Bugatti en base, virages détectés~~ — **fait le 30/08** |
 | 08/09 | Chemin d'ingestion unique |
 | 12/09 | Coach ouvert au multi-circuit ; secteurs officiels ; cinq états |
 | 15/09 | Passerelle assemblée, deux heures de route sans perte |
@@ -297,12 +297,13 @@ secteurs officiels, l'ouverture du coach.
 | **Signal inertiel** | **Calibration d'abord, filtre ensuite.** On redresse avant de lisser : superposer deux corrections sans mesurer entre les deux rendrait chacune indémontrable | 30/08 |
 | **Fonte** | **Une paire assumée** — une grotesque de caractère pour les mots-clés, une fonte à axe `GRAD` pour les nombres. Le nombre est la mesure, le mot-clé l'étiquette ; les distinguer est honnête. Reste à faire coïncider les chasses de chiffres | 30/08 |
 | **Débrief IA** | **Opt-out** — il se rédige par défaut, le pilote peut le couper | 30/08 |
+| **Le Bugatti en base** | **Fait le 30/08, six jours avant la butée.** Relation OSM 2725877 (18 ways chaînés par leurs nœuds partagés), tracé recalé pour démarrer à la ligne. Ligne d'arrivée donnée par le fondateur : 47.949881 / 0.207545, **vérifiée à 1,08 m du tracé**, cap au franchissement 1,9° — plein nord, la ligne droite des stands. 4 185 m et 14 virages officiels ; la polyligne mesure 4 165 m et le détecteur y lit 9 virages, l'écart venant de la résolution OSM et du seuil de rayon à 100 m | 30/08 |
 
 ## Décisions en attente, à ne pas contourner
 
 | Sujet | Ce qu'il bloque | Butée |
 |---|---|---|
-| Identifiants OSM du Bugatti et d'Albi | Les deux circuits en base | 05/09 |
+| **Ligne d'arrivée d'Albi** | Albi en base. Le tracé est prêt — way OSM 95802415, anneau fermé de 137 points, 3 562 m, 8 virages — mais `finish_line_lat/lon` sont NOT NULL, et une ligne posée au jugé casse la détection de tours | 10/10 |
 | **Geste de calibration au prévol** | Le redressement du signal, donc le filtre, donc les deux branches à zéro | 19/09 |
 
 ### Ce que la calibration a mesuré sur Bouteville — 30/08
