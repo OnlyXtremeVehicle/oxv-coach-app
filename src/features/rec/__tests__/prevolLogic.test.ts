@@ -41,11 +41,12 @@ function etatsSains(extra?: Partial<EtatsPrevol>): EtatsPrevol {
     connexionEtablie: true,
     batterieTelephonePct: 75,
     reseauDisponible: true,
+    secondesImmobile: 5,
     ...extra,
   };
 }
 
-/** Rien n'a été lu : neuf inconnues. */
+/** Rien n'a été lu : dix inconnues. */
 const TOUT_NULL: EtatsPrevol = {
   batteriePct: null,
   memoirePct: null,
@@ -56,6 +57,7 @@ const TOUT_NULL: EtatsPrevol = {
   connexionEtablie: null,
   batterieTelephonePct: null,
   reseauDisponible: null,
+  secondesImmobile: null,
 };
 
 function poste(bilan: { postes: PostePrevol[] }, id: PostePrevol['poste']): PostePrevol {
@@ -71,7 +73,7 @@ function poste(bilan: { postes: PostePrevol[] }, id: PostePrevol['poste']): Post
 describe('postes non mesurés', () => {
   it('tout null → chaque poste est non_mesure, aucun n’est pret', () => {
     const bilan = evaluerPrevol(TOUT_NULL);
-    expect(bilan.postes).toHaveLength(9);
+    expect(bilan.postes).toHaveLength(10);
     for (const p of bilan.postes) {
       expect(p.etat).toBe('non_mesure');
       expect(p.fait.toLowerCase()).toContain('non mesur');
@@ -258,7 +260,7 @@ describe('faits', () => {
     expect(poste(bilan, 'fix_gnss').fait).toBe('Fix GPS non acquis');
   });
 
-  it('l’ordre des postes est stable : la liaison d’abord, le réseau en dernier', () => {
+  it('l’ordre des postes est stable : la liaison d’abord, l’orientation en dernier', () => {
     const ids = evaluerPrevol(etatsSains()).postes.map((p) => p.poste);
     expect(ids).toEqual([
       'connexion',
@@ -270,6 +272,7 @@ describe('faits', () => {
       'frequence',
       'batterie_telephone',
       'reseau',
+      'calibration',
     ]);
   });
 
@@ -300,6 +303,63 @@ describe('DOCTRINE — verrou lexical de la source', () => {
     ];
     for (const mot of bannis) {
       expect(source).not.toContain(mot);
+    }
+  });
+});
+
+// ===========================================================================
+// L'ORIENTATION DU BOÎTIER — le seul poste qui demande un geste
+// ===========================================================================
+
+/**
+ * Pourquoi ce poste existe, mesuré le 30/08/2026 sur la seule séance réelle :
+ * la plus longue plage continue sous 2 km/h y faisait **2,01 s**, pour un seuil
+ * de calibration à 3 s. `etablirCalibration` a donc rendu `null`, et
+ * l'orientation du boîtier n'a jamais pu être établie.
+ *
+ * Desserrer le seuil ne sauvait rien : à 5 km/h le tangage lu passait de −1,3°
+ * à −9,2°, parce qu'on ne mesure alors plus la gravité seule. Le geste devait
+ * donc remonter AVANT la piste.
+ */
+describe('poste d’orientation du boîtier', () => {
+  it('trois secondes d’immobilité suffisent, et le poste le dit', () => {
+    const p = poste(evaluerPrevol(etatsSains({ secondesImmobile: 3 })), 'calibration');
+    expect(p.etat).toBe('pret');
+    expect(p.fait).toContain('orientation mesurable');
+  });
+
+  it('deux secondes ne suffisent pas — et le fait donne le seuil', () => {
+    const p = poste(evaluerPrevol(etatsSains({ secondesImmobile: 2 })), 'calibration');
+    expect(p.etat).toBe('a_verifier');
+    expect(p.fait).toContain('2,0 s');
+    expect(p.fait).toContain('3 s');
+    expect(p.fait).toContain('2 km/h');
+  });
+
+  it('non mesurée reste non mesurée, jamais zéro seconde', () => {
+    const p = poste(evaluerPrevol(etatsSains({ secondesImmobile: null })), 'calibration');
+    expect(p.etat).toBe('non_mesure');
+    expect(p.fait.toLowerCase()).toContain('non mesur');
+  });
+
+  /**
+   * JAMAIS BLOQUANT. Ne pas calibrer n'empêche pas d'enregistrer — cela empêche
+   * de redresser ensuite. Bloquer la captation là-dessus coûterait la séance
+   * entière pour gagner une correction.
+   */
+  it('l’orientation absente ne bloque jamais la captation', () => {
+    for (const s of [null, 0, 1.5]) {
+      const bilan = evaluerPrevol(etatsSains({ secondesImmobile: s }));
+      expect(poste(bilan, 'calibration').etat).not.toBe('bloquant');
+      expect(bilan.verdict.partirPossible).toBe(true);
+    }
+  });
+
+  /** Le fait décrit, il n'ordonne pas. Le prévol ne donne aucune consigne. */
+  it('aucune consigne dans le fait', () => {
+    for (const s of [null, 1, 4]) {
+      const f = poste(evaluerPrevol(etatsSains({ secondesImmobile: s })), 'calibration').fait;
+      expect(f).not.toMatch(/immobilisez|arrêtez|veuillez|il faut|vous devez|patientez/i);
     }
   });
 });

@@ -97,10 +97,16 @@ export interface Calibration {
   motifs: readonly string[];
 }
 
-/** Vitesse au-dessous de laquelle la voiture est considérée à l'arrêt. */
-const SEUIL_ARRET_KMH = 2;
+/**
+ * Vitesse au-dessous de laquelle la voiture est considérée à l'arrêt.
+ *
+ * EXPORTÉE parce que le prévol l'affiche : l'écran qui demande au pilote de
+ * s'immobiliser doit poser le MÊME seuil que le calcul qui l'exploitera. Deux
+ * copies finiraient par diverger, et c'est l'écran qui mentirait.
+ */
+export const SEUIL_ARRET_KMH = 2;
 /** Durée minimale d'une fenêtre d'arrêt exploitable, en millisecondes. */
-const DUREE_ARRET_MIN_MS = 3_000;
+export const DUREE_ARRET_MIN_MS = 3_000;
 /** Au-delà de ce trou entre deux mesures, la fenêtre est coupée (perte BLE). */
 const TROU_MAX_MS = 200;
 /** Écart toléré sur la norme au repos. Au-delà, la mesure n'est pas la gravité. */

@@ -32,6 +32,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { bluetoothService } from '@/ble/bluetoothService';
 import { clampBatteryLevel } from '@/features/rec/equipementLogic';
 import { evaluerPrevol, RAPPEL_PREVOL, type EtatPoste } from '@/features/rec/prevolLogic';
+import { SEUIL_ARRET_KMH } from '@/telemetry/calibration';
 import { fontSize as fs } from '@/theme/v2';
 import { GpsFix, type RaceBoxData } from '@/types/telemetry';
 import type { LatLon } from '@/circuit/circuitGenerator';
@@ -366,12 +367,38 @@ export default function PlacementScreen() {
   const [reseau, setReseau] = useState<boolean | null>(null);
   const derniereTrameMs = useRef(0);
 
+  /**
+   * L'IMMOBILITÉ SE COMPTE SUR CHAQUE TRAME, PAS SUR L'ÉCHANTILLON AFFICHÉ.
+   *
+   * L'affichage est volontairement ralenti (`PREVOL_MAJ_MS`). Compter
+   * l'immobilité sur ce rythme laisserait passer un roulement entre deux
+   * échantillons : la voiture aurait bougé, le compteur aurait continué, et
+   * l'écran aurait annoncé une orientation mesurable qui ne l'était pas.
+   *
+   * Le repère porte l'INSTANT où l'immobilité a commencé — `0` quand elle est
+   * rompue. La durée s'en déduit ; elle ne s'accumule pas.
+   */
+  const immobileDepuis = useRef(0);
+  const [secondesImmobile, setSecondesImmobile] = useState<number | null>(null);
+
   useEffect(
     () =>
       bluetoothService.onData((frame: RaceBoxData) => {
         const now = Date.now();
+
+        // Avant tout filtrage d'affichage : la moindre trame en mouvement
+        // remet le compteur à zéro.
+        if (frame.motion.speed < SEUIL_ARRET_KMH) {
+          if (immobileDepuis.current === 0) immobileDepuis.current = now;
+        } else {
+          immobileDepuis.current = 0;
+        }
+
         if (now - derniereTrameMs.current < PREVOL_MAJ_MS) return;
         derniereTrameMs.current = now;
+        setSecondesImmobile(
+          immobileDepuis.current === 0 ? 0 : (now - immobileDepuis.current) / 1000
+        );
         setTrame(frame);
         // Le taux est calculé sur une fenêtre glissante d'une seconde : il vaut
         // 0 tant qu'elle n'est pas remplie. Or on est DANS `onData` — une trame
@@ -389,6 +416,9 @@ export default function PlacementScreen() {
     if (ble === 'connected') return;
     setTrame(null);
     setFrequenceHz(null);
+    // On ne lit plus la vitesse : on ne peut plus certifier une immobilite.
+    immobileDepuis.current = 0;
+    setSecondesImmobile(null);
   }, [ble]);
 
   useEffect(
@@ -412,8 +442,9 @@ export default function PlacementScreen() {
         connexionEtablie: ble === 'connected',
         batterieTelephonePct: null, // expo-battery absent du dépôt — le poste le dit
         reseauDisponible: reseau,
+        secondesImmobile,
       }),
-    [trame, frequenceHz, ble, reseau]
+    [trame, frequenceHz, ble, reseau, secondesImmobile]
   );
 
   // Le 4e argument ferme le chemin « armer sans circuit », qui retombait sur

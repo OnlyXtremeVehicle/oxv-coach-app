@@ -41,6 +41,10 @@
  */
 
 import { FREQUENCE_NOMINALE_HZ } from '@/features/data/confianceLogic';
+// Le seuil et la durée viennent du CALCUL qui les exploitera, jamais d'une
+// copie : l'écran qui demande l'immobilité et la fonction qui la lira doivent
+// poser la même règle, sinon c'est l'écran qui ment.
+import { DUREE_ARRET_MIN_MS, SEUIL_ARRET_KMH } from '@/telemetry/calibration';
 
 // ===========================================================================
 // Seuils — conventions nommées, À VALIDER SUR PISTE. Remplaçables dès qu'une
@@ -121,6 +125,23 @@ export interface EtatsPrevol {
   batterieTelephonePct: number | null;
   /** Réseau de données disponible — ne sert qu'au direct, jamais à l'enregistrement. */
   reseauDisponible: boolean | null;
+  /**
+   * Depuis combien de secondes le boîtier est immobile SANS INTERRUPTION.
+   *
+   * Mesuré le 30/08 sur la seule séance réelle : la plus longue plage continue
+   * sous 2 km/h y fait **2,01 s**, pour un seuil de calibration à 3 s.
+   * `etablirCalibration` a donc rendu `null`, et l'orientation du boîtier n'a
+   * jamais pu être établie — ni sa gravité retirée.
+   *
+   * Desserrer le seuil ne sauve rien : à 5 km/h le tangage lu passe de −1,3° à
+   * −9,2°, parce qu'on ne mesure alors plus la gravité seule mais la gravité
+   * PLUS l'accélération de la voiture. La correction aurait l'air d'une
+   * correction, et serait fausse.
+   *
+   * Ce poste existe donc pour que l'immobilité soit un GESTE, avant la piste,
+   * et non une chance qu'on espère trouver dans les données après coup.
+   */
+  secondesImmobile: number | null;
 }
 
 export type EtatPoste = 'pret' | 'a_verifier' | 'bloquant' | 'non_mesure';
@@ -134,7 +155,8 @@ export type PosteId =
   | 'satellites'
   | 'frequence'
   | 'batterie_telephone'
-  | 'reseau';
+  | 'reseau'
+  | 'calibration';
 
 export interface PostePrevol {
   poste: PosteId;
@@ -170,6 +192,7 @@ export const LIBELLES_POSTES: Record<PosteId, string> = {
   frequence: 'fréquence de mesure',
   batterie_telephone: 'batterie du téléphone',
   reseau: 'réseau',
+  calibration: 'orientation du boîtier',
 };
 
 /**
@@ -355,7 +378,45 @@ export function evaluerPrevol(etats: EtatsPrevol): BilanPrevol {
     postes.push({ poste: 'reseau', etat: 'non_mesure', fait: 'Réseau : non mesuré' });
   }
 
+  // ---- Orientation du boîtier : JAMAIS bloquante. ----
+  // Ne pas calibrer n'empêche pas d'enregistrer — cela empêche de REDRESSER
+  // ensuite. Bloquer la captation là-dessus coûterait la séance entière pour
+  // gagner une correction ; le poste dit le fait, le pilote décide.
+  postes.push(posteCalibration(etats.secondesImmobile));
+
   return { version: VERSION_PREVOL, postes, verdict: verdictDe(postes) };
+}
+
+/**
+ * Le poste d'orientation, seul poste du prévol qui demande un GESTE au pilote
+ * plutôt qu'un état de la chaîne.
+ *
+ * Il dit une durée et un seuil, jamais un ordre : « immobile depuis 2 s —
+ * l'orientation se mesure à partir de 3 s » est un fait ; « immobilisez-vous »
+ * serait une consigne, et le prévol n'en donne pas.
+ */
+function posteCalibration(secondes: number | null): PostePrevol {
+  const requis = DUREE_ARRET_MIN_MS / 1000;
+
+  if (secondes === null || !Number.isFinite(secondes)) {
+    return {
+      poste: 'calibration',
+      etat: 'non_mesure',
+      fait: 'Orientation du boîtier : non mesurée',
+    };
+  }
+  if (secondes >= requis) {
+    return {
+      poste: 'calibration',
+      etat: 'pret',
+      fait: `Boîtier immobile depuis ${format1(secondes)} s : orientation mesurable`,
+    };
+  }
+  return {
+    poste: 'calibration',
+    etat: 'a_verifier',
+    fait: `Boîtier immobile depuis ${format1(secondes)} s — l’orientation se mesure à partir de ${requis} s sous ${SEUIL_ARRET_KMH} km/h`,
+  };
 }
 
 // ===========================================================================
