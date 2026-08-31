@@ -330,6 +330,38 @@ export function buildTraceMarkers(args: {
 }
 
 // ---------------------------------------------------------------------------
+// L'intention — et le moment où elle a été écrite
+// ---------------------------------------------------------------------------
+
+/** Ce que le pilote avait posé AVANT de rouler. */
+const EYEBROW_AVANT = 'CE QUE VOUS AVIEZ POSÉ';
+/** Ce qu'il en a dit APRÈS. Le mot ne promet aucune antériorité. */
+const EYEBROW_APRES = 'CE QUE VOUS EN AVEZ DIT';
+
+/**
+ * L'ÉTIQUETTE SUIT LA DATE, ELLE NE LA SUPPOSE PAS.
+ *
+ * Mesuré le 30/08/2026 sur la séance de Bouteville : l'intention rattachée y a
+ * été écrite à 23:56:00, soit **une minute cinquante-deux après la fin de la
+ * séance** (23:54:08). L'écran l'annonçait pourtant « CE QUE VOUS AVIEZ POSÉ ».
+ *
+ * Le rattachement était juste — même pilote, même circuit, même nuit. C'est
+ * l'étiquette qui affirmait une antériorité que la donnée contredit, et une
+ * étiquette fausse est pire qu'une section absente : elle raconte une boucle
+ * « je dis, puis la donnée répond » qui n'a pas eu lieu.
+ *
+ * Sans date de séance lisible, on rend la formulation NEUTRE : on ne revendique
+ * jamais une antériorité qu'on ne peut pas vérifier.
+ */
+export function libelleIntention(creeeLe: string | null, debutSeance: string | null): string {
+  if (!creeeLe || !debutSeance) return EYEBROW_APRES;
+  const t1 = Date.parse(creeeLe);
+  const t0 = Date.parse(debutSeance);
+  if (!Number.isFinite(t1) || !Number.isFinite(t0)) return EYEBROW_APRES;
+  return t1 < t0 ? EYEBROW_AVANT : EYEBROW_APRES;
+}
+
+// ---------------------------------------------------------------------------
 // Bande annotation coach — présente SEULEMENT s'il y a des notes
 // ---------------------------------------------------------------------------
 

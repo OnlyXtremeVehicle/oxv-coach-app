@@ -31,6 +31,7 @@ import {
   engagedSegmentRatio,
   isPersonalRecord,
   lastThreadMessages,
+  libelleIntention,
   mapPillars,
   momentColor,
   sessionMetaLine,
@@ -693,5 +694,51 @@ describe('viewerShouldDismiss', () => {
 describe('bilanHeroMorphId', () => {
   it('identifiant stable partagé accueil → bilan', () => {
     expect(bilanHeroMorphId('s1')).toBe('bilan-hero:s1');
+  });
+});
+
+// ===========================================================================
+// L'ÉTIQUETTE DE L'INTENTION SUIT LA DATE
+// ===========================================================================
+
+/**
+ * Mesuré le 30/08/2026 sur la séance de Bouteville : l'intention rattachée y a
+ * été écrite à 23:56:00, soit une minute cinquante-deux APRÈS la fin de la
+ * séance (23:54:08) — et l'écran l'annonçait « CE QUE VOUS AVIEZ POSÉ ».
+ *
+ * Le rattachement était juste. C'est l'étiquette qui affirmait une antériorité
+ * que la donnée contredit.
+ */
+describe('libelleIntention', () => {
+  const DEBUT = '2026-08-12T23:35:54Z';
+
+  it('écrite avant le départ : elle a bien été posée', () => {
+    expect(libelleIntention('2026-08-12T22:00:00Z', DEBUT)).toBe('CE QUE VOUS AVIEZ POSÉ');
+  });
+
+  it('écrite après la séance : l’étiquette ne revendique plus rien', () => {
+    expect(libelleIntention('2026-08-12T23:56:00Z', DEBUT)).toBe('CE QUE VOUS EN AVEZ DIT');
+  });
+
+  /** Le cas réel de Bouteville, en toutes lettres. */
+  it('le cas de Bouteville rend la formulation neutre', () => {
+    expect(libelleIntention('2026-08-12T23:56:00.388Z', DEBUT)).not.toContain('AVIEZ POSÉ');
+  });
+
+  /**
+   * SANS DATE, ON NE REVENDIQUE PAS. Une antériorité qu'on ne peut pas
+   * vérifier ne s'affirme pas — c'est le repli sûr, pas le repli commode.
+   */
+  it('date manquante ou illisible → jamais l’antériorité', () => {
+    expect(libelleIntention(null, DEBUT)).toBe('CE QUE VOUS EN AVEZ DIT');
+    expect(libelleIntention('2026-08-12T22:00:00Z', null)).toBe('CE QUE VOUS EN AVEZ DIT');
+    expect(libelleIntention('pas-une-date', DEBUT)).toBe('CE QUE VOUS EN AVEZ DIT');
+  });
+
+  /** Aucune des deux formulations n'évalue l'intention. Le miroir ne juge pas. */
+  it('aucune des deux étiquettes ne juge', () => {
+    for (const d of ['2026-08-12T22:00:00Z', '2026-08-13T02:00:00Z']) {
+      expect(libelleIntention(d, DEBUT)).not.toMatch(/tenu|réussi|atteint|manqué|échec/i);
+    }
   });
 });

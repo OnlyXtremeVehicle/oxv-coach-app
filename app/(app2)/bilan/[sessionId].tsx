@@ -73,6 +73,7 @@ import {
   bilanHeroMorphId,
   DEBRIEF_PENDING_TEXT,
   lastThreadMessages,
+  libelleIntention,
   momentColor,
   viewerShouldDismiss,
   VIEWER_PAN_ZOOM_THRESHOLD,
@@ -399,7 +400,12 @@ export default function BilanScreen() {
           {data.intention ? (
             <View style={styles.section}>
               <View style={styles.intentionCard}>
-                <Text style={styles.intentionEyebrow}>CE QUE VOUS AVIEZ POSÉ</Text>
+                <Text style={styles.intentionEyebrow}>
+                  {libelleIntention(
+                    data.intention.createdAt,
+                    data.session?.started_at ?? null
+                  )}
+                </Text>
                 <Text style={styles.intentionBody}>{data.intention.body}</Text>
               </View>
             </View>
