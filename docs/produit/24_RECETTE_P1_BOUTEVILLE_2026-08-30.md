@@ -244,3 +244,34 @@ les cinq ci-dessus ont été recoupés à la main, les autres attendent de l'êt
 Et elle est statique. Elle dit ce que le code ferait ; elle ne dit pas ce que
 l'écran fait. Avant le 19/09, cette séance doit être ouverte sur un vrai
 téléphone, écran par écran, la liste à la main.
+
+---
+
+## La liste de terrain
+
+La recette a été **décidée le 30/08 comme lot suivant**, et elle se fait
+téléphone en main : cette liste-ci ne dit que ce que le code ferait.
+
+La liste à cocher vit dans un artifact — filtrable par gravité, une note libre
+par écart, tout conservé sur l'appareil :
+**https://claude.ai/code/artifact/ed1c433b-09db-455e-8f02-a0092285960c**
+
+**Cocher veut dire « je l'ai regardé », pas « c'était vrai ».** Et la note compte
+plus que la coche : ce qu'on cherche, ce sont les écarts que la lecture du code
+ne pouvait pas voir — un texte tronqué, une couleur qui se confond, un geste qui
+ne répond pas, un écran qu'on n'atteint pas.
+
+### Quatre lignes de cette liste sont déjà fausses
+
+Corrigées depuis le relevé, et c'est bon signe :
+
+| Écart relevé | Ce qui a été fait |
+|---|---|
+| Deux « Fluidité » contradictoires | Le bilan dérive du vocabulaire figé — la branche s'appelle **Anticipation**, et « Fluidité » ne désigne plus que la composante de marge |
+| Les douze virages n'atteignent aucun pixel | `viragesCircuit` lit `circuits.corners` ; la topologie écrite en dur ne sert plus le bilan |
+| La légende de l'histogramme dit l'inverse du calcul | **L'échelle est inversée** : barre courte = tour rapide, comme la légende l'annonçait. La règle vit hors du rendu, avec son test |
+| « CE QUE VOUS AVIEZ POSÉ » sur une intention écrite après | `libelleIntention` compare les dates et ne revendique plus rien sans preuve |
+
+La célébration de record, elle, **reste** : arbitrage du fondateur du 30/08 —
+première séance célébrée, puis chaque meilleur. Et la date affichée reste en
+heure locale de l'appareil, même décision.

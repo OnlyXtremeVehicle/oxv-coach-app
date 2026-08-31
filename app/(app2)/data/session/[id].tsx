@@ -117,6 +117,7 @@ import {
   type ClassementTour,
   type TourEvalue,
   type TourMesure,
+  hauteurBarreTour,
 } from '@/features/data/validationToursLogic';
 import {
   LIBELLE_GENRE_MARQUE,
@@ -1640,9 +1641,12 @@ function ToursSection({
           {width > 0 ? (
             <Canvas style={{ width, height: BARS_HEIGHT }}>
               {bars.map((b, i) => {
-                // Barre courte = tour rapide : hauteur inversée sur l'écart.
+                // Barre courte = tour rapide. La règle vit dans
+                // `hauteurBarreTour`, avec son test : jusqu'au 30/08/2026 elle
+                // n'existait que dans un lerp au milieu du rendu, et elle disait
+                // le CONTRAIRE de la légende affichée trois lignes plus bas.
                 const t = (b.ms - minMs) / range;
-                const h = lerp(BARS_HEIGHT * 0.9, BARS_HEIGHT * 0.28, t);
+                const h = hauteurBarreTour(t, BARS_HEIGHT);
                 const x = i * slot + (slot - barW) / 2;
                 const y = BARS_HEIGHT - h;
                 const isSelected = b.lapNumber === selectedLap;

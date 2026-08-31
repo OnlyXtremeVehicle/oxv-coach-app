@@ -389,3 +389,42 @@ export function evaluerTours(tours: readonly TourMesure[]): ValidationTours {
     reference,
   };
 }
+
+// ===========================================================================
+// LA HAUTEUR D'UNE BARRE — barre courte = tour rapide
+// ===========================================================================
+
+/** Fractions de la hauteur disponible : le plus rapide en bas, le plus lent en haut. */
+export const FRACTION_BARRE_MIN = 0.28;
+export const FRACTION_BARRE_MAX = 0.9;
+
+/**
+ * La hauteur de la barre d'un tour dans l'histogramme.
+ *
+ * ===========================================================================
+ * LA LÉGENDE ET LE CALCUL DISAIENT L'INVERSE L'UN DE L'AUTRE
+ * ===========================================================================
+ *
+ * Relevé le 30/08/2026 par la recette sur la séance de Bouteville : l'écran
+ * affichait « Barre courte = tour rapide » pendant que le calcul donnait au
+ * tour LE PLUS RAPIDE la barre LA PLUS HAUTE. Le commentaire du code annonçait
+ * pourtant « hauteur inversée sur l'écart » — l'intention était juste, son
+ * implémentation la retournait.
+ *
+ * Arbitrage du fondateur, 30/08 : **c'est l'échelle qui s'inverse**, pas la
+ * légende. La barre représente une DURÉE ; un temps court fait donc une barre
+ * courte, et la lecture reste littérale.
+ *
+ * Ce calcul vit ici plutôt que dans l'écran pour une raison précise : une règle
+ * qui n'existe que dans un `lerp` au milieu d'un rendu Skia ne peut pas être
+ * confrontée à la phrase qui la décrit. Elle l'est désormais par un test.
+ *
+ * `ecart` est la position du tour entre le plus rapide (0) et le plus lent (1).
+ * Hors de [0,1] ou non fini, la barre prend sa hauteur minimale : une valeur
+ * aberrante ne dessine pas une barre aberrante.
+ */
+export function hauteurBarreTour(ecart: number, hauteurDisponible: number): number {
+  if (!Number.isFinite(hauteurDisponible) || hauteurDisponible <= 0) return 0;
+  const t = Number.isFinite(ecart) ? Math.min(1, Math.max(0, ecart)) : 0;
+  return hauteurDisponible * (FRACTION_BARRE_MIN + t * (FRACTION_BARRE_MAX - FRACTION_BARRE_MIN));
+}

@@ -34,6 +34,9 @@ import {
   type MarqueTour,
   type TourMesure,
   type ValidationTours,
+  FRACTION_BARRE_MAX,
+  FRACTION_BARRE_MIN,
+  hauteurBarreTour,
 } from '../validationToursLogic';
 
 /** Un tour ordinaire : chronométré, valide, sans arrêt ni trou. */
@@ -414,5 +417,56 @@ describe('DOCTRINE — verrou lexical de la source', () => {
         'sortie_stands',
       ].sort()
     );
+  });
+});
+
+// ===========================================================================
+// LA HAUTEUR DES BARRES — la légende et le calcul ne peuvent plus diverger
+// ===========================================================================
+
+/**
+ * Relevé le 30/08/2026 : l'écran affichait « Barre courte = tour rapide »
+ * pendant que le calcul donnait au tour le plus rapide la barre la plus HAUTE.
+ * Arbitrage du fondateur : c'est l'échelle qui s'inverse — la barre représente
+ * une durée, un temps court fait une barre courte.
+ */
+describe('hauteurBarreTour', () => {
+  const H = 100;
+
+  it('le tour le plus rapide porte la barre la plus COURTE', () => {
+    expect(hauteurBarreTour(0, H)).toBeCloseTo(H * FRACTION_BARRE_MIN, 6);
+  });
+
+  it('le tour le plus lent porte la barre la plus HAUTE', () => {
+    expect(hauteurBarreTour(1, H)).toBeCloseTo(H * FRACTION_BARRE_MAX, 6);
+  });
+
+  it('la hauteur croît avec le temps au tour, sans exception', () => {
+    const hauteurs = [0, 0.25, 0.5, 0.75, 1].map((t) => hauteurBarreTour(t, H));
+    for (let i = 1; i < hauteurs.length; i++) {
+      expect(hauteurs[i]).toBeGreaterThan(hauteurs[i - 1]);
+    }
+  });
+
+  /** Une valeur aberrante ne dessine pas une barre aberrante. */
+  it('un écart hors bornes ou illisible est ramené dans le cadre', () => {
+    expect(hauteurBarreTour(-3, H)).toBeCloseTo(H * FRACTION_BARRE_MIN, 6);
+    expect(hauteurBarreTour(9, H)).toBeCloseTo(H * FRACTION_BARRE_MAX, 6);
+    expect(hauteurBarreTour(Number.NaN, H)).toBeCloseTo(H * FRACTION_BARRE_MIN, 6);
+  });
+
+  it('une hauteur disponible nulle ou absurde ne dessine rien', () => {
+    expect(hauteurBarreTour(0.5, 0)).toBe(0);
+    expect(hauteurBarreTour(0.5, -10)).toBe(0);
+    expect(hauteurBarreTour(0.5, Number.NaN)).toBe(0);
+  });
+
+  /** Toute barre reste dans le cadre : rien ne déborde du canevas. */
+  it('aucune barre ne dépasse la hauteur disponible', () => {
+    for (const t of [0, 0.3, 0.7, 1, 5]) {
+      const h = hauteurBarreTour(t, H);
+      expect(h).toBeGreaterThan(0);
+      expect(h).toBeLessThanOrEqual(H);
+    }
   });
 });
