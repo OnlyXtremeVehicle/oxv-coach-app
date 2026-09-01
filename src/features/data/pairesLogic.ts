@@ -72,6 +72,22 @@ export const CLE_GENERALE = 'generale';
 /** Ce qu'on affiche d'un véhicule quand la séance n'en porte aucun. */
 export const VEHICULE_ABSENT = 'Véhicule non renseigné';
 
+/**
+ * UN VÉHICULE QU'ON NE LIT PAS N'EST PAS UN VÉHICULE RETIRÉ.
+ *
+ * Le libellé disait « Véhicule retiré du garage » : il nommait une CAUSE que
+ * l'application ne connaît pas. Sous RLS, une ligne effacée et une ligne
+ * appartenant à un autre compte rendent le même résultat — rien. Le distinguer
+ * demanderait une lecture qu'on n'a pas le droit de faire.
+ *
+ * Le cas existe en base : la séance de référence du 12/08 porte le
+ * `vehicle_id` d'un véhicule inscrit à un AUTRE compte. Elle n'a rien perdu, et
+ * le pilote lisait pourtant qu'on lui avait retiré sa voiture.
+ *
+ * On dit donc l'état constaté, et rien de plus.
+ */
+export const VEHICULE_NON_LU = 'Véhicule non rattaché';
+
 /** Ce qu'on affiche d'un circuit que la séance ne nomme pas. */
 export const CIRCUIT_ABSENT = 'Circuit non renseigné';
 
@@ -83,8 +99,9 @@ function cleDe(circuitId: string | null, vehicleId: string | null): string {
  * Les paires réellement roulées, la plus fréquente d'abord.
  *
  * `nomVehicule` résout un identifiant de véhicule en libellé ; il rend `null`
- * pour un véhicule absent du garage — vendu, retiré — et le libellé le dit
- * plutôt que d'afficher un UUID.
+ * dès que le garage ne porte pas ce véhicule — vendu, retiré, ou simplement
+ * inscrit à un autre compte. Le libellé dit l'état, pas la cause, plutôt que
+ * d'afficher un UUID.
  */
 export function pairesRoulees(
   seances: readonly SeanceAppariable[],
@@ -104,9 +121,9 @@ export function pairesRoulees(
     const vehicule =
       s.vehicleId === null
         ? VEHICULE_ABSENT
-        : // Un véhicule retiré du garage a bien roulé : on ne masque pas la
-          // paire, on nomme ce qu'on peut en dire.
-          (nomVehicule(s.vehicleId) ?? 'Véhicule retiré du garage');
+        : // Un véhicule illisible a bien roulé : on ne masque pas la paire, on
+          // nomme ce qu'on peut en dire — et rien de ce qu'on ignore.
+          (nomVehicule(s.vehicleId) ?? VEHICULE_NON_LU);
 
     parCle.set(cle, {
       cle,

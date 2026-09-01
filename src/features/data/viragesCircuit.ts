@@ -114,3 +114,52 @@ export function nomVirage(virages: readonly VirageCircuit[], index: number): str
 export function indexDesVirages(virages: readonly VirageCircuit[]): number[] {
   return virages.map((v) => v.index);
 }
+
+/**
+ * UN REPÈRE PONCTUEL, PARCE QUE LA BASE NE PORTE QU'UN POINT.
+ *
+ * `circuits.corners` donne `apex_s_norm` — la corde — et rien d'autre :
+ * ni entrée, ni sortie, ni longueur. Un ruban de segments a besoin d'un DÉBUT
+ * et d'une FIN ; les déduire du rayon reviendrait à inventer l'angle de l'arc,
+ * donc la longueur du virage.
+ *
+ * On rend donc des repères ponctuels. Le ruban montre alors OÙ sont les
+ * virages, et se tait sur leur étendue — ce qu'il ignore. C'est la troisième
+ * façon de mentir avec un strip que `stripMapLogic` refusait déjà : étirer pour
+ * remplir.
+ */
+export interface RepereApex {
+  index: number;
+  /** Le nom affiché — celui de la base, ou `Virage N`. */
+  nom: string;
+  /** Position sur le tour, dans `[0, 1]`. */
+  position: number;
+  sens: 'gauche' | 'droite' | null;
+  rayonM: number | null;
+}
+
+/**
+ * Les virages situables, dans l'ordre du tour.
+ *
+ * Un virage sans position curviligne est ÉCARTÉ, pas placé au hasard : il n'a
+ * pas d'endroit sur la règle graduée. La liste rendue peut donc être plus
+ * courte que la liste des virages, et c'est le comportement voulu.
+ */
+export function reperesApex(virages: readonly VirageCircuit[]): RepereApex[] {
+  return virages
+    .filter(
+      (v): v is VirageCircuit & { positionNormalisee: number } =>
+        v.positionNormalisee !== null &&
+        Number.isFinite(v.positionNormalisee) &&
+        v.positionNormalisee >= 0 &&
+        v.positionNormalisee <= 1
+    )
+    .map((v) => ({
+      index: v.index,
+      nom: nomVirage(virages, v.index),
+      position: v.positionNormalisee,
+      sens: v.sens,
+      rayonM: v.rayonM,
+    }))
+    .sort((a, b) => a.position - b.position);
+}

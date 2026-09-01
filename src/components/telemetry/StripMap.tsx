@@ -67,6 +67,7 @@ import {
   type CaseStrip,
   type SegmentSituable,
 } from '@/features/data/stripMapLogic';
+import type { RepereApex } from '@/features/data/viragesCircuit';
 
 /** Hauteurs du ruban selon ce que le tracé fait à cet endroit. */
 const RUBAN_H = 22;
@@ -86,6 +87,18 @@ export interface StripMapSegment extends SegmentSituable {
 
 export interface StripMapProps {
   segments: readonly StripMapSegment[];
+  /**
+   * Les virages DU CIRCUIT, situés à leur corde.
+   *
+   * Ils ne remplacent pas les segments : ils prennent le relais quand aucune
+   * analyse n'a tourné. `app_segment_analyses` est vide sur toute séance réelle
+   * à ce jour, et le ruban affichait donc « le tour n'a pas encore été découpé »
+   * sur un circuit dont la base porte pourtant douze virages mesurés.
+   *
+   * Un repère n'a PAS de longueur — voir `reperesApex`. Le ruban montre alors
+   * où sont les virages et se tait sur leur étendue.
+   */
+  apexes?: readonly RepereApex[];
   /** Largeur utile — l'axe complet représente un tour. */
   width: number;
 }
@@ -105,7 +118,7 @@ function pct(v: number): string {
   return `${Math.round(v * 100)}`;
 }
 
-export function StripMap({ segments, width }: StripMapProps) {
+export function StripMap({ segments, apexes = [], width }: StripMapProps) {
   const strip = useMemo(() => construireStrip(segments), [segments]);
 
   /** Valeur d'un segment, retrouvée par son index — les cases n'en portent pas. */
@@ -129,6 +142,7 @@ export function StripMap({ segments, width }: StripMapProps) {
   );
 
   if (strip.cases.length === 0 || width <= 0) {
+    if (apexes.length > 0 && width > 0) return <RegleDesVirages apexes={apexes} width={width} />;
     return (
       <StateView
         state="empty"
@@ -283,6 +297,75 @@ function Bande({
           );
         })}
       </Svg>
+    </View>
+  );
+}
+
+/**
+ * LA RÈGLE DES VIRAGES — ce que le ruban montre quand rien n'a été analysé.
+ *
+ * Elle ne prétend pas être un strip. Un strip porte des SEGMENTS, avec leur
+ * longueur et leurs grandeurs par segment ; ici on n'a que des cordes. Elle
+ * porte donc des traits, leurs numéros, et rien d'autre — pas de bande de G, pas
+ * de couverture, pas de largeur inventée autour d'un point.
+ *
+ * Le sens du virage est écrit quand la base le porte : c'est une mesure du
+ * détecteur, pas une déduction. Le rayon suit, en mètres.
+ */
+function RegleDesVirages({ apexes, width }: { apexes: readonly RepereApex[]; width: number }) {
+  const noms = apexes.map((a) => a.nom).join(', ');
+  return (
+    <View>
+      <Svg
+        width={width}
+        height={RUBAN_H}
+        accessible
+        accessibilityLabel={`Les virages du circuit, dans l'ordre du tour : ${noms}`}
+      >
+        <Rect
+          x={0}
+          y={(RUBAN_H - EPAISSEUR_DROITE) / 2}
+          width={width}
+          height={EPAISSEUR_DROITE}
+          rx={1}
+          fill={colors.border.strong}
+        />
+        {apexes.map((a) => (
+          <Rect
+            key={`apex-${a.index}`}
+            x={Math.max(0, Math.min(width - 2, a.position * width - 1))}
+            y={(RUBAN_H - EPAISSEUR_VIRAGE) / 2}
+            width={2}
+            height={EPAISSEUR_VIRAGE}
+            fill={colors.text.mid}
+          />
+        ))}
+      </Svg>
+
+      <View style={[styles.etiquettes, { width, height: 14 }]}>
+        {apexes.map((a, i) => {
+          const precedent = i > 0 ? apexes[i - 1].position : -1;
+          // Deux cordes trop proches empileraient leurs numéros : le second
+          // reste dans le libellé d'accessibilité, jamais perdu.
+          if ((a.position - precedent) * width < LARGEUR_MIN_ETIQUETTE) return null;
+          return (
+            <Text
+              key={`nom-${a.index}`}
+              style={[
+                styles.etiquette,
+                { left: a.position * width - LARGEUR_MIN_ETIQUETTE / 2, width: LARGEUR_MIN_ETIQUETTE },
+              ]}
+              numberOfLines={1}
+            >
+              {a.index}
+            </Text>
+          );
+        })}
+      </View>
+
+      {/* Mot-clé, pas phrase : cette feuille est une feuille de données. Il dit
+          d'où viennent les repères — du CIRCUIT, pas d'une analyse de séance. */}
+      <Text style={[styles.bandeEtendue, { marginTop: space.md }]}>VIRAGES · CIRCUIT</Text>
     </View>
   );
 }

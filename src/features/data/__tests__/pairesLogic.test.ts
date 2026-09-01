@@ -104,9 +104,11 @@ describe('la paire incomplète — l’historique ne disparaît pas', () => {
     expect(paires[0].libelle).toContain('911 GT3');
   });
 
-  it('un véhicule retiré du garage a bien roulé — la paire reste, nommée', () => {
+  it('un véhicule illisible a bien roulé — la paire reste, nommée sans cause', () => {
     const paires = pairesRoulees([s('c1', 'disparu')], nom);
-    expect(paires[0].libelle).toContain('retiré du garage');
+    expect(paires[0].libelle).toContain('non rattaché');
+    // On ne nomme JAMAIS la cause : effacé et invisible rendent le même vide.
+    expect(paires[0].libelle).not.toContain('retiré');
     // Jamais un UUID brut à l'écran.
     expect(paires[0].libelle).not.toContain('disparu');
     // Ce n'est PAS une paire incomplète : le véhicule est connu de la séance.

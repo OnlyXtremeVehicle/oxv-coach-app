@@ -154,6 +154,8 @@ import { NiveauxRestitution } from '@/components/telemetry/NiveauxRestitution';
 import { SectionBande } from '@/components/telemetry/SectionBande';
 import { SectionDelta, type LectureTraceDelta } from '@/components/telemetry/SectionDelta';
 import { StripMap } from '@/components/telemetry/StripMap';
+import { fetchSessionCircuitCorners } from '@/services/circuitsService';
+import { reperesApex, type VirageCircuit } from '@/features/data/viragesCircuit';
 import { TraceVirage } from '@/components/telemetry/TraceVirage';
 import { getCornerDuCircuit } from '@/lib/circuitTopology';
 import { trancheVirage } from '@/telemetry/virage';
@@ -260,6 +262,15 @@ interface SeanceData {
   ggPoints: GGPoint[];
   /** Jerk résiduel RÉEL (loadSessionFlow) — vide si trames insuffisantes. */
   flowPoints: FlowPoint[];
+  /**
+   * Les virages DU CIRCUIT roulé, tels que `circuits.corners` les porte.
+   *
+   * Ils ne remplacent pas `segments` — ils prennent le relais quand l'analyse
+   * n'a pas tourné. `app_segment_analyses` est vide sur toute séance réelle à ce
+   * jour, et l'écran affichait donc « pas encore découpé » sur un circuit dont
+   * la base porte douze virages mesurés.
+   */
+  virages: VirageCircuit[];
   /** Ce que la séance contient — ouvre ou ferme les cinq niveaux de lecture. */
   etatSeance: EtatSeance;
   /** Sections dont le chargement a ÉCHOUÉ (erreur DB) — distinct de « vide ». */
@@ -370,7 +381,7 @@ function useSeance(id: string | undefined) {
       }
 
       // Sections indépendantes — l'échec de l'une n'entache pas les autres.
-      const [lapsR, segmentsR, weatherR, correlationR, insightsR, ggR, flowR, niveauxR] =
+      const [lapsR, segmentsR, weatherR, correlationR, insightsR, ggR, flowR, niveauxR, viragesR] =
         await Promise.allSettled([
           fetchSessionLaps(id, { strict: true }),
           listSegmentAnalysesForSession(id),
@@ -384,6 +395,7 @@ function useSeance(id: string | undefined) {
           // Trois COMPTES côté base (head: true) : rien ne transite. C'est ce
           // qui autorise à l'ajouter ici sans alourdir l'ouverture d'écran.
           loadEtatSeance(id),
+          fetchSessionCircuitCorners(id),
         ]);
       if (cancelled) return;
 
@@ -391,6 +403,12 @@ function useSeance(id: string | undefined) {
       let laps: Lap[] = [];
       if (lapsR.status === 'fulfilled') laps = lapsR.value;
       else failed.tours = true;
+
+      // Les virages du circuit ne sont PAS une section en panne quand ils
+      // manquent : un circuit peut n'avoir jamais été passé au détecteur. La
+      // liste vide se distingue à l'œil, l'écran n'affiche alors aucun repère.
+      let virages: VirageCircuit[] = [];
+      if (viragesR.status === 'fulfilled') virages = viragesR.value;
 
       let segments: SegmentAnalysisRow[] = [];
       if (segmentsR.status === 'fulfilled') segments = segmentsR.value;
@@ -429,6 +447,7 @@ function useSeance(id: string | undefined) {
         pilotId,
         lectureDAutrui: pilotId !== userId,
         laps,
+        virages,
         segments,
         weather,
         correlation,
@@ -883,7 +902,13 @@ export default function SeanceScreen() {
             une aurait décalé les six suivantes.
           */}
           <View style={styles.stripMap} onLayout={(e) => setStripWidth(e.nativeEvent.layout.width)}>
-            {stripWidth > 0 ? <StripMap segments={data.segments} width={stripWidth} /> : null}
+            {stripWidth > 0 ? (
+              <StripMap
+                segments={data.segments}
+                apexes={reperesApex(data.virages)}
+                width={stripWidth}
+              />
+            ) : null}
           </View>
 
           <SectionDelta
@@ -907,6 +932,7 @@ export default function SeanceScreen() {
             sessionId={data.session.id}
             selectedLap={selectedLap}
             segments={data.segments}
+            virages={data.virages}
             circuitSessionIds={data.circuitSessionIds}
             lapNumberBySession={data.lapNumberBySession}
             initialCorner={cornerParam}
@@ -1829,6 +1855,7 @@ function TraceSection({
   sessionId,
   selectedLap,
   segments,
+  virages,
   circuitSessionIds,
   lapNumberBySession,
   initialCorner,
@@ -1842,6 +1869,12 @@ function TraceSection({
   sessionId: string;
   selectedLap: number | null;
   segments: SegmentAnalysisRow[];
+  /**
+   * Les virages du circuit roulé. Ils PLACENT les pastilles quand aucune
+   * analyse n'a tourné — sans en colorer aucune : une position n'est pas une
+   * marge, et une pastille colorée sans mesure serait un chiffre inventé.
+   */
+  virages: VirageCircuit[];
   circuitSessionIds: string[];
   lapNumberBySession: Record<string, number>;
   /** Virage à ouvrir d'emblée (ancre `?corner=`). null = aucun. */
@@ -2003,17 +2036,30 @@ function TraceSection({
       : [];
   }, [carte, indexTrace]);
 
-  // Pastilles de marge : uniquement si des virages segmentés existent (honnête).
-  const cornerMarkers = useMemo(
-    () =>
-      segments
-        .filter((s) => s.startProgress !== null && s.endProgress !== null)
-        .map((s) => ({
-          t: clamp(((s.startProgress as number) + (s.endProgress as number)) / 2, 0, 1),
-          color: marginZoneColor(s.marginZone),
-        })),
-    [segments]
-  );
+  /**
+   * PASTILLES : la marge quand elle est mesurée, la POSITION sinon.
+   *
+   * Elles ne venaient que de `app_segment_analyses`, vide sur toute séance
+   * réelle : le tracé de Bouteville n'en portait aucune, alors que la base
+   * porte ses douze cordes.
+   *
+   * Le repli les place à la corde et les laisse NEUTRES. Une pastille colorée
+   * sans mesure afficherait une marge qu'on n'a pas calculée — c'est
+   * exactement l'inverse du geste.
+   */
+  const cornerMarkers = useMemo(() => {
+    const mesures = segments.filter((s) => s.startProgress !== null && s.endProgress !== null);
+    if (mesures.length > 0) {
+      return mesures.map((s) => ({
+        t: clamp(((s.startProgress as number) + (s.endProgress as number)) / 2, 0, 1),
+        color: marginZoneColor(s.marginZone),
+      }));
+    }
+    return reperesApex(virages).map((a) => ({
+      t: clamp(a.position, 0, 1),
+      color: marginZoneColor(null),
+    }));
+  }, [segments, virages]);
 
   const tappableCorners = useMemo(
     () => segments.filter((s) => s.startProgress !== null && s.endProgress !== null),

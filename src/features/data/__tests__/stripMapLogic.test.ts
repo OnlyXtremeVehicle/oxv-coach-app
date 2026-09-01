@@ -148,9 +148,19 @@ describe('construireStrip', () => {
     expect(strip.cases.map((c) => c.genre)).toEqual(['inconnu', 'inconnu']);
   });
 
-  it('un segment sans nom prend son numéro, pas un nom inventé', () => {
+  /**
+   * `segmentIndex` est numéroté à partir de 1 — la contrainte de base l'exige.
+   * Le repli valait `V${index + 1}` : le virage 4 s'affichait « V5 », et le
+   * premier virage d'un circuit « V2 ».
+   */
+  it('un segment sans nom prend SON numéro, pas celui du suivant', () => {
     const strip = construireStrip([seg(4, 0, 0.2, 'turn', '   ')]);
-    expect(strip.cases[0].nom).toBe('V5');
+    expect(strip.cases[0].nom).toBe('V4');
+  });
+
+  it('le premier virage s’appelle V1', () => {
+    const strip = construireStrip([seg(1, 0, 0.2, 'turn', null)]);
+    expect(strip.cases[0].nom).toBe('V1');
   });
 
   it('aucun segment ne rend un strip vide de couverture nulle', () => {

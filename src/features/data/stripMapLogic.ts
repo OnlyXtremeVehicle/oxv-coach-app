@@ -83,10 +83,19 @@ function genreDe(kind: string | null): GenreCase {
 }
 
 /** « V3 » quand le circuit n'a pas nommé son segment — jamais une invention. */
+/**
+ * LE NUMÉRO AFFICHÉ EST CELUI DU VIRAGE, PAS SON RANG DANS UN TABLEAU.
+ *
+ * Le repli valait `V${index + 1}` : il traitait `segmentIndex` comme une
+ * position de tableau en base zéro. Or il est numéroté À PARTIR DE 1 partout —
+ * la contrainte `app_segment_analyses_segment_index_check` l'exige, et
+ * `BELTOISE_CORNERS` le portait déjà ainsi. Le premier virage s'affichait donc
+ * « V2 », et le dernier des sept « V8 » : un virage qui n'existe pas.
+ */
 function nomDe(s: SegmentSituable): string {
   const brut = s.segmentName?.trim();
   if (brut) return brut;
-  return `V${s.segmentIndex + 1}`;
+  return `V${s.segmentIndex}`;
 }
 
 function fractionValide(v: number | null): v is number {

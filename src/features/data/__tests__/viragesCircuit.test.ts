@@ -7,7 +7,12 @@
  * circuits du calendrier : Bouteville 12 virages, le Bugatti 9, Albi 8.
  */
 
-import { indexDesVirages, lireViragesCircuit, nomVirage } from '../viragesCircuit';
+import {
+  indexDesVirages,
+  lireViragesCircuit,
+  nomVirage,
+  reperesApex,
+} from '../viragesCircuit';
 
 /** La forme réelle, telle que `detect-circuit-corners` l'écrit. */
 const CHARGE_REELLE = {
@@ -152,5 +157,54 @@ describe('indexDesVirages', () => {
 
   it('liste vide → aucun numéro à interroger', () => {
     expect(indexDesVirages([])).toEqual([]);
+  });
+});
+
+/**
+ * LES REPÈRES D'APEX — un point, jamais une étendue.
+ *
+ * `circuits.corners` ne porte que `apex_s_norm`. Déduire un début et une fin du
+ * rayon reviendrait à inventer l'angle de l'arc, donc la longueur du virage :
+ * c'est la façon de mentir que le ruban refuse déjà.
+ */
+describe('reperesApex', () => {
+  const virages = [
+    { index: 3, nom: null, sens: 'gauche' as const, positionNormalisee: 0.7, rayonM: 40 },
+    { index: 1, nom: 'La Corde', sens: 'droite' as const, positionNormalisee: 0.1, rayonM: 22 },
+    { index: 2, nom: null, sens: null, positionNormalisee: null, rayonM: 60 },
+  ];
+
+  it('rend les virages situables dans l’ordre du tour', () => {
+    expect(reperesApex(virages).map((r) => r.index)).toEqual([1, 3]);
+  });
+
+  /** Un virage sans corde n'a pas d'endroit sur la règle : on l'écarte. */
+  it('écarte un virage sans position, il ne le place pas au hasard', () => {
+    expect(reperesApex(virages).some((r) => r.index === 2)).toBe(false);
+  });
+
+  it('garde le nom de la base, et numérote les autres', () => {
+    const r = reperesApex(virages);
+    expect(r[0].nom).toBe('La Corde');
+    expect(r[1].nom).toBe('Virage 3');
+  });
+
+  it('reporte le sens et le rayon tels quels, sans en déduire une longueur', () => {
+    const r = reperesApex(virages);
+    expect(r[0].sens).toBe('droite');
+    expect(r[0].rayonM).toBe(22);
+    expect(Object.keys(r[0])).toEqual(['index', 'nom', 'position', 'sens', 'rayonM']);
+  });
+
+  it('une position hors de [0, 1] est écartée, jamais ramenée aux bornes', () => {
+    const hors = [
+      { index: 1, nom: null, sens: null, positionNormalisee: 1.4, rayonM: null },
+      { index: 2, nom: null, sens: null, positionNormalisee: -0.2, rayonM: null },
+    ];
+    expect(reperesApex(hors)).toEqual([]);
+  });
+
+  it('aucun virage rend une liste vide, pas une erreur', () => {
+    expect(reperesApex([])).toEqual([]);
   });
 });
