@@ -1345,7 +1345,21 @@ function TendanceTours({ laps }: { laps: Lap[] }) {
 
   return (
     <View style={styles.tendanceBloc}>
-      <Text style={styles.legendMono}>TENDANCE DE LA SÉANCE</Text>
+      {/*
+        « PENTE · TOURS », ET PAS « TENDANCE DE LA SÉANCE ».
+
+        Deux lectures voisines vivaient sur le même écran sans se distinguer.
+        « La régularité » s'ouvre à TROIS tours (`TOURS_POUR_DISPERSION`) et
+        parle de DISPERSION ; ce bloc-ci en exige QUATRE (`MIN_TOURS_TENDANCE`)
+        et parle de PENTE. Sur une séance de trois tours, le pilote lisait donc
+        « ouvert » en haut et « Trop peu de tours retenus » deux sections plus
+        bas, pour deux choses différentes portant le même mot.
+
+        On ne touche à AUCUN des deux seuils — ils mesurent deux grandeurs. Le
+        titre, lui, cesse de les confondre. Et il devient un mot-clé : la
+        formule précédente comptait quatre mots et deux mots outils.
+      */}
+      <Text style={styles.legendMono}>PENTE · TOURS</Text>
       <Text style={styles.tendanceLibelle}>{tendance.libelle}</Text>
       <Text style={styles.tendanceDetail}>
         {[amplitude, retenus, ecartes].filter(Boolean).join(' · ')}

@@ -36,6 +36,7 @@ import Svg, { Line, Polyline, Rect } from 'react-native-svg';
 import { theme } from '@/theme/v2';
 import { cockpitPanel } from '@/components/insights/vizChrome';
 import { jerkDistribution, meanResidualGPerS, type FlowPoint } from '@/services/flowLogic';
+import { echantillonne } from '@/services/trajectoryLogic';
 
 const CREAM = theme.palette.cream;
 const TRACE_W = 320;
@@ -53,12 +54,31 @@ function fmtGPerS(v: number): string {
  * L'échelle est donc propre à la séance : deux séances ne se superposent pas, et
  * c'est voulu — une échelle commune inventerait une comparaison.
  */
+/**
+ * PLAFOND DE POINTS DESSINÉS — posé le 01/09/2026.
+ *
+ * La séance de référence produit environ vingt-deux mille points de jerk. La
+ * chaîne `points` d'un `<Polyline>` en portait autant, et elle était rendue
+ * DEUX FOIS — une fois en halo large, une fois en trait — soit deux chaînes de
+ * plusieurs centaines de milliers de caractères à composer, transmettre au pont
+ * natif et rastériser.
+ *
+ * Sur une largeur de six cent quarante unités, deux mille points suffisent à
+ * saturer chaque colonne. Au-delà, le tracé ne gagne rien et le temps de
+ * montage se paie. On échantillonne à pas constant : la forme est conservée, le
+ * début ne l'est pas au détriment de la fin.
+ *
+ * La MOYENNE affichée, elle, reste calculée sur la totalité des points — c'est
+ * la ligne à ne pas franchir, ici comme sur le diagramme G-G.
+ */
+const PLAFOND_POINTS_TRACE = 2000;
+
 function tracePoints(points: readonly FlowPoint[], maxResidual: number): string {
   if (points.length === 0 || maxResidual <= 0) return '';
   const first = points[0].elapsedMs;
   const span = points[points.length - 1].elapsedMs - first;
   if (span <= 0) return '';
-  return points
+  return echantillonne([...points], PLAFOND_POINTS_TRACE)
     .map((p) => {
       const x = ((p.elapsedMs - first) / span) * TRACE_W;
       const y = TRACE_H - (p.jerkResidual / maxResidual) * TRACE_H;

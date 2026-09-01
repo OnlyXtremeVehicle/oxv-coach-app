@@ -24,6 +24,7 @@ import {
   defaultSnapHeight,
   dialArcSweepDeg,
   dialDisplayValue,
+  dialHorsHorizon,
   dialNeedleAngleDeg,
   dialProgress,
   dialTickAngles,
@@ -49,6 +50,32 @@ describe('Dial — géométrie', () => {
     expect(dialProgress(50, -5)).toBe(0);
     expect(dialProgress(Number.NaN, 100)).toBe(0);
     expect(dialProgress(50, Number.NaN)).toBe(0);
+  });
+
+  /**
+   * L'ÉCRÊTAGE EST JUSTE, ET IL DEVIENT UN MENSONGE QUAND IL PORTE LE SENS.
+   *
+   * Le compte à rebours de l'accueil a un horizon de trente jours ; la
+   * prochaine journée de piste était à cent quinze. L'arc s'affichait COMPLET
+   * et l'aiguille en butée — la lecture d'une échéance imminente — pendant que
+   * le nombre au centre disait 115.
+   */
+  it('dialHorsHorizon repère la valeur que le cadran ne peut pas montrer', () => {
+    expect(dialHorsHorizon(115, 30)).toBe(true);
+    expect(dialHorsHorizon(31, 30)).toBe(true);
+    expect(dialHorsHorizon(30, 30)).toBe(false);
+    expect(dialHorsHorizon(0, 30)).toBe(false);
+  });
+
+  it('une absence de mesure n’est PAS un dépassement — deux états distincts', () => {
+    expect(dialHorsHorizon(null, 30)).toBe(false);
+    expect(dialHorsHorizon(Number.NaN, 30)).toBe(false);
+  });
+
+  it('une plage dégénérée ne déclenche rien : il n’y a pas d’horizon à dépasser', () => {
+    expect(dialHorsHorizon(50, 0)).toBe(false);
+    expect(dialHorsHorizon(50, -5)).toBe(false);
+    expect(dialHorsHorizon(50, Number.NaN)).toBe(false);
   });
 
   it("dialNeedleAngleDeg mappe [0, max] sur l'amplitude du cadran", () => {

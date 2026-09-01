@@ -56,6 +56,28 @@ export function dialProgress(value: number, max: number): number {
   return clamp(value / max, 0, 1);
 }
 
+/**
+ * LA VALEUR DÉPASSE-T-ELLE L'HORIZON DU CADRAN ?
+ *
+ * `dialProgress` et `dialNeedleAngleDeg` ÉCRÊTENT — c'est leur contrat, et il
+ * est juste : un rendu se borne. Mais un écrêtage devient un mensonge quand la
+ * valeur écrêtée porte le sens.
+ *
+ * Le cas réel : le compte à rebours de l'accueil a un horizon de trente jours,
+ * la prochaine journée de piste était à cent quinze. L'arc s'affichait COMPLET
+ * et l'aiguille EN BUTÉE — la lecture d'une échéance imminente — pendant que le
+ * nombre au centre disait 115.
+ *
+ * Cette fonction dit quand se taire. Elle vit ici plutôt que dans le composant
+ * pour être testée sans monter d'écran.
+ */
+export function dialHorsHorizon(value: number | null, max: number): boolean {
+  'worklet';
+  if (value === null || !Number.isFinite(value)) return false;
+  if (!Number.isFinite(max) || max <= 0) return false;
+  return value > max;
+}
+
 /** Angle de l'aiguille (instantané) pour `value` dans [0, max]. */
 export function dialNeedleAngleDeg(value: number, max: number): number {
   'worklet';

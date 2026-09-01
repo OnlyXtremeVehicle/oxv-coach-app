@@ -27,6 +27,7 @@ import {
   DIAL_SWEEP_DEG,
   dialDisplayValue,
   dialNeedleAngleDeg,
+  dialHorsHorizon,
   dialProgress,
   dialTickAngles,
   type DialSize,
@@ -96,8 +97,29 @@ export function Dial({ value, max, label, unit, size, style }: DialProps) {
 
   // Non mesuré (null ou non fini) : aiguille au repos, arc vide, « — ».
   const measured = value !== null && Number.isFinite(value);
-  const arcTarget = measured ? dialProgress(value, max) : 0;
-  const needleDeg = measured ? dialNeedleAngleDeg(value, max) : DIAL_ANGLE_MIN;
+
+  /**
+   * AU-DELÀ DE SON HORIZON, LE CADRAN SE TAIT AU LIEU DE MENTIR.
+   *
+   * `dialProgress` écrête à 1, et `needleAngle` fait de même : une valeur
+   * au-dessus du maximum donnait donc un arc COMPLET et une aiguille EN BUTÉE.
+   * Sur l'accueil, le compte à rebours a un horizon de trente jours et la
+   * prochaine journée de piste était à cent quinze : le cadran s'affichait
+   * plein — la lecture d'une échéance imminente — pendant que le nombre au
+   * centre disait 115.
+   *
+   * Un écrêtage est juste quand il borne un rendu ; il devient un mensonge
+   * quand la valeur écrêtée porte le sens. On rend donc l'arc vide et
+   * l'aiguille au repos, comme pour une absence de mesure — et le NOMBRE, lui,
+   * reste affiché tel quel : c'est lui qui dit la vérité.
+   *
+   * La correction est ici et non aux deux appels : un écran = un objet, et deux
+   * copies de la même règle finiraient par diverger.
+   */
+  const horsHorizon = dialHorsHorizon(value, max);
+  const lisible = measured && !horsHorizon;
+  const arcTarget = lisible ? dialProgress(value, max) : 0;
+  const needleDeg = lisible ? dialNeedleAngleDeg(value, max) : DIAL_ANGLE_MIN;
 
   // L'arc (cumul) glisse vers sa cible — l'aiguille, elle, ressort en spring.
   const progress = useSharedValue(reduce ? arcTarget : 0);

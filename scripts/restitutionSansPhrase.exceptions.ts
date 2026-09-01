@@ -112,7 +112,11 @@ export const EXCEPTIONS: readonly ExceptionRestitution[] = [
  * phrase, et c'est précisément ce que la garde existe pour refuser.
  */
 export const PLAFOND_PHRASES: Readonly<Record<string, number>> = {
-  'app/(app2)/data/session/[id].tsx': 34,
+  // 34 → 33 le 01/09/2026 : « TENDANCE DE LA SÉANCE » est devenue
+  // « PENTE · TOURS ». Un plafond ne remonte jamais, et il descend dès
+  // qu'une phrase disparaît — c'est ce qui fait de ce cliquet autre chose
+  // qu'une liste d'exclusions.
+  'app/(app2)/data/session/[id].tsx': 33,
   'app/(app2)/bilan/[sessionId].tsx': 7,
 };
 
