@@ -21,6 +21,7 @@
  */
 
 import { BELTOISE_CORNERS } from '@/lib/circuitTopology';
+import type { VirageCircuit } from '@/features/data/viragesCircuit';
 
 import {
   type CornerDirection,
@@ -103,10 +104,31 @@ export function deriveCornersFromCenterline(points: readonly LatLon[]): CircuitC
 }
 
 /**
- * Les virages d'un circuit donné :
- *   - Haute Saintonge → topologie nommée (7 virages) ;
- *   - autre circuit  → dérivés de sa centerline en base ; [] si absente
- *     (l'appelant affiche alors un état honnête, aucun virage inventé).
+ * Les virages d'un circuit donné, DANS L'ORDRE DE PRÉFÉRENCE DES SOURCES :
+ *
+ *   1. Haute Saintonge → sa topologie nommée (7 virages).
+ *   2. `circuits.corners` → ce que le DÉTECTEUR a écrit en base.
+ *   3. la centerline → dérivation à la volée, comme avant.
+ *   4. rien → `[]`, et l'appelant affiche un état honnête.
+ *
+ * ---------------------------------------------------------------------------
+ * POURQUOI LA BASE PASSE AVANT LE CALCUL — 01/09/2026
+ * ---------------------------------------------------------------------------
+ *
+ * `circuits.corners` est écrite depuis le 30/08 par `detect-circuit-corners` :
+ * douze virages à Bouteville, neuf au Bugatti, huit à Albi, chacun avec son
+ * sens et son rayon. Cette fonction ne la lisait pas — elle refaisait la
+ * détection à CHAQUE ouverture d'écran, sur la centerline.
+ *
+ * Deux ennuis, dont un seul se voit. Le premier est le coût : `generateCircuit`
+ * tourne sur cinq cent quatre-vingt-neuf points au Bugatti, pour retrouver ce
+ * que la base porte déjà. Le second est plus grave — deux détections lancées à
+ * deux moments avec deux versions du détecteur ne rendent pas forcément le même
+ * découpage, et l'écran des repères numéroterait alors les virages autrement
+ * que le bilan, le ruban ou les notes du coach. Un repère posé sur « le virage
+ * 7 » désignerait deux endroits.
+ *
+ * La base est la source d'un numéro de virage. Le calcul reste le repli.
  *
  * `fetchCenterline` est injectable pour les tests purs ; par défaut, lecture
  * réelle via circuitsService (import paresseux : le service tire supabase et
@@ -114,18 +136,51 @@ export function deriveCornersFromCenterline(points: readonly LatLon[]): CircuitC
  */
 export async function cornersForCircuit(
   circuit: CircuitRef,
-  fetchCenterline?: (circuitId: string) => Promise<LatLon[] | null>
+  fetchCenterline?: (circuitId: string) => Promise<LatLon[] | null>,
+  fetchVirages?: (circuitId: string) => Promise<VirageCircuit[]>
 ): Promise<CircuitCorner[]> {
   if (isHauteSaintonge(circuit)) return hauteSaintongeCorners();
 
-  const fetcher =
-    fetchCenterline ??
-    (require('@/services/circuitsService') as typeof import('@/services/circuitsService'))
-      .fetchCircuitCenterline;
+  const service = () =>
+    require('@/services/circuitsService') as typeof import('@/services/circuitsService');
 
+  // Le `try` couvre la lecture ET le require paresseux : dans un environnement
+  // sans Supabase — les tests purs — l'import lui-même lève. Un repli sur la
+  // centerline est alors le bon comportement, pas une erreur à propager.
+  let enBase: VirageCircuit[] = [];
+  try {
+    const lireVirages = fetchVirages ?? ((id: string) => service().fetchCircuitCorners(id));
+    enBase = await lireVirages(circuit.id);
+  } catch {
+    enBase = [];
+  }
+  if (enBase.length > 0) return enBase.map(depuisVirageCircuit);
+
+  const fetcher = fetchCenterline ?? service().fetchCircuitCenterline;
   const points = await fetcher(circuit.id);
   if (!points || points.length === 0) return [];
   return deriveCornersFromCenterline(points);
+}
+
+/**
+ * Un virage de la base, dans la forme que les écrans attendent.
+ *
+ * `pace` reste `null` : c'est un profil ÉDITORIAL de Haute Saintonge, que le
+ * détecteur ne produit pas et qu'on n'invente pas. Le nom suit la même règle
+ * que partout — celui de la base, ou « Virage N » avec son sens quand la base
+ * le donne.
+ */
+function depuisVirageCircuit(v: VirageCircuit): CircuitCorner {
+  const sens = v.sens === 'gauche' ? 'left' : v.sens === 'droite' ? 'right' : 'unknown';
+  return {
+    index: v.index,
+    name:
+      v.nom ??
+      (sens === 'unknown' ? `Virage ${v.index}` : `Virage ${v.index} (${v.sens as string})`),
+    direction: sens,
+    pace: null,
+    radiusM: v.rayonM,
+  };
 }
 
 // ---------------------------------------------------------------------------

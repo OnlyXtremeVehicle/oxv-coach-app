@@ -71,6 +71,12 @@ const INVENTAIRE = [
   '/src/ble/captureMode.ts::shareCapture(uri?)',
   '/src/circuit/circuitCorners.ts::cordesForCircuit(fetchCenterline?)',
   '/src/circuit/circuitCorners.ts::cornersForCircuit(fetchCenterline?)',
+  // Ajoutée le 01/09/2026, même nature que sa voisine ci-dessus : une
+  // injection de lecture pour les tests purs. `cornersForCircuit` lit
+  // désormais `circuits.corners` AVANT de retomber sur la centerline, et le
+  // défaut de production est le service réel. Le paramètre n'existe que pour
+  // que le test n'ait pas besoin de Supabase.
+  '/src/circuit/circuitCorners.ts::cornersForCircuit(fetchVirages?)',
   '/src/circuit/circuitGenerator.ts::fetchOsmWay(fetchImpl?)',
   '/src/features/club/clubHubLogic.ts::messagePreview(max?)',
   '/src/features/coach/avantApresLogic.ts::litEffetAvantApres(ContexteAvantApres.conditionsChangees?)',

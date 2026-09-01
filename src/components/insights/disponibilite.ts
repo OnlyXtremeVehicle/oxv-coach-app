@@ -62,6 +62,22 @@ export interface EntreesLectures {
  * absentes pour la même raison le disent avec les mêmes mots.
  */
 const RAISONS = {
+  /**
+   * LE MOTEUR N'A PAS TOURNÉ — ce qui n'est PAS « aucune mesure ».
+   *
+   * Les quatre lectures ci-dessous naissent de `session_insights`, une table
+   * écrite par une fonction serveur. Quand la ligne manque, on ne sait RIEN de
+   * ce qu'elle aurait contenu : ni s'il y avait des virages, ni si le
+   * gyroscope a répondu.
+   *
+   * Les raisons spécifiques étaient donc servies à tort. Sur la séance de
+   * référence — 26 999 trames, gyroscope présent sur 100 % d'entre elles —
+   * le pilote lisait « Gyroscope absent » et « Aucune mesure sur cette
+   * séance ». Deux affirmations fausses, tirées d'une absence de calcul.
+   *
+   * Une raison qui désigne un capteur doit venir d'une mesure du capteur.
+   */
+  nonCalcule: 'Lecture non calculée pour cette séance',
   aucuneMesure: 'Aucune mesure sur cette séance',
   pasDeVirage: 'Aucun virage exploitable',
   pasAssezDeTours: 'Pas assez de tours pour comparer',
@@ -138,7 +154,7 @@ export function etatLecture(key: ReadingKey, e: EntreesLectures): Disponibilite 
   // que ses propres trames alimentaient. C'est le contresens exact que ce
   // module existe pour supprimer, une porte fermee de plus.
   if (i == null && !SANS_INSIGHTS.includes(key)) {
-    return { key, etat: 'absent', raison: RAISONS.aucuneMesure };
+    return { key, etat: 'absent', raison: RAISONS.nonCalcule };
   }
 
   switch (key) {

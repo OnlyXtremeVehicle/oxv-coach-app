@@ -662,7 +662,16 @@ function PdfPreview({
       gold: true,
     },
     {
-      label: 'MARGE GLOBALE',
+      /**
+       * L'EN-TÊTE SUIT LA BASE DU CHIFFRE.
+       *
+       * `pilote-seul` est l'état de TOUTES les séances aujourd'hui : la table
+       * `vehicles` ne porte aucune grandeur d'adhérence, donc aucune
+       * pondération véhicule/pilote n'a lieu. Intituler ce chiffre « MARGE
+       * GLOBALE » laissait croire à un calcul complet — sur le papier qui part
+       * au pilote, et sans un mot.
+       */
+      label: studio.margins.base === 'pilote-seul' ? 'MARGE PILOTE' : 'MARGE GLOBALE',
       value: studio.margins.global != null ? `${Math.round(studio.margins.global)} %` : '—',
       gold: false,
     },

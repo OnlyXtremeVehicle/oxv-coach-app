@@ -16,6 +16,7 @@ import { listMyPilots } from '@/services/coachService';
 import { getSessionTriage } from '@/services/coachTriageService';
 import type { TriageCorner } from '@/services/coachTriageLogic';
 import { computeKeyMoments, type KeyMoment } from '@/services/keyMomentsLogic';
+import type { MarginBase } from '@/services/marginCalculator';
 import { getQdiForSession, type QdiRecord } from '@/services/qdiService';
 import { listSegmentAnalysesForSession } from '@/services/segmentAnalysesService';
 import { fetchSessionLaps } from '@/services/sessionsService';
@@ -48,6 +49,15 @@ export interface StudioMarginSummary {
   zone: MarginZone | null;
   vehicle: number | null;
   pilot: number | null;
+  /**
+   * SUR QUOI LE CHIFFRE REPOSE. `null` pour une ligne antérieure au 14/08/2026.
+   *
+   * Il voyage jusqu'au rapport parce que l'en-tête de la cellule en dépend :
+   * `pilote-seul` est l'état de TOUTES les séances aujourd'hui — aucun véhicule
+   * n'est caractérisé — et intituler le chiffre « MARGE GLOBALE » laisse croire
+   * à une pondération véhicule/pilote qui n'a pas eu lieu.
+   */
+  base: MarginBase | null;
 }
 
 export interface StudioSession {
@@ -145,6 +155,7 @@ export async function getStudioSession(telemetrySessionId: string): Promise<Stud
       zone: analysis?.marginZone ?? null,
       vehicle: analysis?.marginVehicle ?? null,
       pilot: analysis?.marginPilot ?? null,
+      base: analysis?.marginBase ?? null,
     },
     keyMoments,
   };

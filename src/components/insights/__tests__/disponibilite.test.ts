@@ -59,10 +59,24 @@ describe('aucune mesure du tout', () => {
    */
   const DEPENDANTES = TOUTES.filter((k) => !SANS_INSIGHTS.includes(k));
 
-  it.each(DEPENDANTES)('« %s » est absente quand insights est null', (key) => {
+  /**
+   * LA RAISON DIT « NON CALCULÉE », PAS « AUCUNE MESURE ».
+   *
+   * `session_insights` est écrite par une fonction serveur. Sa ligne absente ne
+   * dit rien de ce qu'elle aurait contenu — ni s'il y avait des virages, ni si
+   * le gyroscope a répondu. Sur la séance de référence, 26 999 trames et le
+   * gyroscope présent sur 100 % d'entre elles, le pilote lisait pourtant
+   * « Gyroscope absent » et « Aucune mesure sur cette séance ».
+   */
+  it.each(DEPENDANTES)('« %s » dit que la lecture n’est pas calculée', (key) => {
     const d = etatLecture(key, entrees({ insights: null }));
     expect(d.etat).toBe('absent');
-    expect(d.raison).toBe('Aucune mesure sur cette séance');
+    expect(d.raison).toBe('Lecture non calculée pour cette séance');
+  });
+
+  it.each(DEPENDANTES)('« %s » n’accuse AUCUN capteur sans mesure de capteur', (key) => {
+    const d = etatLecture(key, entrees({ insights: null }));
+    expect(d.raison).not.toMatch(/gyroscope|inertiel|virage/i);
   });
 
   it.each(SANS_INSIGHTS)(

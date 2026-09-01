@@ -176,14 +176,58 @@ describe('deriveCornersFromCenterline — Ricardo Tormo (Valence)', () => {
   });
 });
 
+/** Aucun virage en base : le repli sur la centerline reste le chemin testé. */
+const AUCUN_EN_BASE = () => Promise.resolve([]);
+
 describe('cornersForCircuit — circuit avec centerline en base', () => {
   it('dérive les virages depuis la centerline lue (fetcher injecté)', async () => {
     const fetcher = jest.fn().mockResolvedValue(TORMO_CENTERLINE);
     const corners = await cornersForCircuit(
       { id: 'tormo-id', name: 'Circuit Ricardo Tormo' },
-      fetcher
+      fetcher,
+      AUCUN_EN_BASE
     );
     expect(fetcher).toHaveBeenCalledWith('tormo-id');
+    expect(corners).toHaveLength(14);
+  });
+
+  /**
+   * LA BASE PASSE AVANT LE CALCUL — 01/09/2026.
+   *
+   * Deux détections lancées à deux moments avec deux versions du détecteur ne
+   * rendent pas forcément le même découpage. Si l'écran des repères recalculait
+   * pendant que le bilan lit la base, un repère posé sur « le virage 7 »
+   * désignerait deux endroits.
+   */
+  it('lit `circuits.corners` quand la base en porte, sans toucher à la centerline', async () => {
+    const centerline = jest.fn().mockResolvedValue(TORMO_CENTERLINE);
+    const enBase = jest.fn().mockResolvedValue([
+      { index: 1, nom: null, sens: 'gauche', positionNormalisee: 0.1, rayonM: 24 },
+      { index: 2, nom: 'L’Épingle', sens: 'droite', positionNormalisee: 0.6, rayonM: 18 },
+    ]);
+    const corners = await cornersForCircuit(
+      { id: 'tormo-id', name: 'Circuit Ricardo Tormo' },
+      centerline,
+      enBase
+    );
+    expect(centerline).not.toHaveBeenCalled();
+    expect(corners).toHaveLength(2);
+    expect(corners[0].direction).toBe('left');
+    expect(corners[1].name).toBe('L’Épingle');
+    expect(corners[1].radiusM).toBe(18);
+    // `pace` est un profil ÉDITORIAL de Haute Saintonge : le détecteur ne le
+    // produit pas, et on ne l'invente pas.
+    expect(corners[0].pace).toBeNull();
+  });
+
+  it('retombe sur la centerline quand la base ne porte rien', async () => {
+    const centerline = jest.fn().mockResolvedValue(TORMO_CENTERLINE);
+    const corners = await cornersForCircuit(
+      { id: 'tormo-id', name: 'Circuit Ricardo Tormo' },
+      centerline,
+      AUCUN_EN_BASE
+    );
+    expect(centerline).toHaveBeenCalledWith('tormo-id');
     expect(corners).toHaveLength(14);
   });
 });
@@ -195,16 +239,16 @@ describe('cornersForCircuit — circuit avec centerline en base', () => {
 describe('cornersForCircuit — sans tracé exploitable', () => {
   it('centerline absente (null) → []', async () => {
     const fetcher = jest.fn().mockResolvedValue(null);
-    await expect(cornersForCircuit({ id: 'x', name: 'Circuit inconnu' }, fetcher)).resolves.toEqual(
-      []
-    );
+    await expect(
+      cornersForCircuit({ id: 'x', name: 'Circuit inconnu' }, fetcher, AUCUN_EN_BASE)
+    ).resolves.toEqual([]);
   });
 
   it('centerline vide → []', async () => {
     const fetcher = jest.fn().mockResolvedValue([]);
-    await expect(cornersForCircuit({ id: 'x', name: 'Circuit inconnu' }, fetcher)).resolves.toEqual(
-      []
-    );
+    await expect(
+      cornersForCircuit({ id: 'x', name: 'Circuit inconnu' }, fetcher, AUCUN_EN_BASE)
+    ).resolves.toEqual([]);
   });
 
   it('tracé dégénéré (< 4 points) → []', () => {

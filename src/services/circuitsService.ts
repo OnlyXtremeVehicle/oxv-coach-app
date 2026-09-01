@@ -269,11 +269,29 @@ export async function fetchSessionCircuitCorners(sessionId: string): Promise<Vir
   const circuitId = !eS && s?.circuit_id ? (s.circuit_id as string) : null;
   if (!circuitId) return [];
 
+  return fetchCircuitCorners(circuitId);
+}
+
+/**
+ * Les virages d'un CIRCUIT, tels que le détecteur les a écrits en base.
+ *
+ * Pendant par circuit de `fetchSessionCircuitCorners`, extrait le 01/09/2026
+ * parce que deux appelants en avaient besoin : le bilan part d'une séance,
+ * l'écran des repères part d'un circuit choisi dans une liste. Les deux lisent
+ * la MÊME colonne, et c'est ce qui garantit qu'un « virage 7 » désigne le même
+ * endroit d'un écran à l'autre.
+ *
+ * Liste vide sur toute panne, comme partout ici : l'appelant affiche un état
+ * honnête, jamais un virage inventé.
+ */
+export async function fetchCircuitCorners(circuitId: string): Promise<VirageCircuit[]> {
+  if (typeof circuitId !== 'string' || circuitId.length === 0) return [];
+
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const circuits = supabase.from('circuits') as any;
   const { data, error } = await circuits.select('corners').eq('id', circuitId).maybeSingle();
   if (error) {
-    console.warn('[OXV][circuits] fetchSessionCircuitCorners :', error.message);
+    console.warn('[OXV][circuits] fetchCircuitCorners :', error.message);
     return [];
   }
   return lireViragesCircuit(data?.corners ?? null);
