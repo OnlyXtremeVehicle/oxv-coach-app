@@ -31,6 +31,7 @@
  */
 
 import { supabase } from '@/lib/supabase';
+import { analyzeAndPersistSession } from '@/services/analyzeSessionService';
 
 export interface SessionDiagnostic {
   sessionId: string;
@@ -161,4 +162,43 @@ export async function relaunchPendingAnalysis(): Promise<RelaunchResult> {
   const d = data as { processed?: number; successful?: number } | null;
   const n = d?.successful ?? 0;
   return { ok: true, message: `Analyse en attente relancée : ${n} session(s) traitée(s).` };
+}
+
+/**
+ * RECALCULE LES SEGMENTS DE CETTE SÉANCE, DEPUIS L'APPAREIL.
+ *
+ * `analyzeAndPersistSession` tourne à la fin d'un run (`rec/fin`). Une séance
+ * antérieure à un changement de calcul n'en profite donc jamais — et c'est le
+ * cas de toutes celles roulées avant le 01/09/2026, jour où la piste a cessé
+ * d'être écrite en dur : elles n'ont aucun segment, parce que la garde du 30/08
+ * refusait de segmenter hors de Haute Saintonge.
+ *
+ * Ce geste les rattrape, une par une. Il vit ici plutôt que dans un cron parce
+ * que le calcul est CÔTÉ APPLICATION : le recalage sur le tracé, le découpage
+ * et les marges par segment sont du TypeScript, pas du SQL. Un cron ne peut pas
+ * l'appeler.
+ *
+ * Ne lève jamais — `analyzeAndPersistSession` rattrape tout et le dit dans ses
+ * notes. On en remonte les deux nombres qui comptent : combien de trames ont
+ * été lues, combien de segments ont été écrits.
+ */
+export async function relaunchSegments(
+  sessionId: string,
+  userId: string
+): Promise<RelaunchResult> {
+  try {
+    const r = await analyzeAndPersistSession({ telemetrySessionId: sessionId, userId });
+    if (r.segmentsPersisted > 0) {
+      return {
+        ok: true,
+        message: `${r.segmentsPersisted} segment(s) écrit(s) depuis ${r.sampleCount} trames.`,
+      };
+    }
+    // Aucun segment n'est un RÉSULTAT, pas forcément une panne : le circuit peut
+    // n'avoir ni tracé ni virages en base. La note du service le dit.
+    const derniere = r.notes[r.notes.length - 1] ?? 'aucune note';
+    return { ok: false, message: `Aucun segment écrit. ${derniere}` };
+  } catch (e) {
+    return { ok: false, message: e instanceof Error ? e.message : String(e) };
+  }
 }

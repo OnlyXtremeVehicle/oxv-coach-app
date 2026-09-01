@@ -89,7 +89,24 @@ export interface AnalyzeSessionResult {
 }
 
 const FRAMES_PAGE_SIZE = 1000;
-const TRACKVIZ_DOWNSAMPLE_MAX = 600;
+/**
+ * SOUS-ÉCHANTILLONNAGE AVANT L'ANALYSE — relevé de 600 à 3 000 le 01/09/2026.
+ *
+ * Six cents valait pour SEPT segments : quatre-vingt-cinq points chacun, de
+ * quoi lire une entrée, une corde et une sortie. Bouteville en compte douze, le
+ * Bugatti neuf, et une séance porte trois tours : six cents points y donnaient
+ * seize échantillons par virage et par tour — une vitesse d'apex tirée de
+ * quelques trames, sur un virage qui en compte six cents.
+ *
+ * Trois mille reste bon marché. Le recalage coûte `samples × points du tracé` :
+ * trois mille contre les cinq cent quatre-vingt-neuf points du Bugatti font 1,8
+ * million de distances, quelques dizaines de millisecondes.
+ *
+ * Ce n'est PAS un seuil de mesure : il ne change aucun chiffre, il change la
+ * finesse avec laquelle on les lit. À revoir le jour où un circuit portera
+ * beaucoup plus de virages.
+ */
+const TRACKVIZ_DOWNSAMPLE_MAX = 3000;
 
 /**
  * Une session n'est analysable qu'une fois CLOSE.

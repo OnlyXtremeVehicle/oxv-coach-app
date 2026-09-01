@@ -21,6 +21,7 @@ import {
   relaunchDebrief,
   relaunchInsights,
   relaunchPendingAnalysis,
+  relaunchSegments,
 } from '@/services/adminSessionDiagnosticService';
 import { theme } from '@/theme/v2';
 import { AppBar } from '@/ui/AppBar';
@@ -169,8 +170,9 @@ export default function AnalyseSessionScreen() {
               <View style={{ marginTop: theme.spacing.xl }}>
                 <SectionLabel>RELANCER LE PIPELINE</SectionLabel>
                 <Text style={s.hint}>
-                  Les relances sont exécutées côté serveur. Aucune donnée pilote n’est réécrite
-                  depuis cet appareil.
+                  Trois relances sont exécutées côté serveur. Le recalcul des segments, lui, tourne
+                  SUR CET APPAREIL : le recalage sur le tracé et le découpage par virage sont du
+                  code d’application, qu’aucune fonction serveur ne sait exécuter.
                 </Text>
                 <View style={{ gap: theme.spacing.sm, marginTop: theme.spacing.md }}>
                   <Action
@@ -193,6 +195,23 @@ export default function AnalyseSessionScreen() {
                     busy={busy === 'pending'}
                     disabled={busy != null}
                     onPress={() => run('pending', () => relaunchPendingAnalysis())}
+                  />
+                  {/*
+                    LE RATTRAPAGE DES SÉANCES D'AVANT LE 01/09.
+
+                    La piste a cessé d'être écrite en dur ce jour-là. Toutes les
+                    séances antérieures n'ont AUCUN segment — la garde du 30/08
+                    refusait de segmenter hors de Haute Saintonge. Sans ce geste,
+                    elles ne se rattraperaient qu'en étant roulées à nouveau.
+                  */}
+                  <Action
+                    label="Recalculer les segments"
+                    hint="trackviz · sur cet appareil"
+                    busy={busy === 'segments'}
+                    disabled={busy != null}
+                    onPress={() =>
+                      run('segments', () => relaunchSegments(diag.sessionId, diag.userId))
+                    }
                   />
                 </View>
               </View>
