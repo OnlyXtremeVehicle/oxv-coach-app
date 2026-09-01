@@ -51,6 +51,7 @@ import { isFlagEnabled } from '@/services/featureFlagsService';
 import { computeKeyMoments, type KeyMoment } from '@/services/keyMomentsLogic';
 import { composerPresentations, type Composition } from '@/features/presentations/compositionLogic';
 import { lireEntreeComposition } from '@/features/presentations/entreeCompositionService';
+import { rattraperSegments } from '@/services/rattrapageSegmentsService';
 import { QDI_ALGO_VERSION } from '@/services/qdiLogic';
 import { getOrComputeQdiForSession } from '@/services/qdiService';
 import { listSegmentAnalysesForSession } from '@/services/segmentAnalysesService';
@@ -517,6 +518,27 @@ export function useBilan(sessionId: string | undefined): UseBilanResult {
         // Repli quand aucun segment n'est analysé : la capture a écrit le
         // maximum de la séance entière, seule sa position manque.
         gLateralMaxSeance: session.max_g_lateral ?? null,
+      });
+
+      /**
+       * LE RATTRAPAGE DES SEGMENTS — en arrière-plan, sans rien attendre.
+       *
+       * Toute séance antérieure au 01/09 n'a aucun segment : le découpage était
+       * écrit en dur, et la garde du 30/08 refusait de segmenter hors de Haute
+       * Saintonge. Le cron nocturne ne peut pas les reprendre — le recalage et
+       * le découpage sont du TypeScript.
+       *
+       * On ne l'attend PAS : le bilan s'affiche avec ce qu'il a, et les
+       * segments seront là au prochain chargement. Bloquer le rendu sur un
+       * calcul de plusieurs milliers de trames serait une régression visible
+       * pour un gain invisible.
+       */
+      void rattraperSegments({
+        sessionId,
+        pilotId: session.user_id,
+        lectureDAutrui: session.user_id !== userId,
+        statut: session.status ?? null,
+        segmentsExistants: segments.length,
       });
 
       const coachNotes = buildCoachNotes(annotations, threads, virages);
