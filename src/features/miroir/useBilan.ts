@@ -52,6 +52,11 @@ import { fetchSessionCircuitCorners } from '@/services/circuitsService';
 import { getIntentionForSession, type SessionIntention } from '@/services/intentionsService';
 import { isFlagEnabled } from '@/services/featureFlagsService';
 import { computeKeyMoments, type KeyMoment } from '@/services/keyMomentsLogic';
+import {
+  composerPresentations,
+  type Composition,
+} from '@/features/presentations/compositionLogic';
+import { lireEntreeComposition } from '@/features/presentations/entreeCompositionService';
 import { QDI_ALGO_VERSION } from '@/services/qdiLogic';
 import { getOrComputeQdiForSession } from '@/services/qdiService';
 import { listSegmentAnalysesForSession } from '@/services/segmentAnalysesService';
@@ -127,6 +132,14 @@ export interface BilanData {
   marge: MargeBilan;
 
   keyMoments: KeyMoment[];
+  /**
+   * Les lectures que le moteur du §00 compose pour cette séance.
+   *
+   * `null` = le moteur n'a pas pu tourner (panne de lecture). Une composition
+   * qui rend une liste VIDE n'est pas la même chose : elle veut dire que rien
+   * ne s'ouvre, et `ecartees` en porte les motifs.
+   */
+  composition: Composition | null;
   /**
    * Centerline STRICTE du circuit RÉEL de la séance — null si la séance n'a
    * pas de circuit rattaché ou si la géométrie manque (carte tracé masquée,
@@ -352,6 +365,37 @@ export function useBilan(sessionId: string | undefined): UseBilanResult {
       const biometryFlag = settled(biometryFlagR, false);
       const consents = settled(consentsR, { capture: false, coachShare: false });
 
+      /**
+       * LES LECTURES COMPOSÉES — le moteur du §00, branché le 01/09/2026.
+       *
+       * Elle ne peut PAS partir avec les autres : l'entrée du moteur a besoin
+       * du circuit, du début et du statut de la séance, et la ligne de séance
+       * n'est résolue que quelques lignes plus haut. Un aller-retour de plus,
+       * assumé — le composer sur des champs devinés serait pire.
+       *
+       * `null` en cas de panne : la section disparaît, elle ne se vide pas.
+       */
+      let composition: Composition | null = null;
+      try {
+        composition = composerPresentations(
+          await lireEntreeComposition({
+            surface: 'pilote',
+            piloteId: session.user_id,
+            captureId: sessionId,
+            circuitId: session.circuit_id ?? null,
+            debutSeance: session.started_at ?? null,
+            statutSeance: session.status ?? null,
+            // Non évaluée ici : la note se calcule sur les trames de qualité
+            // d'UN tour, donc après un choix que le bilan ne fait pas. `null`
+            // est le repli sûr — il ne retient aucune donnée mesurée.
+            confiance: null,
+          })
+        );
+      } catch (err) {
+        console.warn('[OXV][bilan] composition :', err instanceof Error ? err.message : err);
+      }
+      if (cancelled) return;
+
       // Biométrie : la LECTURE elle-même est gatée (donnée de santé) — on ne
       // va chercher les échantillons que flag + consentement posés. Échec ou
       // vide → section absente, jamais un teasing (fail-closed, testé).
@@ -545,6 +589,7 @@ export function useBilan(sessionId: string | undefined): UseBilanResult {
         marge: margeModel(analysis),
 
         keyMoments,
+        composition,
         centerline,
         traceMarkers,
         coachNotes,

@@ -474,6 +474,44 @@ export default function BilanScreen() {
             </View>
           </View>
 
+          {/* ── LECTURES — ce que le moteur du §00 compose pour cette séance ──
+
+              Il tournait à vide depuis le lot 9a : soixante-cinq fiches, une
+              règle d'ordre, un plafond de niveau, un budget de cartes — et
+              aucun écran pour les rendre. Voici la surface.
+
+              On ne montre que ce qui s'ouvre DE LUI-MÊME (`parDefaut`). Le
+              reste de la liste existe et porte son motif ; l'afficher ici
+              remplirait une feuille de données de raisons, ce qu'elle ne
+              supporte pas. Les motifs partent au libellé d'accessibilité, qui
+              s'entend au lieu de s'afficher. */}
+          {data.composition !== null ? (
+            <View style={styles.section}>
+              <SectionHeader
+                eyebrow="LECTURES"
+                count={data.composition.presentations.filter((p) => p.parDefaut).length}
+              />
+              {data.composition.presentations.some((p) => p.parDefaut) ? (
+                <Stagger>
+                  {data.composition.presentations
+                    .filter((p) => p.parDefaut)
+                    .map((p) => (
+                      <ListRow
+                        key={p.id}
+                        label={p.nom}
+                        accessibilityLabel={`${p.nom}. ${p.motifs.join('. ')}`}
+                      />
+                    ))}
+                </Stagger>
+              ) : (
+                <StateView
+                  state="empty"
+                  emptyMessage={`Aucune lecture ne s'ouvre sur cette séance. ${data.composition.ecartees.length} écartée(s), chacune pour une donnée nommée.`}
+                />
+              )}
+            </View>
+          ) : null}
+
           {/* Moments-clés — des faits, jamais des consignes */}
           {data.keyMoments.length > 0 ? (
             <View style={styles.section}>

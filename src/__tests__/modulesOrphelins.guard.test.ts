@@ -212,19 +212,17 @@ const CONNUS: readonly string[] = [
   '/src/components/lapscrubber.tsx',
   '/src/components/oxvpromiseblock.tsx',
   '/src/components/signature/radarempreinte.tsx',
-  // LOT 9a — registre et moteur, écrans au lot suivant. Le catalogue des 65
-  // présentations et le moteur qui les compose sont écrits et testés avant
-  // qu'aucune surface ne les rende : c'est l'ordre demandé, et l'inscription
-  // ici est la contrepartie. Ils sortiront de cette liste au lot des écrans.
-  '/src/features/presentations/compositionlogic.ts',
-  '/src/features/presentations/registrepresentations.ts',
-  // LOT 10c — le service de lecture qui alimentera le moteur. Il établit les
-  // DEUX faits que la base portait déjà (`acquis` via `cycle_steps.status`,
-  // `voixCoach` via `coach_annotations.audio_url`). Il entre ici pour la même
-  // raison que ses deux voisins ci-dessus, et sortira avec eux : le lot 10c
-  // interdit explicitement de brancher un écran. Ses quatre pièces manquantes
-  // attendent la migration `20260826140000_lot10c_…`, non appliquée.
-  '/src/features/presentations/sourcescompositionservice.ts',
+  // LOT 9a — LE REGISTRE ET LE MOTEUR SONT SORTIS DE CETTE LISTE le 01/09/2026,
+  // à la condition même que leur inscription annonçait : « ils sortiront au lot
+  // des écrans ». Le bilan compose désormais ses lectures — `useBilan` appelle
+  // `lireEntreeComposition` puis `composerPresentations`, et la section
+  // LECTURES rend celles qui s'ouvrent d'elles-mêmes. C'est le sens de sortie
+  // qu'on veut : une condition écrite six semaines plus tôt, tenue.
+  // LOT 10c — le service de lecture EST SORTI avec ses deux voisins, le
+  // 01/09/2026. Sa note disait « il sortira avec eux » et « ses quatre pièces
+  // manquantes attendent la migration lot10c » : la migration a été appliquée
+  // le 29/08, et `faitsSeanceService` lit désormais les onze faits restants —
+  // cinq depuis la base, six déclarés absents avec leur raison.
   // LOT 11a — `features/vehicules/eligibiliteLogic.ts` et
   // `features/vehicules/referentielVehicules.ts` N'Y FIGURENT PAS, et il faut
   // dire pourquoi : ils ont été inscrits ici à l'écriture du lot, puis retirés
