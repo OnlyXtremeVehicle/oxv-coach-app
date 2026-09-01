@@ -23,7 +23,7 @@
  * CE QUI REMPLACE LE FILTRE : l'ATTRIBUTION. Une consigne ne se rend JAMAIS
  * dans la voix de l'application — elle se lit dans `CoachBand`, marquée,
  * nommée. Cela ne se contraint pas en SQL ; c'est un contrat de surface, et
- * `consignesCoachBand.guard.test.ts` le tient.
+ * `consigneAttribuee.guard.test.ts` le tient.
  *
  * `coach_annotation_doctrine_guard` reste, lui, et ce n'est pas une
  * incohérence : une NOTE s'affiche sur les feuilles de données du pilote, où

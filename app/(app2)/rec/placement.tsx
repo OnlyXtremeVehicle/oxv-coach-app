@@ -52,6 +52,7 @@ import {
   type Circuit,
 } from '@/services/circuitsService';
 import { useAuthStore } from '@/store/useAuthStore';
+import { consigneOuverte, type ConsigneCoach } from '@/services/coachConsignesService';
 import { haversineDistance } from '@/utils/geo';
 import {
   Chip,
@@ -319,6 +320,28 @@ export default function PlacementScreen() {
   const insets = useSafeAreaInsets();
   const door = useDoorTransition();
   const profile = useAuthStore((s) => s.profile);
+
+  /**
+   * La consigne OUVERTE du pilote — une seule, la base le tient.
+   *
+   * Lue ici et pas héritée d'un écran précédent : le placement s'ouvre parfois
+   * directement, et une consigne posée entre deux runs doit apparaître au
+   * suivant. Une panne rend `null` : la bande disparaît, elle ne se vide pas.
+   */
+  const [consigne, setConsigne] = useState<ConsigneCoach | null>(null);
+  useEffect(() => {
+    let annule = false;
+    const id = profile?.id;
+    if (!id) return;
+    consigneOuverte(id)
+      .then((c) => {
+        if (!annule) setConsigne(c);
+      })
+      .catch(() => undefined);
+    return () => {
+      annule = true;
+    };
+  }, [profile?.id]);
 
   const [circuits, setCircuits] = useState<Circuit[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -755,6 +778,34 @@ export default function PlacementScreen() {
           <Text style={styles.prevolRappel}>{RAPPEL_PREVOL}</Text>
         </View>
 
+        {/*
+          LA CONSIGNE DU COACH, AU DERNIER ÉCRAN AVANT DE ROULER.
+
+          Elle nomme ce qu'on suivra au PROCHAIN run — c'est P40, « Que vais-je
+          tester maintenant ? ». Ne la montrer qu'au bilan la rendait
+          rétrospective : le pilote devait s'en souvenir seul entre deux runs,
+          ce que P39 « un seul changement » cherche justement à éviter.
+
+          ELLE N'ENTRE PAS DANS LE PRÉVOL, et c'est délibéré. Le prévol liste ce
+          que la MACHINE a relevé ; une consigne est la parole d'un tiers. Les
+          mêler ferait lire l'une comme l'autre, et rien ne dirait plus qui
+          parle. Bloc séparé, marqué, attribué — le même contrat qu'au bilan.
+
+          Elle n'ouvre ni ne ferme l'armement : `verdictArmement` reste la seule
+          porte, et une consigne non lue n'empêche pas de rouler.
+        */}
+        {consigne !== null ? (
+          <View style={styles.bandeConsigne} accessible>
+            <Text style={[styles.prevolEyebrow, styles.consigneEyebrow]}>
+              {consigne.cornerIndex !== null
+                ? `CONSIGNE · VIRAGE ${consigne.cornerIndex}`
+                : 'CONSIGNE · SÉANCE'}
+            </Text>
+            <Text style={styles.consigneBody}>« {consigne.body} »</Text>
+            <Text style={[styles.prevolEyebrow, styles.consigneSource]}>De votre coach</Text>
+          </View>
+        ) : null}
+
         {error ? (
           <Text style={styles.error} accessibilityLiveRegion="polite">
             {error}
@@ -1004,6 +1055,49 @@ const styles = StyleSheet.create({
     lineHeight: 18,
     color: colors.text.mid,
     marginTop: space.md,
+  },
+  /**
+   * LA BANDE DE CONSIGNE — hors du bloc prévol, et visiblement.
+   *
+   * Le prévol liste ce que la MACHINE a relevé ; une consigne est la parole
+   * d'un tiers. Le liseré d'accent et le pied « De votre coach » disent la
+   * différence sans un mot de plus.
+   *
+   * Aucune taille neuve : le bandeau et le pied composent `prevolEyebrow`, le
+   * corps reprend l'échelle du rappel. Une couleur n'est pas une taille.
+   */
+  bandeConsigne: {
+    marginTop: space.lg,
+    paddingLeft: space.md,
+    paddingRight: space.md,
+    paddingVertical: space.md,
+    borderRadius: radius.card,
+    borderLeftWidth: 3,
+    borderLeftColor: colors.accent,
+    backgroundColor: colors.bg.card,
+  },
+  /**
+   * L'ACCENT RESTE AU LISERÉ, JAMAIS AU TEXTE — la garde de contraste du flux
+   * REC me l'a rappelé, et elle a raison.
+   *
+   * Cet écran se lit dehors, parfois en plein soleil : le jalon 3 y pose 7:1
+   * comme plancher. `accent` plafonne à 3,10 et `text.low` à 6,10 — les deux
+   * échouent. Le marquage de la bande ne perd rien : c'est le liseré de trois
+   * points qui dit la voix, et il n'a pas à être lu.
+   */
+  consigneEyebrow: {
+    color: colors.text.hi,
+  },
+  consigneBody: {
+    fontFamily: typo.body,
+    fontSize: fs.small,
+    lineHeight: 20,
+    color: colors.text.hi,
+    marginTop: space.sm,
+  },
+  consigneSource: {
+    color: colors.text.mid,
+    marginTop: space.sm,
   },
   vehicleNote: {
     fontFamily: typo.body,

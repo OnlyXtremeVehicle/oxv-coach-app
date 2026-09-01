@@ -72,6 +72,8 @@ const TOUS = [...fichiers(join(RACINE, 'app')), ...fichiers(join(RACINE, 'src'))
  */
 const SURFACES_ATTRIBUANTES: readonly string[] = [
   join('app', '(app2)', 'bilan', '[sessionId].tsx'),
+  // Le dernier écran avant de rouler — c'est là qu'une consigne sert (P40).
+  join('app', '(app2)', 'rec', 'placement.tsx'),
 ];
 
 describe('la consigne du coach est toujours attribuée', () => {

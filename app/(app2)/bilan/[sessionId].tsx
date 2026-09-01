@@ -87,6 +87,7 @@ import { exportAndShareBilanPdf } from '@/services/bilanPdfExportService';
 import type { SessionMediaItem } from '@/services/sessionMediaService';
 import { useAuthStore } from '@/store/useAuthStore';
 import { formatDateShort } from '@/utils/format';
+import { confirmerComprehension } from '@/services/coachConsignesService';
 
 const HERO_HEIGHT = 180;
 const SOUVENIR_CELL = 64;
@@ -348,6 +349,18 @@ export default function BilanScreen() {
    * « Que dois-je modifier, et rien d'autre ? », et la base le tient déjà par
    * un index unique partiel.
    */
+  /**
+   * Écrire la confirmation, puis RECHARGER — pas d'état local en double.
+   *
+   * Un `useState` qui bascule l'affichage sans relire la base laisserait le
+   * bilan afficher « compris » sur un enregistrement qui a échoué. Le geste est
+   * rare et la recharge peu coûteuse : la vérité reste en base.
+   */
+  const confirmerCompriseLa = async (id: string) => {
+    const r = await confirmerComprehension(id);
+    if (r.ok) reload();
+  };
+
   const consigneOuverte = data.consignes.find((c) => c.closedAt === null) ?? null;
   const bandeConsigne = consigneOuverte ? (
     <View style={styles.bandeConsigne} accessible>
@@ -358,6 +371,32 @@ export default function BilanScreen() {
       </Text>
       <Text style={[styles.noteBody, styles.consigneBody]}>« {consigneOuverte.body} »</Text>
       <Text style={[styles.noteEyebrow, styles.consigneSource]}>De votre coach</Text>
+      {/*
+        P37 — « AI-JE RÉELLEMENT COMPRIS ? »
+
+        Le geste appartient au pilote, et à lui seul : un déclencheur en base
+        refuse toute autre modification venant de lui. Une fois posé, il ne se
+        reprend pas — une compréhension ne se confirme pas deux fois, et la
+        colonne porte un instant, pas un état qui bascule.
+
+        « Affiché » n'est pas « compris » : c'est pourquoi le geste existe au
+        lieu d'un marquage automatique à l'ouverture. Ce que le coach lit
+        ensuite, c'est que son pilote a DIT l'avoir compris.
+      */}
+      {consigneOuverte.compriseLe === null ? (
+        <PressScale
+          accessibilityRole="button"
+          accessibilityLabel="Confirmer avoir compris la consigne de votre coach"
+          onPress={() => void confirmerCompriseLa(consigneOuverte.id)}
+          style={styles.consigneGeste}
+        >
+          <Text style={[styles.noteEyebrow, styles.consigneGesteTxt]}>J’AI COMPRIS</Text>
+        </PressScale>
+      ) : (
+        <Text style={[styles.noteEyebrow, styles.consigneSource]}>
+          {`COMPRIS · ${formatDateShort(consigneOuverte.compriseLe)}`}
+        </Text>
+      )}
     </View>
   ) : null;
 
@@ -1230,6 +1269,18 @@ const styles = StyleSheet.create({
   consigneSource: {
     color: colors.text.low,
     marginTop: space.sm,
+  },
+  consigneGeste: {
+    marginTop: space.md,
+    alignSelf: 'flex-start',
+    paddingVertical: space.sm,
+    paddingHorizontal: space.md,
+    borderRadius: radius.pill,
+    borderWidth: 1,
+    borderColor: colors.accent,
+  },
+  consigneGesteTxt: {
+    color: colors.accent,
   },
   noteBandBare: {
     marginTop: space.sm,
