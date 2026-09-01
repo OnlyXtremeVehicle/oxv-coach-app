@@ -61,7 +61,23 @@ export interface EntreesLectures {
  * Raisons d'absence. Une seule formulation par cause, pour que deux lectures
  * absentes pour la même raison le disent avec les mêmes mots.
  */
-const RAISONS = {
+/**
+ * LES RAISONS SONT DES MOTS-CLÉS — corrigé le 01/09/2026.
+ *
+ * Elles s'affichent sur l'écran de séance, qui est une FEUILLE DE DONNÉES. La
+ * règle y interdit la phrase, et quatre des sept en étaient : « Aucune mesure
+ * sur cette séance », « Pas assez de tours pour comparer », « Chronos de
+ * secteur non calculés », « Lecture non calculée pour cette séance ».
+ *
+ * `check-doctrine` ne pouvait pas les voir : il lit les fichiers `.tsx`, et ces
+ * chaînes vivent dans un `.ts` d'où elles voyagent jusqu'à l'écran. C'est la
+ * même limite que pour les soixante-cinq noms du catalogue, et la même réponse
+ * — la règle s'applique à la SOURCE, tenue par `libellesDeService.guard`.
+ *
+ * Une seule formulation par cause, toujours : deux lectures absentes pour la
+ * même raison le disent avec les mêmes mots.
+ */
+export const RAISONS = {
   /**
    * LE MOTEUR N'A PAS TOURNÉ — ce qui n'est PAS « aucune mesure ».
    *
@@ -77,13 +93,13 @@ const RAISONS = {
    *
    * Une raison qui désigne un capteur doit venir d'une mesure du capteur.
    */
-  nonCalcule: 'Lecture non calculée pour cette séance',
-  aucuneMesure: 'Aucune mesure sur cette séance',
-  pasDeVirage: 'Aucun virage exploitable',
-  pasAssezDeTours: 'Pas assez de tours pour comparer',
-  pasDeChrono: 'Chronos de secteur non calculés',
-  pasDInertiel: 'Signal inertiel absent',
-  pasDeGyroscope: 'Gyroscope absent',
+  nonCalcule: 'LECTURE NON CALCULÉE',
+  aucuneMesure: 'AUCUNE MESURE',
+  pasDeVirage: 'AUCUN VIRAGE EXPLOITABLE',
+  pasAssezDeTours: 'TOURS INSUFFISANTS',
+  pasDeChrono: 'CHRONOS SECTEUR · NON CALCULÉS',
+  pasDInertiel: 'SIGNAL INERTIEL ABSENT',
+  pasDeGyroscope: 'GYROSCOPE ABSENT',
 } as const;
 
 /** Un enregistrement de virage est-il exploitable ? */

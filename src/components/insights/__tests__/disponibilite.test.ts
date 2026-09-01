@@ -71,7 +71,7 @@ describe('aucune mesure du tout', () => {
   it.each(DEPENDANTES)('« %s » dit que la lecture n’est pas calculée', (key) => {
     const d = etatLecture(key, entrees({ insights: null }));
     expect(d.etat).toBe('absent');
-    expect(d.raison).toBe('Lecture non calculée pour cette séance');
+    expect(d.raison).toBe('LECTURE NON CALCULÉE');
   });
 
   it.each(DEPENDANTES)('« %s » n’accuse AUCUN capteur sans mesure de capteur', (key) => {
@@ -87,7 +87,7 @@ describe('aucune mesure du tout', () => {
   it.each(SANS_INSIGHTS)('« %s » dit SA raison, pas celle des insights', (key) => {
     const d = etatLecture(key, entrees({ insights: null }));
     expect(d.etat).toBe('absent');
-    expect(d.raison).toBe('Signal inertiel absent');
+    expect(d.raison).toBe('SIGNAL INERTIEL ABSENT');
   });
 
   // Calculée, mais tous les blocs vides : chaque lecture dit SA raison à elle.
@@ -148,7 +148,7 @@ describe('chaque lecture dépend de SA source', () => {
     };
     const d = etatLecture('tour-ideal', entrees({ insights: v3 }));
     expect(d.etat).toBe('absent');
-    expect(d.raison).toBe('Chronos de secteur non calculés');
+    expect(d.raison).toBe('CHRONOS SECTEUR · NON CALCULÉS');
   });
 
   // Le contre-test : la forme À PLAT, elle, ouvre bien.
