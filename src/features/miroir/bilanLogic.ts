@@ -20,6 +20,7 @@ import { projectToMeters, type LatLon } from '@/circuit/circuitGenerator';
 import { nomVirage, type VirageCircuit } from '@/features/data/viragesCircuit';
 import { SIGNATURE_LABEL_BY_BRANCH } from '@/features/miroir/signatureLogic';
 import { isDoctrineSafe } from '@/services/aiSafetyFilter';
+import { virgule } from '@/utils/format';
 import type { MarginBase } from '@/services/marginCalculator';
 import { colors } from '@/ui/v2/tokens';
 
@@ -631,22 +632,39 @@ function fallbackRecit(marginGlobal: number | null, firstName: string | null | u
   if (marginGlobal === null) {
     return `${opening}vous avez roulé. La marge n'a pas été mesurée : le récit s'en tient à ce qui a été observé.`;
   }
+  /**
+   * TROIS PHRASES QUI JUGEAIENT, REMPLACÉES PAR LA MESURE.
+   *
+   * « Vous avez piloté avec aisance », « une séance qu'on aimerait reproduire »,
+   * « quelque chose a bougé dans certains virages », « à digérer avant de
+   * revenir » : deux appréciations, une affirmation que rien ne mesure, une
+   * consigne déguisée. Sur la séance de référence — boucle routière, de nuit,
+   * deux arrêts — la première branche sortait, parce que 60,4 % franchit 30.
+   *
+   * La marge est un nombre et elle tombe dans une plage. On dit les deux.
+   */
+  const valeur = virgule(marginGlobal.toFixed(0));
   if (marginGlobal >= 30) {
-    return `${opening}vous avez piloté avec aisance. La marge restait confortable, le geste était posé. Une séance qu'on aimerait reproduire.`;
+    return `${opening}la marge globale s'établit à ${valeur} %, dans la plage haute.`;
   }
   if (marginGlobal >= 15) {
-    return `${opening}vous avez exploré. La marge était travaillée, présente sans être inconfortable. Quelque chose a bougé dans certains virages.`;
+    return `${opening}la marge globale s'établit à ${valeur} %, dans la plage intermédiaire.`;
   }
   // « marge » plutôt que « limite » — vocabulaire OXV (Principe 1).
-  return `${opening}vous avez cherché loin. La marge s'est rétractée. Une séance dense, à digérer avant de revenir.`;
+  return `${opening}la marge globale s'établit à ${valeur} %, dans la plage basse.`;
 }
 
+// « Ce que vous avez SENTI » affirmait une sensation que rien ne mesure ;
+// « Continuez à regarder » était un impératif. L'application ne demande rien.
 function fallbackMeta(): string {
-  return "La progression se construit dans le temps long. Ce que vous avez senti s'ajoute à ce qui vient avant. Continuez à regarder.";
+  return "Chaque séance s'ajoute aux précédentes, et la saison les tient toutes.";
 }
 
+// « Vous pourrez peut-être explorer une seule zone… Une invitation, pas une
+// consigne » : une phrase qui doit préciser qu'elle n'est pas une consigne en
+// est une. Reste ce qui est vrai — les mesures sont là.
 function fallbackPreparation(): string {
-  return 'La prochaine fois, vous pourrez peut-être explorer une seule zone, à votre rythme. Une invitation, pas une consigne.';
+  return 'Les mesures de la séance restent consultables, tour par tour et virage par virage.';
 }
 
 /** Texte affiché quand aucune analyse n'existe encore. */
@@ -688,7 +706,7 @@ export function debriefModel(
   if (analysis === null) return { kind: 'pending' };
 
   const raw = analysis.debriefText ?? '';
-  const safe = raw && isDoctrineSafe(raw) ? raw : '';
+  const safe = raw && isDoctrineSafe(raw, 'application') ? raw : '';
   if (safe) {
     const parsed = parseDebriefText(safe);
     const acts: DebriefAct[] = [];

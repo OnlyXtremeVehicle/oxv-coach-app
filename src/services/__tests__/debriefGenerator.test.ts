@@ -97,7 +97,7 @@ describe('generateDebrief — structure et format', () => {
 
   it("commence par 'Hier' sans prénom si firstName est null", () => {
     const out = generateDebrief({ ...baseInput, firstName: null });
-    expect(out.recit).toMatch(/^Hier, vous/);
+    expect(out.recit).toMatch(/^Hier, la marge globale/);
   });
 });
 
@@ -144,32 +144,36 @@ describe('generateDebrief — utilisation des segments', () => {
   });
 });
 
-describe('generateDebrief — équilibre vehicle/pilot', () => {
-  it("identifie l'équilibre quand véhicule et pilote sont proches (|delta| < 8)", () => {
-    const out = generateDebrief({
-      ...baseInput,
-      marginVehicle: 35,
-      marginPilot: 32,
-    });
-    expect(out.meta.toLowerCase()).toContain('équilibre');
+/**
+ * LES DEUX MARGES, SANS LE TRAIT QUI LES RELIAIT.
+ *
+ * Les trois phrases d'origine EXPLIQUAIENT l'écart : « votre lecture du jour
+ * était la variable », « la machine portait son lot », « un équilibre rare ».
+ * Deux causes et un jugement, là où la base ne porte que deux nombres.
+ */
+describe('generateDebrief — les deux marges', () => {
+  it('les pose côte à côte, avec leurs valeurs', () => {
+    const out = generateDebrief({ ...baseInput, marginVehicle: 35, marginPilot: 32 });
+    expect(out.meta).toContain('Marge véhicule 35 %');
+    expect(out.meta).toContain('marge pilote 32 %');
   });
 
-  it('parle de la voiture quand sa marge est plus grande', () => {
-    const out = generateDebrief({
-      ...baseInput,
-      marginVehicle: 60,
-      marginPilot: 20,
-    });
-    expect(out.meta.toLowerCase()).toContain('voiture');
+  it('ne relie jamais les deux — aucune cause, aucun jugement', () => {
+    for (const [v, p] of [
+      [35, 32],
+      [60, 20],
+      [20, 60],
+    ] as const) {
+      const meta = generateDebrief({ ...baseInput, marginVehicle: v, marginPilot: p }).meta;
+      for (const interdit of ['parce que', 'variable', 'portait son lot', 'équilibre rare']) {
+        expect(meta.toLowerCase()).not.toContain(interdit);
+      }
+    }
   });
 
-  it('parle du pilote quand sa marge est plus grande', () => {
-    const out = generateDebrief({
-      ...baseInput,
-      marginVehicle: 20,
-      marginPilot: 60,
-    });
-    expect(out.meta.toLowerCase()).toContain('pilote');
+  it('se tait quand une seule des deux est mesurée', () => {
+    const out = generateDebrief({ ...baseInput, marginVehicle: 35, marginPilot: null });
+    expect(out.meta).not.toContain('Marge véhicule');
   });
 });
 
@@ -208,5 +212,47 @@ describe('generateDebrief — formatage temps tour', () => {
   it('omet le temps si bestLapSeconds est null', () => {
     const out = generateDebrief({ ...baseInput, bestLapSeconds: null });
     expect(out.recit).not.toMatch(/\d+:\d+/);
+  });
+});
+
+/**
+ * LE CLIQUET DU TON — tout ce que l'APPLICATION énonce passe le filtre en
+ * portée `application`, pas seulement en portée humaine.
+ *
+ * C'est le test qui manquait. Les gabarits étaient réputés « statiques et
+ * testés conformes », et ils l'étaient — contre le lexique DIRECTIF. Personne
+ * ne vérifiait le ton, et « vous avez piloté avec aisance » est sorti pendant
+ * des mois sur la séance de référence.
+ */
+describe('debrief — aucun gabarit ne juge le pilote', () => {
+  const zones: MarginZone[] = ['green', 'yellow', 'red'];
+
+  it.each(zones)('les trois actes restent neutres en zone %s', (zone) => {
+    const out = generateDebrief({ ...baseInput, marginZone: zone });
+    for (const acte of [out.recit, out.meta, out.preparation]) {
+      expect(isDoctrineSafe(acte, 'application')).toBe(true);
+    }
+  });
+
+  it('sans segment ni marge détaillée non plus', () => {
+    const out = generateDebrief({
+      ...baseInput,
+      segments: [],
+      marginVehicle: null,
+      marginPilot: null,
+    });
+    expect(isDoctrineSafe(out.text, 'application')).toBe(true);
+  });
+
+  it('le repli générique aussi — c’est le dernier filet', () => {
+    const out = generateSafeDebrief({ ...baseInput, firstName: 'Freinez' });
+    expect(isDoctrineSafe(out.text, 'application')).toBe(true);
+  });
+
+  /** « Le Épingle » sortait tel quel : les noms de virage viennent de la base. */
+  it('élide devant un nom de virage à initiale vocalique', () => {
+    const out = generateDebrief(baseInput);
+    expect(out.recit).not.toContain('Le Épingle');
+    expect(out.recit).toContain("L'Épingle");
   });
 });

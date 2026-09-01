@@ -93,10 +93,9 @@ export interface SafeDebriefOutput extends DebriefOutput {
 const GENERIC_SAFE_DEBRIEF: DebriefOutput = (() => {
   const recit =
     'Votre session est enregistrée. Les données sont là, prêtes à être relues à tête reposée.';
-  const meta =
-    "La progression se construit dans le temps long. Chaque sortie s'ajoute à la précédente.";
+  const meta = "Chaque sortie s'ajoute à la précédente, et la saison les tient toutes.";
   const preparation =
-    'La prochaine fois, vous pourrez observer une zone à votre rythme. Une invitation, pas une consigne.';
+    'Les mesures de la séance restent consultables, tour par tour et virage par virage.';
   return { recit, meta, preparation, text: [recit, meta, preparation].join('\n---\n') };
 })();
 
@@ -112,10 +111,11 @@ const GENERIC_SAFE_DEBRIEF: DebriefOutput = (() => {
  */
 export function generateSafeDebrief(input: DebriefInput): SafeDebriefOutput {
   const full = generateDebrief(input);
-  if (isDoctrineSafe(full.text)) return { ...full, safety: 'clean' };
+  if (isDoctrineSafe(full.text, 'application')) return { ...full, safety: 'clean' };
 
   const noSeg = generateDebrief({ ...input, segments: [] });
-  if (isDoctrineSafe(noSeg.text)) return { ...noSeg, safety: 'stripped-segments' };
+  if (isDoctrineSafe(noSeg.text, 'application'))
+    return { ...noSeg, safety: 'stripped-segments' };
 
   return { ...GENERIC_SAFE_DEBRIEF, safety: 'generic' };
 }
@@ -133,14 +133,26 @@ function buildRecit(input: DebriefInput, zone: MarginZone): string {
   return `${opening}${tonePart}${lapPart}${detailPart}`.trim();
 }
 
+/**
+ * LA PHRASE D'OUVERTURE DIT LA MESURE, PAS CE QU'ELLE VAUDRAIT.
+ *
+ * Elle disait « vous avez piloté avec aisance », « la marge restait
+ * confortable », « le geste était posé » — trois appréciations portées sur le
+ * pilote, dont deux que rien ne mesure. Sur la séance de référence, une boucle
+ * routière roulée de nuit avec deux arrêts, elles sortaient toutes les trois
+ * parce que la marge globale de 60,4 % franchit le seuil de 30 %.
+ *
+ * La zone est un fait : la marge tombe dans une plage, et la plage a un nom.
+ * C'est ce qu'on énonce. Le lecteur juge.
+ */
 function toneByZone(zone: MarginZone): string {
   switch (zone) {
     case 'green':
-      return 'vous avez piloté avec aisance. La marge restait confortable, le geste était posé. ';
+      return 'la marge globale se situe dans la plage haute. ';
     case 'yellow':
-      return 'vous avez exploré. La marge était travaillée, présente sans être inconfortable. ';
+      return 'la marge globale se situe dans la plage intermédiaire. ';
     case 'red':
-      return "vous avez touché vos limites. La marge s'est rétractée. ";
+      return 'la marge globale se situe dans la plage basse. ';
   }
 }
 
@@ -167,15 +179,14 @@ function detailFromSegments(segments: SegmentAnalysisRow[], zone: MarginZone): s
   const corner = top.segmentName ?? `virage ${top.segmentIndex}`;
   const gMax = top.maxGLateral ?? 0;
 
-  if (zone === 'green') {
-    return virgule(`Le ${corner} est passé sans accroc, avec un appui à ${gMax.toFixed(2)} g.`);
-  }
-  if (zone === 'yellow') {
-    return virgule(
-      `Le ${corner} a porté l'appui le plus net de la session, à ${gMax.toFixed(2)} g.`
-    );
-  }
-  return virgule(`Le ${corner} a été le plus chargé, à ${gMax.toFixed(2)} g d'appui latéral.`);
+  // Le virage au plus fort appui LATÉRAL, quelle que soit la zone. La phrase
+  // était déclinée en trois versions dont la première — « passé sans accroc » —
+  // jugeait un passage que la mesure ne décrit pas. Le fait est le même dans
+  // les trois cas : c'est ce virage qui a porté l'appui le plus fort.
+  const sujet = leOuL(corner);
+  return virgule(
+    `${sujet.charAt(0).toUpperCase()}${sujet.slice(1)} a porté l'appui latéral le plus fort, à ${gMax.toFixed(2)} g.`
+  );
 }
 
 // ============================================================================
@@ -184,33 +195,47 @@ function detailFromSegments(segments: SegmentAnalysisRow[], zone: MarginZone): s
 
 function buildMeta(input: DebriefInput): string {
   const balance = balancePhrase(input.marginVehicle, input.marginPilot);
-  const base =
-    "La progression se construit dans le temps long. Ce que vous avez senti hier s'ajoute à ce qui vient avant.";
+  // « Ce que vous avez SENTI » affirmait une sensation que rien ne mesure, et
+  // « Continuez à regarder » était un impératif — l'application ne demande rien.
+  const base = "Chaque séance s'ajoute aux précédentes, et la saison les tient toutes.";
 
-  if (!balance) return `${base} Continuez à regarder.`;
+  if (!balance) return base;
   return `${base} ${balance}`;
 }
 
+/**
+ * LES DEUX MARGES, CÔTE À CÔTE — SANS LE TRAIT QUI LES RELIAIT.
+ *
+ * Les trois phrases d'origine expliquaient : « votre lecture du jour était la
+ * variable », « la machine portait son lot », « un équilibre rare ». La
+ * première désigne une cause, la deuxième aussi, la troisième juge. La doctrine
+ * pose les faits côte à côte et ne les relie pas.
+ *
+ * Restent les deux nombres et leur écart. C'est exactement ce que la base
+ * porte.
+ */
 function balancePhrase(vehicle: number | null, pilot: number | null): string {
   if (vehicle === null || pilot === null) return '';
-  const delta = vehicle - pilot;
-  if (Math.abs(delta) < 8) {
-    return 'Voiture et pilote se sont rejoints dans la même zone — un équilibre rare.';
-  }
-  if (delta > 0) {
-    return 'La voiture avait encore de la marge — votre lecture du jour était la variable.';
-  }
-  return 'Le pilote avait plus de marge que la voiture — la machine portait son lot.';
+  const v = virgule(vehicle.toFixed(0));
+  const p = virgule(pilot.toFixed(0));
+  return `Marge véhicule ${v} %, marge pilote ${p} %.`;
 }
 
 // ============================================================================
 // Acte 3 — Préparation (la prochaine fois, sans consigne)
 // ============================================================================
 
+/**
+ * Le troisième acte NOMMAIT UN GESTE À FAIRE, en s'en défendant : « vous
+ * pourrez peut-être explorer une seule zone… Une invitation, pas une consigne. »
+ * Une phrase qui doit préciser qu'elle n'est pas une consigne en est une.
+ *
+ * Il ne reste que le lieu — le secteur à la marge la plus faible — et le fait
+ * qu'il soit consultable. Aucun geste, aucune prochaine fois.
+ */
 function buildPreparation(input: DebriefInput): string {
   const focus = focusPhrase(input.segments);
-  const ending =
-    'La prochaine fois, vous pourrez peut-être explorer une seule zone, à votre rythme. Une invitation, pas une consigne.';
+  const ending = 'Les mesures de la séance restent consultables, tour par tour et virage par virage.';
 
   if (!focus) return ending;
   return `${focus} ${ending}`;
@@ -225,12 +250,32 @@ function focusPhrase(segments: SegmentAnalysisRow[]): string {
   const sorted = [...valid].sort((a, b) => (a.marginPercent ?? 100) - (b.marginPercent ?? 100));
   const focus = sorted[0];
   const name = focus.segmentName ?? `virage ${focus.segmentIndex}`;
-  return `Le ${name} reste votre terrain le plus serré pour l'instant.`;
+  const marge = virgule((focus.marginPercent ?? 0).toFixed(0));
+  return `La marge la plus faible de la séance se lit ${auOuALApostrophe(name)}, à ${marge} %.`;
 }
 
 // ============================================================================
 // Helpers
 // ============================================================================
+
+/**
+ * L'ÉLISION — « Le Épingle » se lisait tel quel.
+ *
+ * Les noms de virage viennent de la base : « Épingle », « Esses », « Ancienne
+ * chicane ». Collés derrière un article fixe, un sur trois sortait faux.
+ *
+ * Le `h` est traité comme une voyelle : les `h` aspirés sont rares dans un nom
+ * de virage, et « l'hairpin » vaut mieux que « le Épingle ».
+ */
+const COMMENCE_PAR_VOYELLE = /^[aàâäeéèêëiîïoôöuùûüyh]/i;
+
+function leOuL(nom: string): string {
+  return COMMENCE_PAR_VOYELLE.test(nom) ? `l'${nom}` : `le ${nom}`;
+}
+
+function auOuALApostrophe(nom: string): string {
+  return COMMENCE_PAR_VOYELLE.test(nom) ? `à l'${nom}` : `au ${nom}`;
+}
 
 function formatLap(seconds: number): string {
   const m = Math.floor(seconds / 60);

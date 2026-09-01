@@ -113,6 +113,23 @@ const FORBIDDEN_TERMS: readonly string[] = [
   'repere de corde',
   'point de corde',
   'patience a la corde',
+  // — Appreciations : l'application ne juge pas celui qui roule —
+  //
+  // Ajoutees le 01/09/2026, en parite avec `src/services/aiSafetyFilter.ts`.
+  // Le debrief ecrivait « vous avez pilote avec aisance » et « une seance
+  // qu'on aimerait reproduire » sur une boucle routiere roulee de nuit avec
+  // deux arrets : le ton du dossier interdit l'encouragement et la
+  // felicitation, et rien ne les arretait.
+  'bravo',
+  'felicitations',
+  'beau travail',
+  'bien joue',
+  'avec aisance',
+  'sans accroc',
+  'aimerait reproduire',
+  'un equilibre rare',
+  'continuez a',
+  'continuez de',
 ];
 
 /**
@@ -237,6 +254,7 @@ Doctrine NON NÉGOCIABLE (toute violation rend le texte inutilisable) :
 - STRICTEMENT DESCRIPTIF : énonce des faits mesurés. Jamais de prescription, de conseil, de recommandation, de correction.
 - AUCUN verbe directif ni d'incitation. Interdits absolus : "freinez", "accélérez", "ouvrez les gaz", "tracez", "évitez", "poussez", "corrigez", "améliorez", "optimisez", "gagnez", "il faut", "vous devez", "vous devriez", "vous pouvez", "tu dois", "tu peux", "je vous conseille", "je vous recommande", ainsi que tout impératif de conduite (tournez, braquez, serrez, prenez, gardez, visez, appuyez, relâchez).
 - AUCUN score, AUCUN classement, AUCUNE comparaison avec d'autres pilotes.
+- AUCUN encouragement, AUCUNE félicitation, AUCUN jugement porté sur le pilote. Interdits : \"bravo\", \"félicitations\", \"beau travail\", \"bien joué\", \"avec aisance\", \"sans accroc\", \"qu'on aimerait reproduire\", \"un équilibre rare\", \"continuez à\". Vous décrivez une mesure, pas une performance.
 - L'app est un MIROIR. Elle montre. Elle ne dirige pas.
 - Ton sobre, posé, premium "Ferrari sec" : pas d'emoji, pas d'exclamation, phrases courtes.
 - Vocabulaire autorisé : "à observer", "à creuser la prochaine fois", "était-ce volontaire ?", "confortable", "terrain serré", "apprivoisé".

@@ -7,6 +7,10 @@ exports[`aiSafetyFilter — lexique verrouillé le catalogue est stable (snapsho
     "term": "patience a la corde",
   },
   {
+    "category": "appreciation",
+    "term": "aimerait reproduire",
+  },
+  {
     "category": "obligation",
     "term": "je vous recommande",
   },
@@ -17,6 +21,10 @@ exports[`aiSafetyFilter — lexique verrouillé le catalogue est stable (snapsho
   {
     "category": "obligation",
     "term": "je vous conseille",
+  },
+  {
+    "category": "appreciation",
+    "term": "un equilibre rare",
   },
   {
     "category": "conseil_deguise",
@@ -47,8 +55,24 @@ exports[`aiSafetyFilter — lexique verrouillé le catalogue est stable (snapsho
     "term": "point de corde",
   },
   {
+    "category": "appreciation",
+    "term": "felicitations",
+  },
+  {
     "category": "obligation",
     "term": "vous devriez",
+  },
+  {
+    "category": "appreciation",
+    "term": "beau travail",
+  },
+  {
+    "category": "appreciation",
+    "term": "avec aisance",
+  },
+  {
+    "category": "appreciation",
+    "term": "continuez de",
   },
   {
     "category": "imperatif_pilotage",
@@ -65,6 +89,14 @@ exports[`aiSafetyFilter — lexique verrouillé le catalogue est stable (snapsho
   {
     "category": "obligation",
     "term": "vous pouvez",
+  },
+  {
+    "category": "appreciation",
+    "term": "sans accroc",
+  },
+  {
+    "category": "appreciation",
+    "term": "continuez a",
   },
   {
     "category": "obligation",
@@ -109,6 +141,10 @@ exports[`aiSafetyFilter — lexique verrouillé le catalogue est stable (snapsho
   {
     "category": "obligation",
     "term": "veillez a",
+  },
+  {
+    "category": "appreciation",
+    "term": "bien joue",
   },
   {
     "category": "imperatif_pilotage",
@@ -209,6 +245,10 @@ exports[`aiSafetyFilter — lexique verrouillé le catalogue est stable (snapsho
   {
     "category": "interdiction",
     "term": "evite",
+  },
+  {
+    "category": "appreciation",
+    "term": "bravo",
   },
 ]
 `;

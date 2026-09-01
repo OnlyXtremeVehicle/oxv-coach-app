@@ -16,6 +16,7 @@
  */
 
 import { colors } from '@/ui/v2/tokens';
+import { isDoctrineSafe } from '@/services/aiSafetyFilter';
 
 import {
   BILAN_PILLAR_KEYS,
@@ -719,7 +720,9 @@ describe('debriefModel', () => {
     if (model.kind !== 'pending') {
       // « \b » regex ne gère pas les accents en JS — assertion par sous-chaîne.
       expect(model.acts[0].body).not.toContain('allé');
-      expect(model.acts[0].body).toContain('vous avez cherché loin');
+      // Le repli ne juge plus : il dit la valeur et la plage où elle tombe.
+      expect(model.acts[0].body).toContain('dans la plage basse');
+      expect(model.acts[0].body).toContain('5 %');
     }
   });
 });
@@ -843,5 +846,29 @@ describe('les libellés des piliers viennent du vocabulaire figé', () => {
   it('les quatre libellés sont distincts', () => {
     const labels = mapPillars({}).map((p) => p.label);
     expect(new Set(labels).size).toBe(labels.length);
+  });
+});
+
+/**
+ * LE CLIQUET DU TON, CÔTÉ REPLI.
+ *
+ * Le repli pédagogique est employé chaque fois que la base ne porte pas de
+ * débrief — donc sur toute séance à ce jour. Il écrivait « vous avez piloté
+ * avec aisance », « une séance qu'on aimerait reproduire » et « Continuez à
+ * regarder », et rien ne le vérifiait : le seul filtre posé portait sur le
+ * texte VENU DE LA BASE, jamais sur les gabarits maison.
+ */
+describe('repli du débrief — aucun gabarit ne juge le pilote', () => {
+  const marges = [null, 5, 20, 60];
+
+  it.each(marges)('les trois actes restent neutres pour une marge de %s', (marge) => {
+    const model = debriefModel(
+      { debriefText: null, marginGlobal: marge as number | null },
+      'Gabin'
+    );
+    if (model.kind === 'pending') throw new Error('le repli devait être rendu');
+    for (const acte of model.acts) {
+      expect(isDoctrineSafe(acte.body, 'application')).toBe(true);
+    }
   });
 });

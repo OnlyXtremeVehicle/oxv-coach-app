@@ -60,7 +60,47 @@ describe('aiSafetyFilter — PARITÉ avec le garde-fou edge (décision 2026-07-0
 
   it("le filtre app bloque chaque terme qu'il déclare (cohérence interne)", () => {
     for (const { term } of DOCTRINE_PROSCRIBED_TERMS) {
-      expect(isDoctrineSafe(`Phrase de test : ${term} la corde.`)).toBe(false);
+      expect(isDoctrineSafe(`Phrase de test : ${term} la corde.`, 'application')).toBe(false);
+    }
+  });
+});
+
+/**
+ * LA PORTÉE — QUI PARLE CHANGE CE QU'ON REFUSE.
+ *
+ * Un coach qui félicite son pilote parle en son nom : sa phrase est un
+ * verbatim, et le dossier ne l'interdit pas. L'APPLICATION, elle, n'a pas le
+ * droit d'encourager — « minimalisme sec, aucun encouragement, aucune
+ * félicitation ». Le même mot est donc licite d'un côté et refusé de l'autre.
+ *
+ * La consigne de pilotage, elle, est refusée des DEUX côtés : c'est ce qui
+ * tient l'outil hors du champ de l'enseignement, quel que soit l'auteur.
+ */
+describe('aiSafetyFilter — la portée', () => {
+  it('la consigne de pilotage est refusée quel que soit l’auteur', () => {
+    expect(isDoctrineSafe('Freinez plus tôt.', 'humain')).toBe(false);
+    expect(isDoctrineSafe('Freinez plus tôt.', 'application')).toBe(false);
+  });
+
+  it('l’éloge d’un humain passe, celui de l’application non', () => {
+    const phrase = 'Bravo, beau travail sur ce virage.';
+    expect(isDoctrineSafe(phrase, 'humain')).toBe(true);
+    expect(isDoctrineSafe(phrase, 'application')).toBe(false);
+  });
+
+  it('la portée par défaut reste celle des notes humaines', () => {
+    expect(isDoctrineSafe('Bravo.')).toBe(isDoctrineSafe('Bravo.', 'humain'));
+  });
+
+  /** Les quatre tournures que le débrief sortait sur la séance du 12/08. */
+  it('refuse les quatre tournures trouvées dans les gabarits', () => {
+    for (const phrase of [
+      'vous avez piloté avec aisance',
+      "une séance qu'on aimerait reproduire",
+      'un équilibre rare',
+      'Continuez à regarder.',
+    ]) {
+      expect(isDoctrineSafe(phrase, 'application')).toBe(false);
     }
   });
 });

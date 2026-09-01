@@ -21,7 +21,40 @@ export type ProscriptionCategory =
   | 'imperatif_pilotage' // ordre de conduite ("freinez", "accélérez")
   | 'obligation' // "il faut", "vous devez", "vous devriez"
   | 'interdiction' // "évitez", "abstenez-vous"
-  | 'conseil_deguise'; // groupe nominal directif ("repère de freinage")
+  | 'conseil_deguise' // groupe nominal directif ("repère de freinage")
+  | 'appreciation'; // jugement porté sur le pilote ("bravo", "avec aisance")
+
+/**
+ * SUR QUI PORTE LE FILTRE.
+ *
+ * `humain` — ce qu'une PERSONNE écrit : la note d'un coach, le titre d'un cycle.
+ * On y refuse la consigne de pilotage, parce que l'application la distribue et
+ * qu'elle n'est pas agréée pour l'enseignement. On n'y refuse PAS l'éloge : un
+ * coach qui félicite son pilote parle en son nom, et sa phrase est un verbatim.
+ *
+ * `application` — ce que l'APPLICATION énonce d'elle-même : débrief J+1,
+ * gabarits de repli, assistant. La doctrine y ajoute l'interdit du ton — « aucun
+ * encouragement, aucune félicitation ». C'est ce qui manquait : le débrief
+ * écrivait « vous avez piloté avec aisance » et « une séance qu'on aimerait
+ * reproduire » sur une boucle routière roulée de nuit avec deux arrêts, et rien
+ * ne l'arrêtait.
+ *
+ * Le défaut par défaut reste `humain` : élargir en silence aurait refusé des
+ * notes de coach déjà écrites.
+ */
+export type PorteeDoctrine = 'humain' | 'application';
+
+/** Les catégories qui s'appliquent, selon qui parle. */
+const CATEGORIES_PAR_PORTEE: Readonly<Record<PorteeDoctrine, readonly ProscriptionCategory[]>> = {
+  humain: ['imperatif_pilotage', 'obligation', 'interdiction', 'conseil_deguise'],
+  application: [
+    'imperatif_pilotage',
+    'obligation',
+    'interdiction',
+    'conseil_deguise',
+    'appreciation',
+  ],
+};
 
 export interface ProscribedMatch {
   /** Terme normalisé (minuscule, sans accent) effectivement trouvé. */
@@ -98,6 +131,23 @@ const PROSCRIBED: readonly (readonly [string, ProscriptionCategory])[] = [
   ['repere de corde', 'conseil_deguise'],
   ['point de corde', 'conseil_deguise'],
   ['patience a la corde', 'conseil_deguise'],
+
+  // — Appréciations : l'application ne juge pas celui qui roule —
+  //
+  // Elles ne sont refusées QUE sur la portée `application`. Le ton du dossier
+  // est explicite : minimalisme sec, aucun encouragement, aucune félicitation.
+  // Les formes ci-dessous sont celles qui ONT ÉTÉ TROUVÉES dans les gabarits,
+  // pas une liste imaginée — chacune sortait sur la séance de référence.
+  ['bravo', 'appreciation'],
+  ['felicitations', 'appreciation'],
+  ['beau travail', 'appreciation'],
+  ['bien joue', 'appreciation'],
+  ['avec aisance', 'appreciation'],
+  ['sans accroc', 'appreciation'],
+  ['aimerait reproduire', 'appreciation'],
+  ['un equilibre rare', 'appreciation'],
+  ['continuez a', 'appreciation'],
+  ['continuez de', 'appreciation'],
 ];
 
 /**
@@ -166,8 +216,12 @@ const COMBINED = new RegExp(
  * Renvoie toutes les tournures proscrites trouvées (vide si la sortie est
  * conforme). N'altère pas le texte.
  */
-export function findProscribedTerms(text: string): ProscribedMatch[] {
+export function findProscribedTerms(
+  text: string,
+  portee: PorteeDoctrine = 'humain'
+): ProscribedMatch[] {
   if (!text) return [];
+  const retenues = CATEGORIES_PAR_PORTEE[portee];
   const normalized = normalize(text);
   const matches: ProscribedMatch[] = [];
   // Regex partagée : on remet lastIndex à 0 (état global du flag 'g').
@@ -175,20 +229,17 @@ export function findProscribedTerms(text: string): ProscribedMatch[] {
   let m: RegExpExecArray | null;
   while ((m = COMBINED.exec(normalized)) !== null) {
     const term = m[1];
-    matches.push({
-      term,
-      category: TERM_TO_CATEGORY.get(term) ?? 'imperatif_pilotage',
-      index: m.index,
-    });
+    const category = TERM_TO_CATEGORY.get(term) ?? 'imperatif_pilotage';
+    if (retenues.includes(category)) matches.push({ term, category, index: m.index });
     // Garde-fou anti-boucle si un terme vide se glissait (impossible ici).
     if (COMBINED.lastIndex === m.index) COMBINED.lastIndex++;
   }
   return matches;
 }
 
-/** `true` si la sortie ne contient aucune tournure prescriptive. */
-export function isDoctrineSafe(text: string): boolean {
-  return findProscribedTerms(text).length === 0;
+/** `true` si la sortie ne contient aucune tournure proscrite pour cette portée. */
+export function isDoctrineSafe(text: string, portee: PorteeDoctrine = 'humain'): boolean {
+  return findProscribedTerms(text, portee).length === 0;
 }
 
 /**
@@ -196,8 +247,12 @@ export function isDoctrineSafe(text: string): boolean {
  * tournure prescriptive. À appeler AVANT d'afficher/persister toute sortie
  * générée (débrief, assistant coach…). `context` enrichit le message d'erreur.
  */
-export function assertDoctrineSafe(text: string, context?: string): void {
-  const violations = findProscribedTerms(text);
+export function assertDoctrineSafe(
+  text: string,
+  context?: string,
+  portee: PorteeDoctrine = 'humain'
+): void {
+  const violations = findProscribedTerms(text, portee);
   if (violations.length > 0) {
     throw new DoctrineViolationError(violations, context);
   }
