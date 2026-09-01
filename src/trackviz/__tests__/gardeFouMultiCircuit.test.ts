@@ -53,12 +53,19 @@ describe('analyzeTrackVizSession — garde-fou multi-circuit', () => {
     const valence = Array.from({ length: 40 }, (_, i) =>
       sample(39.485 + i * 0.0001, -0.63 + i * 0.0001, i * 200)
     );
-    expect(() => analyzeTrackVizSession(valence)).toThrow(/hors du tracé connu/i);
+    expect(() => analyzeTrackVizSession(valence)).toThrow(/hors du tracé fourni/i);
   });
 
+  /**
+   * Le message ne nomme PLUS Haute Saintonge, et c'est le sens du 01/09 : la
+   * piste vient de la base, elle n'est plus une constante. Il dit ce qui reste
+   * vrai quel que soit le tracé reçu — l'écart mesuré, et que le recalage a
+   * échoué.
+   */
   it('le message dit l’écart constaté et pourquoi rien n’est calculable', () => {
     const ailleurs = Array.from({ length: 20 }, (_, i) => sample(48.8566, 2.3522, i * 200));
-    expect(() => analyzeTrackVizSession(ailleurs)).toThrow(/Haute Saintonge/);
+    expect(() => analyzeTrackVizSession(ailleurs)).toThrow(/écart médian \d+ m/);
+    expect(() => analyzeTrackVizSession(ailleurs)).toThrow(/aucune marge n'est calculable/);
   });
 
   it('tolère une sortie de piste : quelques dizaines de mètres restent analysables', () => {

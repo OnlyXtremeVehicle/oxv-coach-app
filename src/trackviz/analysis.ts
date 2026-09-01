@@ -13,6 +13,7 @@
 import { type MarginZone, marginZoneOf } from '@/types/domain';
 
 import { HAUTE_SAINTONGE_SEGMENTS, HAUTE_SAINTONGE_TRACK } from './hauteSaintonge';
+import type { PisteAnalysable } from './pisteDepuisBase';
 import {
   buildTrackGeometry,
   mapMatchPoint,
@@ -26,6 +27,22 @@ import type {
   TrackVizSegmentAnalysis,
   TrackVizSegmentDefinition,
 } from './types';
+
+/**
+ * LA PISTE PAR DÉFAUT — Haute Saintonge, et elle le dit.
+ *
+ * Les deux fonctions publiques acceptent désormais une piste. Le défaut existe
+ * pour les appelants d'avant l'ouverture multi-circuit — les tests, la démo —
+ * et pour eux seulement : `analyzeSessionService` passe explicitement la piste
+ * lue en base depuis le 01/09/2026.
+ *
+ * Un défaut nommé vaut mieux qu'une constante cachée dans le corps : celle-ci
+ * se voit, et le jour où plus personne ne s'en sert, elle se retire.
+ */
+export const PISTE_HAUTE_SAINTONGE: PisteAnalysable = {
+  trace: HAUTE_SAINTONGE_TRACK,
+  segments: HAUTE_SAINTONGE_SEGMENTS,
+};
 
 function average(values: number[]): number {
   if (values.length === 0) return 0;
@@ -53,16 +70,17 @@ function clamp01to100(x: number): number {
  * distance, lateral_error, phase). Triés par elapsed_ms croissant.
  */
 export function normalizeTrackVizSamples(
-  recordingSamples: TrackVizRecordingSample[]
+  recordingSamples: TrackVizRecordingSample[],
+  piste: PisteAnalysable = PISTE_HAUTE_SAINTONGE
 ): TrackVizSample[] {
-  const geometry = buildTrackGeometry(HAUTE_SAINTONGE_TRACK);
+  const geometry = buildTrackGeometry([...piste.trace]);
 
   return recordingSamples
     .filter((s) => Number.isFinite(s.latitude) && Number.isFinite(s.longitude))
     .sort((a, b) => a.elapsed_ms - b.elapsed_ms)
     .map((sample) => {
       const match = mapMatchPoint({ lat: sample.latitude, lon: sample.longitude }, geometry);
-      const segment = segmentForProgress(match.progress, HAUTE_SAINTONGE_SEGMENTS);
+      const segment = segmentForProgress(match.progress, [...piste.segments]);
       return {
         ...sample,
         progress: match.progress,
@@ -175,28 +193,34 @@ function mediane(valeurs: number[]): number {
 }
 
 export function analyzeTrackVizSession(
-  recordingSamples: TrackVizRecordingSample[]
+  recordingSamples: TrackVizRecordingSample[],
+  piste: PisteAnalysable = PISTE_HAUTE_SAINTONGE
 ): TrackVizAnalysisResult {
-  const samples = normalizeTrackVizSamples(recordingSamples);
+  const samples = normalizeTrackVizSamples(recordingSamples, piste);
 
-  // GARDE-FOU MULTI-CIRCUIT. Toute cette analyse projette les points GPS sur le
-  // tracé de Haute Saintonge, seul circuit dont la géométrie est connue ici. Pour
-  // une séance courue ailleurs, le map-matching renvoie une erreur latérale
-  // énorme, `trajectoryUsage` sature à 1, et la marge tombe mécaniquement — on
-  // publiait alors des marges de SÉCURITÉ fabriquées, présentées au pilote comme
-  // des mesures. On refuse plutôt que de produire un chiffre faux : l'appelant
-  // n'enregistre rien et la séance reste « non analysée », ce qui est vrai.
+  // GARDE-FOU DE RECALAGE. L'analyse projette les points GPS sur LE TRACÉ REÇU.
+  // Si la séance n'a pas été roulée sur ce tracé-là, le map-matching renvoie une
+  // erreur latérale énorme, `trajectoryUsage` sature à 1, et la marge tombe
+  // mécaniquement — des marges de SÉCURITÉ fabriquées, présentées au pilote
+  // comme des mesures.
+  //
+  // Le garde reste indispensable après l'ouverture multi-circuit du 01/09 : la
+  // piste vient désormais de la base, mais rien ne garantit que la séance ait
+  // été roulée sur le circuit qui lui est rattaché. C'est même le cas le plus
+  // probable d'erreur — un rattachement à la main, un circuit voisin. On refuse
+  // plutôt que de produire un chiffre faux : l'appelant n'enregistre rien et la
+  // séance reste « non analysée », ce qui est vrai.
   const erreurMediane = mediane(withNumbers(samples.map((s) => s.lateral_error_m)));
   if (samples.length > 0 && erreurMediane > DISTANCE_MAX_SUR_TRACE_M) {
     throw new Error(
-      `Séance hors du tracé connu (écart médian ${Math.round(erreurMediane)} m). ` +
-        "Seule la géométrie de Haute Saintonge est disponible : aucune marge n'est calculable ici."
+      `Séance hors du tracé fourni (écart médian ${Math.round(erreurMediane)} m). ` +
+        "Le recalage a échoué : aucune marge n'est calculable sur ce tracé."
     );
   }
 
-  const segments = HAUTE_SAINTONGE_SEGMENTS.map((segment) =>
-    analyzeSegment(segment, samples)
-  ).filter((s): s is TrackVizSegmentAnalysis => Boolean(s));
+  const segments = piste.segments
+    .map((segment) => analyzeSegment(segment, samples))
+    .filter((s): s is TrackVizSegmentAnalysis => Boolean(s));
 
   const speeds = withNumbers(samples.map((s) => s.speed_kmh));
   const lateralErrors = withNumbers(samples.map((s) => s.lateral_error_m));

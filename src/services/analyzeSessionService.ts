@@ -34,7 +34,11 @@ import { supabase } from '@/lib/supabase';
 import { UbxFrameBuffer, parseRaceBoxDataMessage } from '@/ubx/parser';
 import { analyzeTrackVizSession } from '@/trackviz/analysis';
 import { virageACreuser } from '@/features/miroir/margeLogic';
-import { estHauteSaintonge } from '@/lib/circuitTopology';
+import { pisteDepuisBase } from '@/trackviz/pisteDepuisBase';
+import {
+  fetchSessionCircuitCenterlineExact,
+  fetchSessionCircuitCorners,
+} from '@/services/circuitsService';
 import type { TrackVizRecordingSample } from '@/trackviz/types';
 import type { Lap, RaceBoxData, TelemetrySession } from '@/types/telemetry';
 
@@ -161,35 +165,42 @@ export async function analyzeAndPersistSession(
 
   // ── Analyse trackviz par segment ─────────────────────────────────────────
   //
-  // LA SEGMENTATION NE VAUT QUE POUR HAUTE SAINTONGE, ET IL FALLAIT LE DIRE.
+  // LA PISTE VIENT DE LA BASE DEPUIS LE 01/09/2026.
   //
-  // `analyzeTrackVizSession` recale la trajectoire sur `HAUTE_SAINTONGE_TRACK`
-  // et découpe sur `HAUTE_SAINTONGE_SEGMENTS` — deux constantes écrites en dur,
-  // sans aucune garde de circuit. Une capture au Mans ou à Albi y écrivait donc
-  // SEPT segments d'un autre circuit, avec des écarts latéraux kilométriques
-  // qui saturent le taux d'exploitation à 1 : des marges fabriquées, persistées,
-  // et affichées ensuite comme des mesures.
+  // Elle était écrite en dur : `HAUTE_SAINTONGE_TRACK` et ses sept segments.
+  // Une capture au Mans ou à Albi y écrivait donc sept segments d'un AUTRE
+  // circuit, avec des écarts latéraux kilométriques qui saturent le taux
+  // d'exploitation à 1 — des marges fabriquées, persistées, affichées ensuite
+  // comme des mesures.
   //
-  // C'est pire que l'absence : une section vide se voit, une marge fausse non.
-  // Et la base l'aurait de toute façon refusée au-delà du septième segment —
-  // `app_segment_analyses_segment_index_check` plafonne à 7, quand Bouteville
-  // en compte douze.
+  // La garde du 30/08 a arrêté cela en refusant d'analyser hors de Haute
+  // Saintonge. C'était juste, et cela laissait le trou entier : plus AUCUNE
+  // séance réelle n'avait de segments, donc pas d'anatomie, donc pas de
+  // lectures approfondies, donc pas de ruban. Une chaîne de six écrans tenait
+  // à cette constante.
   //
-  // La garde est ici plutôt que dans `analysis.ts` pour que le module de calcul
-  // reste pur : c'est l'appelant qui sait sur quel circuit il tourne.
-  const circuitDeLaSeance = await lireNomCircuit(input.telemetrySessionId);
-  const segmentationApplicable = estHauteSaintonge(circuitDeLaSeance);
+  // `pisteDepuisBase` la remplace par ce que la base porte déjà : la polyligne
+  // du circuit et ses virages détectés. Douze à Bouteville, neuf au Bugatti,
+  // huit à Albi. Le garde de recalage, lui, RESTE — dans `analysis.ts`, où il
+  // refuse un écart médian trop grand quel que soit le tracé reçu.
+  const [centerline, viragesCircuit] = await Promise.all([
+    fetchSessionCircuitCenterlineExact(input.telemetrySessionId).catch(() => null),
+    fetchSessionCircuitCorners(input.telemetrySessionId).catch(() => []),
+  ]);
+  const piste = pisteDepuisBase(centerline, viragesCircuit);
 
-  if (samples.length >= 2 && !segmentationApplicable) {
+  if (samples.length >= 2 && piste === null) {
+    const circuitDeLaSeance = await lireNomCircuit(input.telemetrySessionId);
     notes.push(
-      `Segmentation non disponible pour ce circuit (${circuitDeLaSeance ?? 'circuit inconnu'}) : ` +
-        'le découpage par segments est calibré sur Haute Saintonge.'
+      `Segmentation impossible pour ce circuit (${circuitDeLaSeance ?? 'circuit inconnu'}) : ` +
+        `${centerline === null ? 'aucun tracé en base' : `${centerline.length} points de tracé`}, ` +
+        `${viragesCircuit.length} virage(s) détecté(s).`
     );
   }
 
-  if (samples.length >= 2 && segmentationApplicable) {
+  if (samples.length >= 2 && piste !== null) {
     try {
-      const analysis = analyzeTrackVizSession(samples);
+      const analysis = analyzeTrackVizSession(samples, piste);
       nextFocusCornerIndex = virageACreuser(analysis.segments);
       segmentsPersisted = await upsertSegmentAnalyses({
         telemetrySessionId: input.telemetrySessionId,
