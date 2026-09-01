@@ -2,14 +2,33 @@
  * LES CONSIGNES DU COACH — lecture et écriture. Migration du 01/09/2026.
  *
  * ===========================================================================
- * CE QU'UNE CONSIGNE EST, ET CE QU'ELLE N'EST PAS
+ * ELLE EST LA PAROLE DU COACH, PAS CELLE DE L'APPLICATION
  * ===========================================================================
  *
- * Elle nomme UN endroit et UNE chose à observer au prochain run. Elle ne dit
- * pas quoi faire du volant : `coach_consigne_doctrine_guard` refuse en base
- * tout terme prescriptif, avec le même vocabulaire que les notes partagées et
- * les programmes. C'est ce qui tient OXV hors du champ de l'enseignement du
- * pilotage, et ce n'est pas une gêne à contourner — c'est le produit.
+ * Une première version filtrait cette table comme les notes partagées : aucun
+ * verbe d'ordre, aucune causalité. C'ÉTAIT FAUX, et le dépôt le disait déjà —
+ * `CoachBand.tsx`, en tête de fichier, bien avant cette table :
+ *
+ *   « SEUL espace prescriptif de l'application. Partout ailleurs, l'app est un
+ *     miroir : elle énonce des faits, jamais des consignes. Ici, et ici
+ *     seulement, le coach (humain, BPJEPS) a droit aux verbes d'ordre et à la
+ *     causalité. Le marquage rouge + "De votre coach" signale sans ambiguïté
+ *     que ce qui suit vient d'un tiers et n'est pas une lecture automatique. »
+ *
+ * La retenue doctrinale protège l'APPLICATION — elle l'empêche de conseiller,
+ * et c'est elle qui tient OXV hors du champ de l'enseignement du pilotage. Un
+ * coach diplômé, lui, EXERCE ce droit. L'application ne fait que porter sa
+ * parole.
+ *
+ * CE QUI REMPLACE LE FILTRE : l'ATTRIBUTION. Une consigne ne se rend JAMAIS
+ * dans la voix de l'application — elle se lit dans `CoachBand`, marquée,
+ * nommée. Cela ne se contraint pas en SQL ; c'est un contrat de surface, et
+ * `consignesCoachBand.guard.test.ts` le tient.
+ *
+ * `coach_annotation_doctrine_guard` reste, lui, et ce n'est pas une
+ * incohérence : une NOTE s'affiche sur les feuilles de données du pilote, où
+ * la règle « aucune consigne » vaut ; une CONSIGNE s'affiche dans la bande
+ * coach, où elle ne vaut pas. Deux régimes, deux surfaces.
  *
  * ===========================================================================
  * SEPT FICHES L'ATTENDAIENT, ET AUCUNE NE VOULAIT D'UNE NOTE
@@ -166,10 +185,12 @@ export async function consignesDeSeance(sessionId: string): Promise<ConsigneCoac
 /**
  * Le coach pose une consigne.
  *
- * Deux refus viennent de la base et arrivent ici tels quels, parce qu'ils ne se
- * devinent pas : un terme prescriptif dans le corps, et une consigne déjà
- * ouverte pour ce pilote. On les TRADUIT plutôt que de rendre le message
- * Postgres — le coach doit savoir quoi faire de son texte.
+ * UN refus vient de la base et arrive ici traduit, parce qu'il ne se devine
+ * pas : une consigne est déjà ouverte pour ce pilote — c'est P39, « un seul
+ * changement », tenu par un index unique partiel.
+ *
+ * Le corps, lui, n'est PLUS filtré : c'est la parole d'un coach diplômé, et
+ * elle a droit aux verbes d'ordre. Voir l'en-tête.
  */
 export async function poserConsigne(entree: {
   pilotId: string;
@@ -197,13 +218,6 @@ export async function poserConsigne(entree: {
     .maybeSingle();
 
   if (error) {
-    if (error.message.includes('doctrine_violation')) {
-      return {
-        ok: false,
-        error:
-          'Cette consigne contient un terme de pilotage. Nommez un endroit et ce qu’il y a à observer.',
-      };
-    }
     if (error.message.includes('coach_consignes_une_ouverte_par_pilote')) {
       return {
         ok: false,

@@ -52,6 +52,7 @@ import { computeKeyMoments, type KeyMoment } from '@/services/keyMomentsLogic';
 import { composerPresentations, type Composition } from '@/features/presentations/compositionLogic';
 import { lireEntreeComposition } from '@/features/presentations/entreeCompositionService';
 import { rattraperSegments } from '@/services/rattrapageSegmentsService';
+import { consignesDeSeance, type ConsigneCoach } from '@/services/coachConsignesService';
 import { QDI_ALGO_VERSION } from '@/services/qdiLogic';
 import { getOrComputeQdiForSession } from '@/services/qdiService';
 import { listSegmentAnalysesForSession } from '@/services/segmentAnalysesService';
@@ -135,6 +136,15 @@ export interface BilanData {
    * ne s'ouvre, et `ecartees` en porte les motifs.
    */
   composition: Composition | null;
+  /**
+   * LES CONSIGNES DU COACH qui portent sur cette séance.
+   *
+   * Parole d'un TIERS, pas de l'application : le coach (humain, BPJEPS) a
+   * droit aux verbes d'ordre et à la causalité, et c'est `CoachBand` qui pose
+   * cette règle depuis l'origine. Elles se rendent donc ATTRIBUÉES, dans la
+   * bande coach, jamais dans la voix de l'application.
+   */
+  consignes: ConsigneCoach[];
   /**
    * Centerline STRICTE du circuit RÉEL de la séance — null si la séance n'a
    * pas de circuit rattaché ou si la géométrie manque (carte tracé masquée,
@@ -370,6 +380,9 @@ export function useBilan(sessionId: string | undefined): UseBilanResult {
        *
        * `null` en cas de panne : la section disparaît, elle ne se vide pas.
        */
+      const consignes = await consignesDeSeance(sessionId).catch(() => [] as ConsigneCoach[]);
+      if (cancelled) return;
+
       let composition: Composition | null = null;
       try {
         composition = composerPresentations(
@@ -606,6 +619,7 @@ export function useBilan(sessionId: string | undefined): UseBilanResult {
 
         keyMoments,
         composition,
+        consignes,
         centerline,
         traceMarkers,
         coachNotes,

@@ -333,6 +333,34 @@ export default function BilanScreen() {
     </View>
   ) : null;
 
+  /**
+   * LA CONSIGNE DU COACH — le SEUL endroit prescriptif de cet écran.
+   *
+   * `CoachBand` pose la règle depuis l'origine : « partout ailleurs, l'app est
+   * un miroir ; ici, et ici seulement, le coach (humain, BPJEPS) a droit aux
+   * verbes d'ordre et à la causalité ». La bande n'est pas importée telle
+   * quelle — elle vit dans l'univers coach (`theme/v2`) et le mélanger à
+   * l'univers pilote violerait la frontière. On reprend son CONTRAT, avec les
+   * jetons d'ici : marquage distinct, attribution nommée, et un texte cité qui
+   * ne se confond avec aucune lecture automatique.
+   *
+   * Une seule consigne se montre — la plus récente encore ouverte. C'est P39,
+   * « Que dois-je modifier, et rien d'autre ? », et la base le tient déjà par
+   * un index unique partiel.
+   */
+  const consigneOuverte = data.consignes.find((c) => c.closedAt === null) ?? null;
+  const bandeConsigne = consigneOuverte ? (
+    <View style={styles.bandeConsigne} accessible>
+      <Text style={[styles.noteEyebrow, styles.consigneEyebrow]}>
+        {consigneOuverte.cornerIndex !== null
+          ? `CONSIGNE · VIRAGE ${consigneOuverte.cornerIndex}`
+          : 'CONSIGNE · SÉANCE'}
+      </Text>
+      <Text style={[styles.noteBody, styles.consigneBody]}>« {consigneOuverte.body} »</Text>
+      <Text style={[styles.noteEyebrow, styles.consigneSource]}>De votre coach</Text>
+    </View>
+  ) : null;
+
   return (
     <View style={styles.root}>
       <Animated.ScrollView
@@ -382,6 +410,7 @@ export default function BilanScreen() {
             Absent sans note : la section entière disparaît, elle ne se vide pas.
           */}
           {bandeBilanCoach ? <View style={styles.section}>{bandeBilanCoach}</View> : null}
+          {bandeConsigne ? <View style={styles.section}>{bandeConsigne}</View> : null}
 
           {/*
             CE QUE VOUS VOUS ÉTIEZ DIT AVANT DE ROULER.
@@ -1165,6 +1194,42 @@ const styles = StyleSheet.create({
     // rouge de donnée ni l'or du chrono.
     borderLeftWidth: 2,
     borderLeftColor: colors.accent,
+  },
+  /**
+   * LA BANDE DE CONSIGNE — plus marquée que celle du mot du coach, et c'est
+   * délibéré : elle porte le SEUL texte prescriptif de l'écran. Le fond la
+   * détache, le liseré dit la voix, et le pied la nomme. Un pilote doit voir en
+   * un coup d'œil que ceci ne vient pas de l'application.
+   */
+  bandeConsigne: {
+    marginTop: space.lg,
+    paddingLeft: space.md,
+    paddingRight: space.md,
+    paddingVertical: space.md,
+    borderRadius: radius.cell,
+    borderLeftWidth: 3,
+    borderLeftColor: colors.accent,
+    backgroundColor: colors.bg.card2,
+  },
+  /**
+   * AUCUNE TAILLE NEUVE ICI — la bande de consigne COMPOSE les styles de la
+   * voix du coach au lieu d'en créer d'autres.
+   *
+   * Le cliquet typographique l'a attrapé : trois styles ajoutés, trois tailles
+   * écrites en dur de plus. Or ce bloc n'a besoin de rien de neuf — il lui faut
+   * la même échelle que le mot du coach, dans une autre couleur. Une couleur
+   * n'est pas une taille.
+   */
+  consigneEyebrow: {
+    color: colors.accent,
+  },
+  consigneBody: {
+    color: colors.text.hi,
+    marginTop: space.sm,
+  },
+  consigneSource: {
+    color: colors.text.low,
+    marginTop: space.sm,
   },
   noteBandBare: {
     marginTop: space.sm,
