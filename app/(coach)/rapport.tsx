@@ -399,6 +399,7 @@ export default function CoachRapportScreen() {
             <EnregistrerButton
               saving={saving}
               disabled={!sessionId || !studio?.pilotId}
+              motif={motifInerte(sessionId ?? null, studio?.pilotId ?? null)}
               savedAt={savedAt}
               onPress={onEnregistrer}
             />
@@ -489,6 +490,7 @@ export default function CoachRapportScreen() {
                     <EnregistrerButton
                       saving={saving}
                       disabled={!sessionId || !studio?.pilotId}
+                      motif={motifInerte(sessionId ?? null, studio?.pilotId ?? null)}
                       savedAt={savedAt}
                       onPress={onEnregistrer}
                       block
@@ -752,15 +754,34 @@ function DoctrineNote() {
  * qu'on a cliqué, une date dit ce qui est en base. Sans note écrite, la ligne
  * est ABSENTE — pas un « jamais enregistré » qui ferait du vide une alerte.
  */
+/**
+ * CE QUI MANQUE, NOMMÉ.
+ *
+ * Le bouton se grisait sans un mot : le coach voyait un geste refusé et rien
+ * qui dise pourquoi. La doctrine exige l'inverse — un état fermé nomme le champ
+ * absent.
+ *
+ * Cette feuille est une feuille de DONNÉES : le motif s'écrit donc en
+ * mots-clés, pas en phrase.
+ */
+function motifInerte(sessionId: string | null, pilotId: string | null): string | null {
+  if (!sessionId) return 'SÉANCE ABSENTE';
+  if (!pilotId) return 'PILOTE NON IDENTIFIÉ';
+  return null;
+}
+
 function EnregistrerButton({
   saving,
   disabled,
+  motif,
   savedAt,
   onPress,
   block,
 }: {
   saving: boolean;
   disabled: boolean;
+  /** Mot-clé nommant ce qui manque, ou `null` quand le geste est ouvert. */
+  motif: string | null;
   savedAt: string | null;
   onPress: () => void;
   block?: boolean;
@@ -783,6 +804,7 @@ function EnregistrerButton({
       >
         <Text style={s.ctaTxt}>{saving ? 'ENREGISTREMENT…' : 'ENREGISTRER'}</Text>
       </Pressable>
+      {disabled && motif ? <Text style={s.enregistreLe}>{motif}</Text> : null}
       {savedAt ? (
         <Text style={s.enregistreLe}>Enregistré le {formatDateShort(savedAt)}</Text>
       ) : null}
