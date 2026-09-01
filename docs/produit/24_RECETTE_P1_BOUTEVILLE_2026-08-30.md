@@ -275,3 +275,110 @@ Corrigées depuis le relevé, et c'est bon signe :
 La célébration de record, elle, **reste** : arbitrage du fondateur du 30/08 —
 première séance célébrée, puis chaque meilleur. Et la date affichée reste en
 heure locale de l'appareil, même décision.
+
+
+---
+
+# Suite donnée — 01/09/2026
+
+> **Ce document date du 30/08. Le code a bougé depuis, et un audit qui ne
+> correspond plus au code est pire qu'un audit absent** — c'est la
+> « spécification fausse qu'on suit » contre laquelle le brief met en garde.
+> Cette section dit ce qui a été fait, ce qui a été REFUSÉ, et ce qui reste.
+
+## Ce qui a d'abord été refusé
+
+Les 149 écarts n'avaient reçu **aucune passe de réfutation**. Elle a été faite
+avant toute correction, et elle a écarté 42 lignes : 28 déjà corrigées ou
+fausses, 16 requalifiées en décisions produit plutôt qu'en défauts.
+
+**Deux méritent d'être nommées, parce qu'elles reposaient sur une prémisse que
+tout le dépôt répétait :**
+
+> « La marge globale ne s'affiche pas dans le fil : `typeof === 'number'` échoue
+> sur la chaîne que PostgREST rend pour un `numeric`. »
+
+C'est **faux**. Mesuré contre l'instance de production :
+
+```
+curl -H "apikey: <clé publiable>" ".../rest/v1/vehicules_eligibles?select=masse_kg&limit=2"
+→ [{"masse_kg":1035.0}, {"masse_kg":1550.0}]
+```
+
+Non quoté. `masse_kg` est un `numeric(6,1)`, `duration_seconds` un
+`numeric(7,3)` — même sérialisation. La croyance vivait dans vingt commentaires,
+un module dédié et ses tests ; elle venait d'un défaut réel dont la CAUSE avait
+été mal nommée (les paramètres de navigation, eux, voyagent bien en chaîne).
+Aucune ligne de code n'a changé — la coercition de frontière reste juste — mais
+la spécification a été corrigée à sa source, pour qu'on cesse de **diagnostiquer**
+avec elle.
+
+## Le défaut le plus coûteux, et il n'était pas dans la liste
+
+Les trois tours de cette séance portent **9 013, 8 190 et 8 489 trames**, mesuré
+en base. `loadLapFrames` et `loadTramesQualiteTour` en demandaient **2 000** en
+une seule requête, `loadSessionTrajectory` **1 000**.
+
+Les écrans lisaient donc le premier quart d'un tour en croyant le lire entier,
+et le tracé nommé « SÉANCE ENTIÈRE » montrait moins d'un neuvième. Rien ne le
+signalait : le nombre reçu était plausible, et aucune garde ne peut attraper une
+amputation qui ressemble à une mesure. Les trois requêtes paginent désormais.
+
+## Les chaînes qui étaient rompues, et qui ne le sont plus
+
+| Chaîne | Ce qui la coupait | État |
+|---|---|---|
+| Segments → anatomie → lectures → ruban | Le découpage était `HAUTE_SAINTONGE_TRACK`, écrit en dur. La garde du 30/08 refusait de segmenter ailleurs — juste, et le trou restait entier | `pisteDepuisBase` lit la polyligne et les virages de la base. Douze à Bouteville |
+| Moteur des 65 présentations | Onze des quatorze `FaitsSeance` n'avaient aucun producteur, et aucun écran n'appelait le moteur | Producteurs écrits, moteur branché au bilan. **Six faits restent faux, avec leur raison** |
+| QCM d'entre-runs | La donnée était écrite depuis le 12/08 et n'était pas relue par le moteur | Branché. Troisième fois qu'une colonne est écrite, transportée, puis perdue au dernier maillon |
+| Séances d'avant le 01/09 | Aucun segment, et le cron ne peut pas les reprendre — le découpage est du TypeScript | Rattrapage à l'ouverture du bilan, en arrière-plan |
+
+## Ce que le ton disait, et qu'il ne dit plus
+
+Sur cette séance — boucle routière, de nuit, deux arrêts — le débrief écrivait
+« vous avez piloté avec aisance », « le geste était posé », « une séance qu'on
+aimerait reproduire ». Trois appréciations, dont deux que rien ne mesure,
+déclenchées parce que 60,4 % franchit le seuil de 30 %.
+
+Le filtre doctrinal ne connaissait que la **consigne**. Il a gagné une PORTÉE :
+l'application n'a pas le droit d'encourager, un coach diplômé garde le sien.
+
+Trois libellés accusaient aussi un capteur : « Gyroscope absent » sur une séance
+où `rotation_z` est présent sur 100 % des trames. Une raison qui désigne un
+capteur doit venir d'une mesure du capteur — elles disent maintenant que la
+lecture n'est pas calculée, et rien de plus.
+
+## Décisions du fondateur prises depuis
+
+| Sujet | Décision |
+|---|---|
+| Consignes du coach | Table dédiée, ni fermeture ni repli sur une note. Le coach a droit aux verbes d'ordre — `CoachBand` le posait depuis l'origine — et l'ATTRIBUTION remplace le filtre |
+| `tracePosition` | Scindé en deux clés. `trace-circuit` est une géométrie, pas une mesure |
+| Chaîne des lectures | Rattrapage à l'ouverture, plutôt que portage du calcul en Deno : `rec/fin` doit continuer de fonctionner sans réseau |
+| Références partagées (M09) | Construites avant Le Mans, avec les trois limites du cahier : équitable, révocable, anonymisable |
+| Véhicule des deux séances | Rattaché à la 911 du propriétaire. Un déclencheur refuse désormais le cas |
+
+## Ce qui reste, et pourquoi
+
+**Quatre chantiers**, dont trois que ce document différait lui-même :
+
+- Le relevé de conditions à l'enregistrement — la nature d'une séance (de nuit,
+  sur route ouverte) ne se lit nulle part.
+- Le calcul de dispersion — trois tours superposables existent ; c'est le calcul
+  qui manque, pas les tours.
+- Le prérequis `level='programme'` côté cycles, que ce document marquait « ne pas
+  toucher avant Le Mans ».
+- Le vrai tracé sur le héros de l'accueil — gain de vitrine ; le motif abstrait
+  ne ment sur rien.
+
+**Et une chose qu'aucun de ces commits ne remplace : ouvrir l'application.**
+Cette recette reste STATIQUE. Vingt-huit commits n'ont été vus par aucun
+appareil. Ce qui n'est pas prouvé le 19 septembre ne part pas au Mans.
+
+## Sur les compteurs de ce document
+
+Le décompte par gravité (34 bloquants, 70 notables, 45 mineurs) **n'a pas été
+recalculé** ligne à ligne. Seuls les écarts effectivement repris ont vu leur état
+établi ; les autres gardent celui du 30/08, qui peut avoir changé sans qu'on le
+sache. Compter ce qu'on n'a pas remesuré serait exactement la faute que ce
+document reproche au code.
