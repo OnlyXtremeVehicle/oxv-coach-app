@@ -237,3 +237,65 @@ describe('les raisons respectent le ton OXV', () => {
     }
   });
 });
+
+/**
+ * LE CAS RÉEL DE BOUTEVILLE — celui que le fichier n'éprouvait nulle part.
+ *
+ * ===========================================================================
+ * POURQUOI IL MANQUAIT, ET CE QUE ÇA A COÛTÉ
+ * ===========================================================================
+ *
+ * L'aide `entrees` pose `nbPointsGG: 0` et `nbPointsFlow: 0` par défaut. Tous
+ * les cas `insights: null` étaient donc joués avec un nuage VIDE — c'est-à-dire
+ * dans la seule configuration où le portillon d'origine avait raison.
+ *
+ * La séance de référence est l'inverse : `session_insights` ne porte rien, et
+ * 26 999 trames portent leurs G. Le pilote lisait « Aucune mesure sur cette
+ * séance » devant deux lectures que ses propres trames alimentaient, et aucun
+ * test ne pouvait le voir.
+ *
+ * Un test qui n'exerce que la configuration où le code a raison ne verrouille
+ * rien. Celui-ci fige les chiffres RÉELS, mesurés en base le 30/08/2026.
+ */
+describe('la séance de référence, telle que la base la porte', () => {
+  /** 26 999 trames, toutes avec leurs trois G. */
+  const BOUTEVILLE = { insights: null, nbPointsGG: 26_999, nbPointsFlow: 22_000 };
+
+  it.each(SANS_INSIGHTS)('« %s » S’OUVRE — ses points viennent des trames', (key) => {
+    const d = etatLecture(key, entrees(BOUTEVILLE));
+    expect(d.etat).toBe('disponible');
+    expect(d.raison).toBeUndefined();
+  });
+
+  it('les quatre autres restent fermées, et disent que rien n’est calculé', () => {
+    const dependantes = TOUTES.filter((k) => !SANS_INSIGHTS.includes(k));
+    for (const key of dependantes) {
+      const d = etatLecture(key, entrees(BOUTEVILLE));
+      expect(d.etat).toBe('absent');
+      expect(d.raison).toBe('LECTURE NON CALCULÉE');
+    }
+  });
+
+  /**
+   * LA CONSÉQUENCE QUI COMPTE : la section entière ne s'efface plus.
+   *
+   * `sectionAffichable` exige qu'AU MOINS une lecture soit disponible. Avant la
+   * correction, la séance de référence n'en avait aucune et la section
+   * disparaissait — sur 26 999 trames.
+   */
+  it('la section reste à l’écran', () => {
+    const etats = TOUTES.map((k) => etatLecture(k, entrees(BOUTEVILLE)));
+    expect(sectionAffichable(etats)).toBe(true);
+  });
+
+  /**
+   * Et le cas symétrique, qui garde la correction honnête : une séance SANS
+   * trames exploitables ferme bien les deux, malgré l'absence d'insights.
+   */
+  it('une séance sans trames ferme quand même les deux', () => {
+    const etats = SANS_INSIGHTS.map((k) =>
+      etatLecture(k, entrees({ insights: null, nbPointsGG: 0, nbPointsFlow: 0 }))
+    );
+    expect(etats.every((d) => d.etat === 'absent')).toBe(true);
+  });
+});
