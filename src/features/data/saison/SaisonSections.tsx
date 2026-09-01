@@ -598,10 +598,19 @@ export function SaisonSections({ data }: { data: SaisonData }) {
             />
           )}
         </View>
+        {/*
+          LA LÉGENDE PROMETTAIT UNE COMPARAISON INEXISTANTE.
+
+          À une seule séance il n'y a ni courbe ni record distinct du point :
+          annoncer « chaque point, une séance » et « la ligne pointillée dorée,
+          votre record » décrit un dessin que l'écran ne montre pas. La légende
+          suit donc ce qui est réellement tracé.
+        */}
         {hasCurve ? (
           <Text style={styles.caption}>
-            Chaque point, une séance. La ligne pointillée dorée, votre record. Touchez un point pour
-            rouvrir la séance.
+            {curve.length > 1
+              ? 'Chaque point, une séance. La ligne pointillée dorée, votre record. Touchez un point pour rouvrir la séance.'
+              : 'Une séance. Votre courbe s’installera à la suivante. Touchez le point pour la rouvrir.'}
           </Text>
         ) : null}
       </View>
@@ -830,10 +839,19 @@ function GoldCurveChart({
           points.length > 1 ? 'séances' : 'séance'
         }`}
       >
-        {/* Record : ligne pointillée dorée en haut. */}
-        <Path path={geo.record} style="stroke" strokeWidth={1.5} color="rgba(196,164,89,0.5)">
-          <DashPathEffect intervals={[5, 4]} />
-        </Path>
+        {/*
+          Record : ligne pointillée dorée en haut.
+
+          À UNE SEULE SÉANCE, ELLE PASSE EXACTEMENT PAR LE POINT — le record EST
+          cette séance, et la ligne ne dit donc rien de plus que le point qu'elle
+          traverse. Tracée, elle donne à lire une référence à laquelle se
+          comparer, alors qu'il n'y a rien à comparer. On l'omet.
+        */}
+        {geo.hasLine ? (
+          <Path path={geo.record} style="stroke" strokeWidth={1.5} color="rgba(196,164,89,0.5)">
+            <DashPathEffect intervals={[5, 4]} />
+          </Path>
+        ) : null}
         {/* Courbe de référence : trait doré lumineux (progression au mount). */}
         {geo.hasLine ? (
           <GlowStroke

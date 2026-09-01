@@ -67,10 +67,18 @@ export function PetitsMultiples({ series, width }: PetitsMultiplesProps) {
 
   return (
     <View>
-      {/* L'échelle annoncée — c'est elle qui rend la grille honnête. */}
-      <Text style={styles.echelle}>
-        Échelle commune · {msToLapLabel(domaine.minMs)} → {msToLapLabel(domaine.maxMs)}
-      </Text>
+      {/*
+        L'échelle annoncée — c'est elle qui rend la grille honnête.
+
+        À UN SEUL PANNEAU, il n'y a rien à mettre en commun : « Échelle commune »
+        annonce une comparaison entre séances qui n'a pas lieu, et le lecteur
+        cherche la seconde. La ligne ne s'affiche donc qu'à partir de deux.
+      */}
+      {panneaux.length > 1 ? (
+        <Text style={styles.echelle}>
+          Échelle commune · {msToLapLabel(domaine.minMs)} → {msToLapLabel(domaine.maxMs)}
+        </Text>
+      ) : null}
 
       {/* Une grille tronquée qui ne le dit pas se lit comme une saison entière. */}
       {total > panneaux.length ? (

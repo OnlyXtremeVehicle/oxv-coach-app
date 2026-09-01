@@ -217,7 +217,17 @@ export default function CoachCyclesScreen() {
     <View style={s.pilotBlock}>
       <Text style={s.sectionLabel}>PILOTE</Text>
       {pilots.length === 0 ? (
-        <Text style={s.muted}>Aucun pilote suivi consentant.</Text>
+        /*
+          LE VIDE DÉSIGNAIT LE MAUVAIS VERROU.
+
+          `listMyPilots` lit `coach_pilots_view`, dont le contrat est « consenti
+          ET actif ». Le message n'attribuait le vide qu'à la première des deux
+          conditions : un pilote ayant consenti mais dont l'affiliation n'est pas
+          active manquait à la liste, et le coach lisait qu'il n'avait pas
+          consenti. On ne tranche pas entre les deux causes — la vue ne les
+          distingue pas — et on cesse d'en affirmer une.
+        */
+        <Text style={s.muted}>Aucun pilote suivi actif. Source : coach_pilots_view.</Text>
       ) : (
         <View style={s.chipsWrap}>
           {pilots.map((p) => {

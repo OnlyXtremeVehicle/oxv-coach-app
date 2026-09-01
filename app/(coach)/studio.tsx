@@ -443,8 +443,16 @@ function TrajectoryPanel({
       {!estHauteSaintonge(circuitName) ? (
         <View style={[s.traceIndispo, { height }]}>
           <Text style={s.traceIndispoTxt}>
+            {/*
+              LA SECONDE PHRASE RENVOYAIT À UN PANNEAU VIDE.
+
+              « Les marges par virage restent lisibles ci-dessous » désignait un
+              panneau qui rend « Triage en attente » : `app_segment_analyses` ne
+              porte aucune ligne pour cette séance. On promettait au coach une
+              lecture de repli qui n'existait pas.
+            */}
             {circuitName
-              ? `Le tracé de ${circuitName} n'est pas encore disponible. Les marges par virage restent lisibles ci-dessous.`
+              ? `Le tracé de ${circuitName} n'est pas encore disponible.`
               : "Le circuit de cette séance n'est pas identifié : aucun tracé n'est affiché."}
           </Text>
         </View>
@@ -480,9 +488,18 @@ function TrajectoryPanel({
       {hasZones ? (
         <MarginLegendBar />
       ) : (
+        /*
+          LA LÉGENDE ACCUSAIT UN BOÎTIER QUI AVAIT LIVRÉ 26 999 TRAMES.
+
+          « … apparaîtront avec les premières trames du boîtier » attribuait
+          l'absence de coloration à une capture manquante. Ce qui manque est le
+          DÉCOUPAGE : les marges par virage viennent de `app_segment_analyses`,
+          et cette table reste vide tant que l'analyse n'a pas tourné sur la
+          séance. La trace GPS, elle, ne dépend que des trames.
+        */
         <Text style={s.mapCaption}>
-          La trace GPS et la coloration des marges apparaîtront avec les premières trames du
-          boîtier.
+          La coloration des marges suit l’analyse par virage de la séance ; elle n’a pas encore
+          tourné ici.
         </Text>
       )}
     </View>

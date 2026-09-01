@@ -1913,6 +1913,11 @@ function TraceSection({
   const [trace, setTrace] = useState<{ lat: number; lon: number }[] | null>(null);
   const [loading, setLoading] = useState(true);
   const [openCorner, setOpenCorner] = useState<SegmentAnalysisRow | null>(null);
+  /**
+   * Le mot-clé qui dit pourquoi l'ancre `?corner=` n'a rien ouvert. `null` quand
+   * il n'y a pas d'ancre, ou qu'elle a trouvé sa cible.
+   */
+  const [ancreSansCible, setAncreSansCible] = useState<string | null>(null);
 
   // L'ancre n'ouvre le virage QU'UNE FOIS. Sans ce garde-fou, refermer la
   // feuille la rouvrirait au rendu suivant : le virage deviendrait impossible
@@ -1922,15 +1927,37 @@ function TraceSection({
   useEffect(() => {
     if (ancreConsommee.current) return;
     if (initialCorner === null || initialCorner === undefined) return;
-    // Les segments arrivent après le premier rendu : on attend qu'ils soient là
-    // plutôt que de conclure trop tôt que le virage n'existe pas.
-    if (segments.length === 0) return;
-    ancreConsommee.current = true;
+
     const cible = segments.find((s) => s.segmentIndex === initialCorner);
-    // Introuvable → on ne substitue RIEN. L'écran s'ouvre sur la séance.
     if (cible && cible.startProgress !== null && cible.endProgress !== null) {
+      ancreConsommee.current = true;
       setOpenCorner(cible);
+      setAncreSansCible(null);
+      return;
     }
+
+    /**
+     * L'ANCRE QUI N'OUVRE RIEN LE DIT MAINTENANT.
+     *
+     * Un lien de débrief « regardez le virage 4 » (`?corner=4`) faisait défiler
+     * jusqu'au tracé, puis n'ouvrait rien. Le pilote arrivait devant une carte,
+     * sans savoir s'il avait mal cliqué, si la feuille était longue à venir, ou
+     * si le virage n'existait pas.
+     *
+     * Deux causes, et une seule conduite : la séance n'a AUCUN segment — le cas
+     * de toutes celles d'avant le 01/09 — ou l'index demandé n'y figure pas. Ni
+     * l'une ni l'autre ne se devine depuis l'écran, donc on nomme celle qui
+     * s'applique.
+     *
+     * On ne substitue toujours RIEN : ouvrir un virage voisin ferait lire une
+     * mesure pour une autre.
+     */
+    ancreConsommee.current = true;
+    setAncreSansCible(
+      segments.length === 0
+        ? `VIRAGE ${initialCorner} · AUCUN VIRAGE SEGMENTÉ`
+        : `VIRAGE ${initialCorner} · HORS DÉCOUPAGE`
+    );
   }, [initialCorner, segments]);
 
   useEffect(() => {
@@ -2113,6 +2140,14 @@ function TraceSection({
             Trait atténué : mesure en confiance réduite (voir Résumé).
           </Text>
         ) : null}
+        {/*
+          L'ANCRE QUI N'A RIEN OUVERT, SOUS LA CARTE OÙ ELLE A MENÉ.
+
+          Le lien y a fait défiler ; la ligne dit ce qui manque, à l'endroit
+          exact où le pilote cherche. Mot-clé, parce que cette feuille est une
+          feuille de données.
+        */}
+        {ancreSansCible !== null ? <Text style={styles.legendMono}>{ancreSansCible}</Text> : null}
       </View>
 
       {tappableCorners.length > 0 ? (
@@ -2657,7 +2692,7 @@ function CornerEvolutionCanvas({ evolution }: { evolution: CornerEvolution }) {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
-// 4 · LES MESURES — onglets internes Appuis / Au fil du tour / Sur le tracé /
+// 4 · LES MESURES — onglets internes Appuis / Au fil de la séance / Sur le tracé /
 //     Rejouer. Les quatre portaient du jargon, dont deux mots anglais :
 //     dernier verrou du jalon 5 (« QDI et vocabulaire technique »).
 // ═══════════════════════════════════════════════════════════════════════════
@@ -2723,7 +2758,20 @@ function TelemetrieSection({ sessionId }: { sessionId: string }) {
     <Animated.View ref={refTele}>
       <View style={styles.tabRow}>
         <Chip label="Appuis" active={tab === 'gg'} onPress={() => setTab('gg')} />
-        <Chip label="Au fil du tour" active={tab === 'canaux'} onPress={() => setTab('canaux')} />
+        {/*
+          « AU FIL DE LA SÉANCE », ET PAS « DU TOUR ».
+
+          `loadSpeedTracePoints` et `loadThrottleBrakePoints` lisent la SÉANCE
+          entière et posent `progress = i / (n - 1)`. Sur la séance de référence,
+          l'axe portait donc trois bosses de vitesse — trois tours — sous un
+          titre qui promettait un seul. Le libellé dit maintenant ce que l'axe
+          montre ; le borner à un tour est un lot, pas un mot.
+        */}
+        <Chip
+          label="Au fil de la séance"
+          active={tab === 'canaux'}
+          onPress={() => setTab('canaux')}
+        />
         <Chip label="Sur le tracé" active={tab === 'heatmap'} onPress={() => setTab('heatmap')} />
         <Chip label="Rejouer" active={tab === 'replay'} onPress={() => setTab('replay')} />
       </View>
@@ -3023,7 +3071,7 @@ function ChannelsChart({
           // deviendraient inaudibles. Or celle du canal G porte la clé de lecture
           // du signe (bas = freinage, haut = accélération) — sans elle, la valeur
           // annoncée n'a pas de sens. On la reprend donc ici.
-          accessibilityLabel="Au fil du tour : la vitesse, et les appuis (bas : freinage, haut : accélération)"
+          accessibilityLabel="Au fil de la séance : la vitesse, et les appuis (bas : freinage, haut : accélération)"
           accessibilityValue={{ text: `${speedSpoken}, ${brakeSpoken}` }}
           accessibilityActions={[{ name: 'increment' }, { name: 'decrement' }]}
           onAccessibilityAction={(e) => {
