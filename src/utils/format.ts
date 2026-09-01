@@ -37,6 +37,37 @@ export function virgule(texte: string): string {
  *   formatLapTime(45.123) → "45.12 s"
  *   formatLapTime(0)      → "0.00 s"
  */
+/**
+ * NETTOIE UN TEXTE DICTÉ avant de l'afficher.
+ *
+ * ===========================================================================
+ * LE CARRÉ VIDE QUE PERSONNE N'A ÉCRIT
+ * ===========================================================================
+ *
+ * La dictée d'iOS insère U+FFFC — OBJECT REPLACEMENT CHARACTER — là où elle a
+ * placé un objet qu'un champ de texte ne peut pas porter. Le caractère reste
+ * dans la chaîne, part en base, revient, et s'affiche en CARRÉ VIDE : le pilote
+ * lit un glyphe qu'il n'a jamais tapé, au milieu de sa propre phrase.
+ *
+ * Il se nettoie à L'AFFICHAGE et non à l'écriture, délibérément. Ce que le
+ * pilote a dicté lui appartient : on ne réécrit pas ce qui est en base sous
+ * prétexte de le rendre joli. On retire au dernier mètre ce qui n'est pas du
+ * texte, et la donnée reste ce qu'elle était.
+ *
+ * Les autres invisibles suivent la même règle : espaces de largeur nulle et
+ * marques directionnelles, qui viennent des collages depuis un navigateur et
+ * produisent le même effet — un caractère qui occupe une place sans rien dire.
+ *
+ * Ce qu'on ne touche PAS : les espaces normales, les retours à la ligne, la
+ * ponctuation. Un nettoyage qui reformate est une réécriture.
+ */
+const INVISIBLES = /[￼​-‍⁠﻿‎‏]/g;
+
+export function texteDicte(brut: string | null | undefined): string {
+  if (typeof brut !== 'string') return '';
+  return brut.replace(INVISIBLES, '').trim();
+}
+
 export function formatLapTime(seconds: number): string {
   if (!Number.isFinite(seconds) || seconds < 0) return '—';
   // Arrondi AVANT le découpage des minutes : 119,995 s → « 2'00.00 »,

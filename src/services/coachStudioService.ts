@@ -102,7 +102,9 @@ export async function getStudioSession(telemetrySessionId: string): Promise<Stud
     getQdiForSession(telemetrySessionId),
     getAnalysisForSession(telemetrySessionId),
     fetchSessionLaps(telemetrySessionId),
-    listSegmentAnalysesForSession(telemetrySessionId),
+    // Le studio se monte sans ses segments : le panneau de triage dira
+    // « en attente » plutôt que de faire tomber l'écran entier.
+    listSegmentAnalysesForSession(telemetrySessionId).catch(() => []),
     listMyPilots(),
   ]);
 

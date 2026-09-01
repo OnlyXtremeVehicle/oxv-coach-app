@@ -86,7 +86,7 @@ import { useBilan } from '@/features/miroir/useBilan';
 import { exportAndShareBilanPdf } from '@/services/bilanPdfExportService';
 import type { SessionMediaItem } from '@/services/sessionMediaService';
 import { useAuthStore } from '@/store/useAuthStore';
-import { formatDateShort } from '@/utils/format';
+import { texteDicte, formatDateShort } from '@/utils/format';
 import { confirmerComprehension } from '@/services/coachConsignesService';
 
 const HERO_HEIGHT = 180;
@@ -472,7 +472,7 @@ export default function BilanScreen() {
                 <Text style={styles.intentionEyebrow}>
                   {libelleIntention(data.intention.createdAt, data.session?.started_at ?? null)}
                 </Text>
-                <Text style={styles.intentionBody}>{data.intention.body}</Text>
+                <Text style={styles.intentionBody}>{texteDicte(data.intention.body)}</Text>
               </View>
             </View>
           ) : null}
@@ -522,7 +522,17 @@ export default function BilanScreen() {
                       />
                     ))}
                     <Text style={styles.margeVehicule}>
-                      Véhicule non caractérisé — exclu du calcul.
+                      {/*
+                        « NON CARACTÉRISÉ », PAS « NON RENSEIGNÉ ».
+
+                        La formule précédente se lisait comme un reproche : le
+                        pilote croyait avoir oublié de déclarer sa voiture,
+                        alors que la séance en porte une. Ce qui manque n'est
+                        pas la déclaration — c'est la GRANDEUR d'adhérence, que
+                        la table `vehicles` ne porte pour aucun véhicule. Rien
+                        de ce que le pilote peut saisir ne l'apporterait.
+                      */}
+                      Aucune grandeur d’adhérence connue — la marge porte sur le pilotage.
                     </Text>
                   </>
                 ) : null}

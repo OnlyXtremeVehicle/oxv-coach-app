@@ -14,7 +14,9 @@ export async function getSessionTriage(
   telemetrySessionId: string,
   limit = 3
 ): Promise<TriageCorner[]> {
-  const segments = await listSegmentAnalysesForSession(telemetrySessionId);
+  // Le triage rend une liste : une panne y devient une liste vide, comme
+  // avant le 01/09. C'est l'appelant qui affiche « en attente ».
+  const segments = await listSegmentAnalysesForSession(telemetrySessionId).catch(() => []);
   return rankTriageCorners(
     segments.map((s) => ({
       segmentIndex: s.segmentIndex,

@@ -52,10 +52,21 @@ export async function listSegmentAnalysesForSession(
     .eq('telemetry_session_id', telemetrySessionId)
     .order('segment_index', { ascending: true });
 
-  if (error) {
-    console.warn('[OXV] listSegmentAnalysesForSession :', error.message);
-    return [];
-  }
+  /**
+   * UNE PANNE N'EST PAS UN VIDE — corrigé le 01/09/2026.
+   *
+   * Les deux cas étaient confondus dans un `return []`, et la promesse était
+   * donc toujours tenue. L'écran de séance est en `Promise.allSettled` et pose
+   * `failed.trace` sur un rejet : la branche d'erreur ne pouvait jamais se
+   * déclencher, exactement comme celle des lectures approfondies.
+   *
+   * Une table qui ne répond pas et une séance sans segments se lisent
+   * différemment : la première invite à réessayer, la seconde à attendre une
+   * analyse. Les confondre fait passer une panne pour un état normal — et
+   * depuis que le rattrapage existe, « aucun segment » veut dire « l'analyse
+   * n'a pas encore tourné », ce qui est une information, pas un incident.
+   */
+  if (error) throw new Error(error.message);
   return (data ?? []).map(mapRow);
 }
 

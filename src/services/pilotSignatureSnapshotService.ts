@@ -73,7 +73,9 @@ export async function upsertSnapshotForSession(sessionId: string): Promise<Mutat
   if (!uid) return { ok: false, error: 'Session expirée.' };
 
   const [segments, laps] = await Promise.all([
-    listSegmentAnalysesForSession(sessionId),
+    // Un instantané de signature se prend sans segments — il portera moins,
+    // il ne refusera pas de se prendre.
+    listSegmentAnalysesForSession(sessionId).catch(() => []),
     fetchSessionLaps(sessionId),
   ]);
   const lapTimesSeconds = laps

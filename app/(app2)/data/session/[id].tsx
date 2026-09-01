@@ -3156,7 +3156,10 @@ function ChannelsChart({
                         key={v}
                         style={[styles.chanTick, { top: ordonneeG(v, echelleG.haut) - 5 }]}
                       >
-                        {v > 0 ? `+${v}` : String(v)}
+                        {/* `virgule` comme partout ailleurs sur cet écran : les
+                            graduations d'appui étaient le seul endroit qui
+                            écrivait « -0.5 » avec un point décimal. */}
+                        {virgule(v > 0 ? `+${v}` : String(v))}
                       </Text>
                     ))}
                 </View>

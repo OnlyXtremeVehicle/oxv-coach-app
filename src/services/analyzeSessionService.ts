@@ -355,7 +355,11 @@ export async function analyzeAndPersistSession(
       } else {
         // Fallback local — toujours doctrinal, juste moins riche narrativement
         console.warn('[OXV] OpenAI debrief KO, fallback local :', aiError.message);
-        const segments = await listSegmentAnalysesForSession(input.telemetrySessionId);
+        // Le débrief se compose sans segments — il en dira moins, il ne
+        // tombera pas. `listSegmentAnalysesForSession` lève depuis le 01/09.
+        const segments = await listSegmentAnalysesForSession(input.telemetrySessionId).catch(
+          () => []
+        );
         // Garde-fou doctrinal (T-1) : aucune tournure prescriptive n'atteint
         // debrief_text. En cas de violation (ex. nom de segment piégé), le
         // débrief est dégradé proprement plutôt que publié.

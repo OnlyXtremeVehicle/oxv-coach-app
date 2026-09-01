@@ -54,6 +54,7 @@ import {
   type LayoutChangeEvent,
 } from 'react-native';
 import { Canvas } from '@shopify/react-native-skia';
+import { texteDicte } from '@/utils/format';
 import { router } from 'expo-router';
 import { FlashList } from '@shopify/flash-list';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
@@ -477,7 +478,7 @@ function IntentionCard({
         </View>
         <View style={styles.intentionBody}>
           <Text style={[styles.intentionText, !honored && styles.intentionTextPending]}>
-            {item.intention.body}
+            {texteDicte(item.intention.body)}
           </Text>
           <View style={styles.intentionMetaRow}>
             <View style={[styles.intentionDot, honored ? styles.dotHonored : styles.dotPending]} />

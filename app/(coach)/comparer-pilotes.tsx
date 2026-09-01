@@ -557,7 +557,18 @@ function EmptyPilots({ count }: { count: number }) {
       <Text style={s.emptyTitle}>
         {count === 0 ? 'Aucun pilote suivi.' : 'Un seul pilote suivi.'}
       </Text>
-      <Text style={s.emptyHint}>La comparaison requiert au moins deux pilotes consentants.</Text>
+      {/*
+        LE VIDE DÉSIGNAIT LE CONSENTEMENT, QUI EXISTE.
+
+        `listMyPilots` lit `coach_pilots_view`, dont le contrat est « consenti
+        ET actif ». Attribuer le vide au seul consentement fait chercher au
+        coach un accord que ses pilotes ont déjà donné. On ne tranche pas entre
+        les deux causes — la vue ne les distingue pas — et on cesse d'en
+        affirmer une.
+      */}
+      <Text style={s.emptyHint}>
+        La comparaison demande deux pilotes suivis actifs. Source : coach_pilots_view.
+      </Text>
     </Card>
   );
 }

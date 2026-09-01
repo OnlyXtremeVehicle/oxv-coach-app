@@ -71,7 +71,21 @@ describe('la décomposition de la marge', () => {
     const texte = codeSansCommentaires(source);
     expect(texte).toMatch(/data\.marge\.kind !== 'absente'/);
     expect(texte).toContain('MARGE PILOTE');
-    expect(texte).toContain('Véhicule non caractérisé — exclu du calcul.');
+    /**
+     * LE LIBELLÉ A CHANGÉ LE 01/09/2026, et la garde suit son SENS plutôt que
+     * ses mots.
+     *
+     * « Véhicule non caractérisé — exclu du calcul » se lisait comme un
+     * reproche : le pilote croyait avoir oublié de déclarer sa voiture, alors
+     * que la séance en porte une. Ce qui manque n'est pas la déclaration, c'est
+     * la GRANDEUR d'adhérence — que la table `vehicles` ne porte pour aucun
+     * véhicule, et que rien de ce que le pilote saisit n'apporterait.
+     *
+     * Ce que la garde tient : l'écran DIT que le véhicule ne pèse pas dans le
+     * chiffre. La formulation exacte lui appartient.
+     */
+    expect(texte).toMatch(/adhérence|caractérisé/);
+    expect(texte).toMatch(/pilotage|exclu/);
     // La décomposition nomme ses poids : un chiffre roi qui agrège deux
     // grandeurs sans les montrer serait indéfendable.
     expect(texte).toMatch(/poids \$\{c\.poids === 0\.6/);
