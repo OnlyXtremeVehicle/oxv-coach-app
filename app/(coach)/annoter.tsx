@@ -50,7 +50,8 @@ import {
 } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 
-import { getCorner, type CornerTopology } from '@/lib/circuitTopology';
+import { nomVirage, type VirageCircuit } from '@/features/data/viragesCircuit';
+import { fetchSessionCircuitCorners } from '@/services/circuitsService';
 import { COACH_CONSOLE_MIN_WIDTH } from '@/lib/coachNav';
 import {
   type AnnotationVisibility,
@@ -82,8 +83,24 @@ import { formatDateShort } from '@/utils/format';
 const { palette, spacing, fonts, fontSize, radius } = theme;
 
 /** Profil de virage (topologie réelle) → étiquette sobre en clair. */
-function paceLabel(pace: CornerTopology['pace']): string {
-  return pace === 'slow' ? 'Épingle' : pace === 'fast' ? 'Courbe rapide' : 'Virage moyen';
+/**
+ * Le sous-titre du virage, TIRÉ DU CIRCUIT ROULÉ.
+ *
+ * Il disait « Épingle », « Courbe rapide » ou « Virage moyen » d'après le champ
+ * `pace` de `BELTOISE_CORNERS` — sept virages écrits en dur, ceux de Haute
+ * Saintonge. Sur une séance de Bouteville, le coach lisait donc la catégorie
+ * d'un virage d'un autre circuit, et le NOM avec.
+ *
+ * Le détecteur ne classe pas les virages : il mesure un sens et un rayon. On
+ * montre donc ce qu'il mesure, et rien de plus — « GAUCHE · 36 M » est vrai,
+ * « Épingle » était emprunté.
+ */
+function sousTitreVirage(v: VirageCircuit | null): string {
+  if (!v) return 'Virage';
+  const parts: string[] = [];
+  if (v.sens) parts.push(v.sens === 'gauche' ? 'Gauche' : 'Droite');
+  if (v.rayonM !== null && Number.isFinite(v.rayonM)) parts.push(`${Math.round(v.rayonM)} m`);
+  return parts.length > 0 ? parts.join(' · ') : 'Virage';
 }
 
 export default function CoachAnnoterScreen() {
@@ -102,8 +119,25 @@ export default function CoachAnnoterScreen() {
     params.cornerIndex != null && Number.isInteger(parsedCorner) && parsedCorner >= 1
       ? parsedCorner
       : null;
-  const corner = cornerIndex != null ? getCorner(cornerIndex) : null;
-  const cornerName = cornerIndex != null ? (corner?.name ?? `Virage ${cornerIndex}`) : '';
+  // Les virages du circuit RÉELLEMENT roulé — jamais une topologie écrite en
+  // dur. Liste vide tant qu'elle n'est pas lue, ou si le circuit n'a pas été
+  // passé au détecteur : le nom retombe alors sur « Virage N », vrai partout.
+  const [virages, setVirages] = useState<VirageCircuit[]>([]);
+  useEffect(() => {
+    if (!params.sessionId) return;
+    let annule = false;
+    fetchSessionCircuitCorners(params.sessionId)
+      .then((v) => {
+        if (!annule) setVirages(v);
+      })
+      .catch(() => undefined);
+    return () => {
+      annule = true;
+    };
+  }, [params.sessionId]);
+
+  const corner = cornerIndex != null ? (virages.find((v) => v.index === cornerIndex) ?? null) : null;
+  const cornerName = cornerIndex != null ? nomVirage(virages, cornerIndex) : '';
   const [saveError, setSaveError] = useState<string | null>(null);
 
   const { width } = useWindowDimensions();
@@ -430,7 +464,7 @@ function CornerContext({
 }: {
   cornerIndex: number;
   cornerName: string;
-  corner: CornerTopology | null;
+  corner: VirageCircuit | null;
   sessionScoped: boolean;
   compact: boolean;
 }) {
@@ -446,7 +480,7 @@ function CornerContext({
             <Text style={s.cornerName} numberOfLines={1}>
               {cornerName}
             </Text>
-            <Text style={s.cornerPace}>{corner ? paceLabel(corner.pace) : 'Virage'}</Text>
+            <Text style={s.cornerPace}>{sousTitreVirage(corner)}</Text>
           </View>
         </View>
         <View style={s.cornerMetaRow}>

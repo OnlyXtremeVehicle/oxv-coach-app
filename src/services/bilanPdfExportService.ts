@@ -25,7 +25,8 @@
 import * as Print from 'expo-print';
 import * as Sharing from 'expo-sharing';
 
-import { BELTOISE_CORNERS } from '@/lib/circuitTopology';
+import { fetchSessionCircuitCorners } from '@/services/circuitsService';
+import { nomVirage } from '@/features/data/viragesCircuit';
 import { getSegmentAnalysis } from '@/services/segmentAnalysesService';
 import { marginZoneExportColor } from '@/services/marginZoneColorLogic';
 import { supabase } from '@/lib/supabase';
@@ -69,17 +70,28 @@ export async function exportAndShareBilanPdf(input: BilanPdfInput): Promise<Bila
       .eq('telemetry_session_id', input.sessionId)
       .maybeSingle();
 
-    // Charge les marges par virage en parallèle
-    const cornerStatsPromises = BELTOISE_CORNERS.map((c) =>
-      getSegmentAnalysis(input.sessionId, c.index).then((stats) => ({
-        index: c.index,
-        name: c.name,
-        zone: (stats?.marginZone ?? null) as MarginZone | null,
-        marginPercent: stats?.marginPercent ?? null,
-        apexSpeedKmh: stats?.apexSpeedKmh ?? null,
-      }))
+    // Les marges par virage, sur les virages DU CIRCUIT ROULÉ.
+    //
+    // Ce service interrogeait `BELTOISE_CORNERS` — sept virages écrits en dur,
+    // ceux de Haute Saintonge — et imprimait leurs NOMS. Un PDF exporté depuis
+    // une séance de Bouteville sortait donc « Saintonge 1 », « L'épingle Est »,
+    // « Le balcon » : des virages qui n'existent pas là, sur un document que le
+    // pilote partage hors de l'application.
+    //
+    // C'est le dernier endroit où la topologie codée en dur atteignait encore
+    // le pilote, et le plus exposé : un écran se corrige, un PDF envoyé non.
+    const virages = await fetchSessionCircuitCorners(input.sessionId);
+    const cornerStats = await Promise.all(
+      virages.map((v) =>
+        getSegmentAnalysis(input.sessionId, v.index).then((stats) => ({
+          index: v.index,
+          name: nomVirage(virages, v.index),
+          zone: (stats?.marginZone ?? null) as MarginZone | null,
+          marginPercent: stats?.marginPercent ?? null,
+          apexSpeedKmh: stats?.apexSpeedKmh ?? null,
+        }))
+      )
     );
-    const cornerStats = await Promise.all(cornerStatsPromises);
 
     // 2. Générer le HTML
     const html = buildBilanHtml({

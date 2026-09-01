@@ -34,6 +34,12 @@ import * as path from 'path';
 //   3. Jugements gratuits (« bravo », « parfait » : on n'évalue pas
 //      l'humain, on lui montre les chiffres)
 import { FORBIDDEN_PATTERNS, type Portee } from './doctrineRegles';
+import { PLAFOND_PHRASES, estExcepte } from './restitutionSansPhrase.exceptions';
+import { estPhrase } from '../src/lib/regleMotsCles';
+import {
+  FEUILLES_DE_DONNEES,
+  estFeuilleDeDonnees,
+} from '../src/lib/surfacesRestitution';
 
 
 // Patterns supplémentaires : dates sans locale fr-FR explicite
@@ -204,6 +210,111 @@ function estTest(filePath: string): boolean {
   return /__tests__|\.test\.tsx?$/.test(filePath);
 }
 
+/**
+ * ===========================================================================
+ * SECONDE PASSE — AUCUNE PHRASE SUR UNE FEUILLE DE DONNÉES (règle G-0)
+ * ===========================================================================
+ *
+ * La première passe interdit un LEXIQUE : les verbes de conseil. Celle-ci
+ * interdit une FORME : la phrase, sur les seules surfaces déclarées comme
+ * feuilles de données dans `src/lib/surfacesRestitution.ts`.
+ *
+ * Quatre choses qu'elle ne fait PAS, et qu'il faut savoir :
+ *
+ *   • elle ne lit que des LITTÉRAUX. Une chaîne assemblée à l'exécution lui
+ *     échappe, et prétendre le contraire donnerait une garde qui ment ;
+ *   • elle ne devine aucune surface : un écran absent du manifeste n'est pas
+ *     contrôlé ici, il est signalé par `surfacesRestitution.test.ts` ;
+ *   • elle laisse passer nombres, unités et horodatages — ils n'ont pas de mot
+ *     outil, donc la définition ne les attrape pas ;
+ *   • elle est BLOQUANTE sur les écrans du Mans, avertissante ailleurs, le
+ *     temps que les surfaces existantes passent. Une garde qui bloque tout le
+ *     premier jour se fait désarmer le second.
+ */
+const ECRANS_DU_MANS: readonly string[] = [
+  'app/(app2)/bilan/[sessionId].tsx',
+  'app/(app2)/data/session/[id].tsx',
+];
+
+interface Phrase {
+  file: string;
+  line: number;
+  texte: string;
+  bloquant: boolean;
+}
+
+function scanPhrases(filePath: string): Phrase[] {
+  const rel = path.relative(process.cwd(), filePath).split(path.sep).join('/');
+  if (!estFeuilleDeDonnees(rel)) return [];
+  const bloquant = ECRANS_DU_MANS.some((e) => rel.toLowerCase() === e.toLowerCase());
+
+  const out: Phrase[] = [];
+  const lines = fs.readFileSync(filePath, 'utf-8').split(String.fromCharCode(10));
+  const etat: EtatBloc = { dedans: false };
+
+  for (let i = 0; i < lines.length; i++) {
+    const brute = lines[i];
+    const line = horsCommentaireBloc(brute, etat);
+    if (line.trim() === '') continue;
+    if (IGNORE_LINE_PATTERNS.some((p) => p.test(line))) continue;
+    if (/^\s*import\s|require\(/.test(line)) continue;
+    if (estExcepte(rel, line)) continue;
+
+    for (const morceau of portionsAffichables(line).split(String.fromCharCode(10))) {
+      const t = morceau.trim();
+      if (t.length === 0) continue;
+      if (estPhrase(t)) out.push({ file: filePath, line: i + 1, texte: t, bloquant });
+    }
+  }
+  return out;
+}
+
+function passeMotsCles(): number {
+  const feuilles = FEUILLES_DE_DONNEES.map((f) => path.join(process.cwd(), f)).filter((f) =>
+    fs.existsSync(f)
+  );
+  const phrases = feuilles.flatMap((f) => scanPhrases(f));
+  const bloquantes = phrases.filter((p) => p.bloquant);
+
+  console.log(
+    `
+Règle des mots-clés : ${feuilles.length} feuilles de données contrôlées, ` +
+      `${phrases.length} phrase(s) trouvée(s) dont ${bloquantes.length} sur un écran du Mans.`
+  );
+  for (const p of phrases) {
+    const rel = path.relative(process.cwd(), p.file);
+    const niveau = p.bloquant ? 'à corriger' : 'à voir';
+    console.log(`  [${niveau}] ${rel}:${p.line}  « ${p.texte.slice(0, 90)} »`);
+  }
+
+  // LE CLIQUET. On compte par écran et on compare au plafond mesuré le
+  // 01/09/2026 : une phrase de plus est refusée, une de moins est saluée. Un
+  // plafond ne remonte jamais — s'il faut l'augmenter, c'est qu'on a ajouté une
+  // phrase, et c'est exactement ce que la garde existe pour refuser.
+  let depassements = 0;
+  const parEcran = new Map<string, number>();
+  for (const p of bloquantes) {
+    const rel = path.relative(process.cwd(), p.file).split(path.sep).join('/');
+    parEcran.set(rel, (parEcran.get(rel) ?? 0) + 1);
+  }
+  for (const [ecran, plafond] of Object.entries(PLAFOND_PHRASES)) {
+    const n = parEcran.get(ecran) ?? 0;
+    if (n > plafond) {
+      console.error(`  PHRASE NOUVELLE — ${ecran} : ${n} phrases pour un plafond de ${plafond}.`);
+      depassements += n - plafond;
+    } else if (n < plafond) {
+      console.log(`  Le plafond de ${ecran} peut descendre de ${plafond} à ${n}.`);
+    }
+  }
+  for (const [ecran, n] of parEcran) {
+    if (!(ecran in PLAFOND_PHRASES)) {
+      console.error(`  ÉCRAN DU MANS SANS PLAFOND — ${ecran} : ${n} phrases.`);
+      depassements += n;
+    }
+  }
+  return depassements;
+}
+
 function main(): void {
   // `src/` EST scanné, désormais. Le scan ne regardait que `app/` : les
   // 125 composants et écrans partagés de `src/` — montés dans les vrais écrans —
@@ -230,9 +341,19 @@ function main(): void {
     allViolations.push(...scanFile(file));
   }
 
-  if (allViolations.length === 0) {
-    console.log('OK — aucun verbe interdit détecté.');
+  const phrasesBloquantes = passeMotsCles();
+
+  if (allViolations.length === 0 && phrasesBloquantes === 0) {
+    console.log('OK — aucun verbe interdit, aucune phrase sur une feuille de données.');
     process.exit(0);
+  }
+
+  if (allViolations.length === 0) {
+    console.error(
+      `
+KO — ${phrasesBloquantes} phrase(s) NOUVELLE(S) sur un écran du Mans, au-delà du plafond.`
+    );
+    process.exit(1);
   }
 
   console.error(`\nKO — ${allViolations.length} violation(s) doctrinale(s) :`);

@@ -34,6 +34,7 @@ import { supabase } from '@/lib/supabase';
 import { UbxFrameBuffer, parseRaceBoxDataMessage } from '@/ubx/parser';
 import { analyzeTrackVizSession } from '@/trackviz/analysis';
 import { virageACreuser } from '@/features/miroir/margeLogic';
+import { estHauteSaintonge } from '@/lib/circuitTopology';
 import type { TrackVizRecordingSample } from '@/trackviz/types';
 import type { Lap, RaceBoxData, TelemetrySession } from '@/types/telemetry';
 
@@ -47,6 +48,21 @@ import { listSegmentAnalysesForSession, upsertSegmentAnalyses } from './segmentA
 import { fetchSessionLaps } from './sessionsService';
 
 export type AnalyzeSourceKind = 'ubx_local' | 'telemetry_frames' | 'none';
+
+/**
+ * Le nom du circuit d'une seance, ou `null`.
+ *
+ * Lecture minimale et tolerante : une panne de lecture rend `null`, ce qui
+ * FERME la segmentation plutot que de l'ouvrir. Le defaut sur est de ne rien
+ * ecrire, pas d'ecrire les segments d'un autre circuit.
+ */
+async function lireNomCircuit(sessionId: string): Promise<string | null> {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const table = supabase.from('telemetry_sessions') as any;
+  const { data, error } = await table.select('circuit_name').eq('id', sessionId).maybeSingle();
+  if (error) return null;
+  return (data?.circuit_name as string | null) ?? null;
+}
 
 export interface AnalyzeSessionInput {
   telemetrySessionId: string;
@@ -144,7 +160,34 @@ export async function analyzeAndPersistSession(
   let nextFocusCornerIndex: number | null = null;
 
   // ── Analyse trackviz par segment ─────────────────────────────────────────
-  if (samples.length >= 2) {
+  //
+  // LA SEGMENTATION NE VAUT QUE POUR HAUTE SAINTONGE, ET IL FALLAIT LE DIRE.
+  //
+  // `analyzeTrackVizSession` recale la trajectoire sur `HAUTE_SAINTONGE_TRACK`
+  // et découpe sur `HAUTE_SAINTONGE_SEGMENTS` — deux constantes écrites en dur,
+  // sans aucune garde de circuit. Une capture au Mans ou à Albi y écrivait donc
+  // SEPT segments d'un autre circuit, avec des écarts latéraux kilométriques
+  // qui saturent le taux d'exploitation à 1 : des marges fabriquées, persistées,
+  // et affichées ensuite comme des mesures.
+  //
+  // C'est pire que l'absence : une section vide se voit, une marge fausse non.
+  // Et la base l'aurait de toute façon refusée au-delà du septième segment —
+  // `app_segment_analyses_segment_index_check` plafonne à 7, quand Bouteville
+  // en compte douze.
+  //
+  // La garde est ici plutôt que dans `analysis.ts` pour que le module de calcul
+  // reste pur : c'est l'appelant qui sait sur quel circuit il tourne.
+  const circuitDeLaSeance = await lireNomCircuit(input.telemetrySessionId);
+  const segmentationApplicable = estHauteSaintonge(circuitDeLaSeance);
+
+  if (samples.length >= 2 && !segmentationApplicable) {
+    notes.push(
+      `Segmentation non disponible pour ce circuit (${circuitDeLaSeance ?? 'circuit inconnu'}) : ` +
+        'le découpage par segments est calibré sur Haute Saintonge.'
+    );
+  }
+
+  if (samples.length >= 2 && segmentationApplicable) {
     try {
       const analysis = analyzeTrackVizSession(samples);
       nextFocusCornerIndex = virageACreuser(analysis.segments);

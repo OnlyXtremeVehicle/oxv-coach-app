@@ -82,6 +82,13 @@ function fichiers(dir: string, acc: string[] = []): string[] {
 }
 
 const TOUS = [...fichiers(join(RACINE, 'app')), ...fichiers(join(RACINE, 'src'))];
+/**
+ * Les scripts sont des RACINES, jamais des candidats : on cherche les modules
+ * de `src/` que personne n'atteint, pas les scripts morts. Ils sont donc hors
+ * de `TOUS` — mais il faut pouvoir LIRE leurs imports, sans quoi la racine
+ * ajoutée le 01/09 ne mènerait nulle part.
+ */
+const SCRIPTS = fichiers(join(RACINE, 'scripts'));
 const EXISTANTS = new Set(TOUS.map(norm));
 
 /**
@@ -105,7 +112,7 @@ function resoudre(depuis: string, spec: string): string | null {
 
 const SPEC = /from\s+'([^']+)'|require\(\s*'([^']+)'\s*\)/g;
 
-const PAR_NORM = new Map(TOUS.map((f) => [norm(f), f]));
+const PAR_NORM = new Map([...TOUS, ...SCRIPTS].map((f) => [norm(f), f]));
 
 /** Ce qu'un module importe, résolu en chemins réels. */
 function importsDe(fichierNorm: string): string[] {
@@ -149,7 +156,29 @@ function importsDe(fichierNorm: string): string[] {
  */
 function orphelins(): string[] {
   const racineApp = `${norm(join(RACINE, 'app'))}/`;
-  const racines = TOUS.map(norm).filter((f) => f.startsWith(racineApp));
+
+  /**
+   * DEUX RACINES, ET LA SECONDE A ÉTÉ AJOUTÉE LE 01/09/2026.
+   *
+   * `app/` reste la racine principale — expo-router la charge par convention de
+   * nom. Mais un module lu par un SCRIPT DE CI n'est pas dormant pour autant :
+   * `check-doctrine` s'exécute à chaque intégration et refuse la fusion. La
+   * mesure d'origine le déclarait pourtant orphelin, faute de regarder ailleurs
+   * que sous `app/`.
+   *
+   * Le cas concret : `src/lib/surfacesRestitution.ts`, le manifeste des deux
+   * familles de surfaces, que le brief cite et que seule la garde doctrinale
+   * consomme. L'inscrire à `CONNUS` aurait créé une entrée PERMANENTE — un
+   * module qui ne peut jamais en sortir, alors que la liste est faite pour se
+   * vider. Mieux vaut mesurer juste que tenir une exception éternelle.
+   *
+   * Les scripts sont racines, jamais candidats : on ne cherche pas les scripts
+   * morts ici.
+   */
+  const racines = [
+    ...TOUS.map(norm).filter((f) => f.startsWith(racineApp)),
+    ...SCRIPTS.map(norm),
+  ];
 
   const atteints = new Set<string>(racines);
   const pile = [...racines];
@@ -211,7 +240,11 @@ const CONNUS: readonly string[] = [
   // Morts de 2ᵉ RANG, visibles depuis le 15/08 (mesure transitive) : chacun
   // n'était cité que par un module lui-même inatteignable.
   '/src/media/thumbhashcodec.ts',
-  '/src/perf/frametimes.ts',
+  // `/src/perf/frametimes.ts` EST SORTI DE CETTE LISTE le 01/09/2026, sans qu'une
+  // ligne de son code change : `scripts/juger-mesure.ts` l'importe, et les
+  // scripts sont devenus des racines le même jour. Il n'a jamais ete dormant,
+  // la mesure ne le voyait pas — c'est la troisieme fois que la mesure bouge
+  // avant le code, et la troisieme fois qu'elle rend un module a la vie.
   '/src/render/decimate.ts',
   '/src/render/gg.ts',
   '/src/render/projection.ts',
