@@ -43,6 +43,8 @@ import {
   lireReperePiste,
 } from '@/features/presentations/sourcesCompositionService';
 import { supabase } from '@/lib/supabase';
+import { compterPointsTrace } from '@/services/circuitsService';
+import { POINTS_TRACE_MIN } from '@/trackviz/pisteDepuisBase';
 
 /**
  * Le passage est-il situé sur le tracé ?
@@ -99,6 +101,38 @@ export async function lireTracePosition(captureId: string): Promise<boolean> {
     const p = ligne as { latitude: unknown; longitude: unknown };
     return p.latitude !== premier.latitude || p.longitude !== premier.longitude;
   });
+}
+
+/**
+ * Le TRACÉ DU CIRCUIT est-il affichable ?
+ *
+ * ---------------------------------------------------------------------------
+ * CE QUE LE PARTAGE DU 01/09 A CHANGÉ
+ * ---------------------------------------------------------------------------
+ *
+ * Ce fait vivait confondu avec `tracePosition`. Les deux se ressemblent, et la
+ * confusion se payait sur P05 : sa fiche vit au moment « avant », quand aucune
+ * trame n'existe encore, et elle restait donc fermée sur toute séance — quel
+ * que soit le circuit.
+ *
+ * C'est le multi-circuit qui l'a rendu visible. Ce qui varie d'un circuit à
+ * l'autre, c'est justement de savoir s'il porte un tracé : Bouteville 139
+ * points, le Bugatti 589, Albi 138, un circuit neuf aucun. Ce fait-là ne
+ * dépend ni d'un tour, ni d'une trame, ni d'une confiance de mesure.
+ *
+ * ---------------------------------------------------------------------------
+ * LE SEUIL EST CELUI DE LA LECTURE, PAS UN CHOIX NEUF
+ * ---------------------------------------------------------------------------
+ *
+ * `parseCenterline` refuse un tracé de trois points ou moins, et
+ * `cordesDepuisCenterline` fait de même. On reprend ce plancher plutôt que d'en
+ * inventer un second : un tracé que l'application refuse de charger n'est pas
+ * un tracé affichable, et le dire deux fois avec deux nombres différents
+ * finirait par diverger.
+ */
+export async function lireTraceCircuit(circuitId: string | null): Promise<boolean> {
+  if (circuitId === null) return false;
+  return (await compterPointsTrace(circuitId)) >= POINTS_TRACE_MIN;
 }
 
 /**
@@ -273,17 +307,20 @@ export interface EntreeFaitsSeance {
 export async function lireFaitsSeance(entree: EntreeFaitsSeance): Promise<FaitsSeance> {
   const { piloteId, captureId, circuitId, debutSeance, statutSeance } = entree;
 
-  const [humains, tracePosition, coachLie, reperePiste, runsDeLaJournee] = await Promise.all([
-    lireFaitsHumains({ piloteId, captureId }),
-    lireTracePosition(captureId),
-    lireCoachLie(piloteId),
-    circuitId !== null ? lireReperePiste({ piloteId, circuitId }) : Promise.resolve(false),
-    lireRunsDeLaJournee({ piloteId, debutSeance }),
-  ]);
+  const [humains, tracePosition, traceCircuit, coachLie, reperePiste, runsDeLaJournee] =
+    await Promise.all([
+      lireFaitsHumains({ piloteId, captureId }),
+      lireTracePosition(captureId),
+      lireTraceCircuit(circuitId),
+      lireCoachLie(piloteId),
+      circuitId !== null ? lireReperePiste({ piloteId, circuitId }) : Promise.resolve(false),
+      lireRunsDeLaJournee({ piloteId, debutSeance }),
+    ]);
 
   return {
     ...FAITS_SANS_SOURCE,
     tracePosition,
+    traceCircuit,
     etatTraitement: lireEtatTraitement(statutSeance),
     coachLie,
     voixCoach: humains.voixCoach,

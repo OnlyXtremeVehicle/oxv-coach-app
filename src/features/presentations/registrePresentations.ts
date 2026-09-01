@@ -163,6 +163,7 @@ export type CleDonnee =
   | 'tours-comparables'
   | 'delta'
   | 'trace-position'
+  | 'trace-circuit'
   | 'repetition'
   | 'freinage'
   | 'segmentation-virages'
@@ -202,6 +203,7 @@ export const LIBELLES_DONNEES: Readonly<Record<CleDonnee, string>> = {
   'tours-comparables': 'deux tours qui couvrent la même distance',
   delta: 'l’écart entre vos tours',
   'trace-position': 'votre passage situé sur le tracé',
+  'trace-circuit': 'le tracé du circuit',
   repetition: 'un même passage retrouvé sur plusieurs tours',
   freinage: 'le début de décélération observée',
   'segmentation-virages': 'le découpage du tour en droites et virages',
@@ -228,6 +230,28 @@ export const LIBELLES_DONNEES: Readonly<Record<CleDonnee, string>> = {
  * celles-là qu'on refuse de présenter. `confiance-mesure` n'en fait
  * volontairement PAS partie — c'est l'écran qui dit pourquoi la confiance est
  * basse (P17, P64), et le fermer sur sa propre note serait absurde.
+ */
+/**
+ * `trace-circuit` N'EST PAS DANS CETTE LISTE, ET C'EST LA RAISON DU PARTAGE.
+ *
+ * Les deux clés se ressemblaient au point de n'en faire qu'une, et c'est ce
+ * qui a scindé le champ le 01/09/2026 :
+ *
+ *   • `trace-position` est une grandeur MESURÉE de la séance — le passage du
+ *     pilote, situé. Elle appartient donc à cet ensemble : une confiance de
+ *     mesure faible la retire, comme les autres mesures.
+ *
+ *   • `trace-circuit` est une GÉOMÉTRIE, celle du circuit. Elle ne dépend
+ *     d'aucun tour, d'aucune trame, d'aucune confiance — et elle existe AVANT
+ *     que la séance commence. La retirer sur une confiance faible n'aurait
+ *     aucun sens : le tracé du Bugatti ne devient pas douteux parce qu'un tour
+ *     l'est.
+ *
+ * C'est ce que le multi-circuit rend visible. Une seule clé fermait P05 —
+ * fiche du moment « avant » — sur toute séance, puisque aucune trame n'existe
+ * encore quand elle s'ouvre. Deux clés la laissent s'ouvrir exactement quand le
+ * circuit est connu, et se fermer quand il ne l'est pas : c'est la variable qui
+ * change d'un circuit à l'autre.
  */
 export const DONNEES_MESUREES: ReadonlySet<CleDonnee> = new Set<CleDonnee>([
   'tour-chronometre',
@@ -369,7 +393,7 @@ export const REGISTRE_PRESENTATIONS = [
     base: 'Innovation OXV',
     // « Carte tactile ; un seul point à marquer » — il faut le tracé pour
     // pouvoir y poser un point.
-    donneesRequises: ['trace-position'],
+    donneesRequises: ['trace-circuit'],
     themes: [],
   },
   {

@@ -246,6 +246,39 @@ export async function fetchSessionCircuitCenterlineExact(
 }
 
 /**
+ * COMBIEN DE POINTS le tracé d'un circuit porte-t-il, LU EN BASE ?
+ *
+ * `fetchCircuitCenterline` est CACHE-FIRST : elle rend volontiers un tracé
+ * gardé sept jours, et même un cache périmé en cas de panne. C'est le bon
+ * comportement pour DESSINER — une carte vaut mieux qu'un vide — et le mauvais
+ * pour ÉTABLIR UN FAIT : le même circuit serait « tracé connu » sur un appareil
+ * qui l'a déjà ouvert et « tracé inconnu » sur un autre, pour la même séance.
+ *
+ * Cette lecture-ci va donc à la base, sans cache et sans repli. Elle ne rend
+ * qu'un compte : personne n'a besoin des points pour savoir s'ils existent.
+ *
+ * `0` couvre tous les cas d'absence — circuit introuvable, colonne vide, forme
+ * inattendue, panne — parce qu'ils appellent la même conduite.
+ */
+export async function compterPointsTrace(circuitId: string): Promise<number> {
+  if (typeof circuitId !== 'string' || circuitId.length === 0) return 0;
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const circuits = supabase.from('circuits') as any;
+  const { data, error } = await circuits
+    .select('centerline_latlon')
+    .eq('id', circuitId)
+    .maybeSingle();
+
+  if (error) {
+    console.warn('[OXV][circuits] compterPointsTrace :', error.message);
+    return 0;
+  }
+  const brut = data?.centerline_latlon;
+  return Array.isArray(brut) ? brut.length : 0;
+}
+
+/**
  * LES VIRAGES du circuit réel d'une séance — pendant STRICT des deux fonctions
  * ci-dessus : aucun repli sur le circuit par défaut.
  *

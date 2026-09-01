@@ -197,6 +197,20 @@ export interface SouhaitPilote {
 export interface FaitsSeance {
   /** Le passage est situé sur le tracé (projection curviligne exploitable). */
   tracePosition: boolean;
+  /**
+   * Le TRACÉ DU CIRCUIT est affichable — une géométrie, pas une mesure.
+   *
+   * Scindé de `tracePosition` le 01/09/2026. Les deux se ressemblaient au point
+   * de n'en faire qu'une, et la confusion se payait sur P05 : sa fiche vit au
+   * moment « avant », quand aucune trame n'existe encore, et elle restait donc
+   * fermée sur toute séance.
+   *
+   * C'est le multi-circuit qui l'a rendu visible. Ce qui varie d'un circuit à
+   * l'autre, c'est justement de savoir s'il porte un tracé — Bouteville 139
+   * points, le Bugatti 589, un circuit neuf aucun. Ce fait-là ne dépend ni d'un
+   * tour, ni d'une confiance de mesure.
+   */
+  traceCircuit: boolean;
   /** L'état de la chaîne de mesure a été relevé (boîtier, liaison, réseau). */
   santeChaine: boolean;
   /** L'avancement du traitement de ce run est connu. */
@@ -369,6 +383,7 @@ export function donneesDisponibles(entree: EntreeComposition): DonneesSeance {
   // ---- Les faits de contexte ---------------------------------------------
   const f = disponibilite.faits;
   if (f.tracePosition) presentes.add('trace-position');
+  if (f.traceCircuit) presentes.add('trace-circuit');
   if (f.santeChaine) presentes.add('sante-chaine');
   if (f.etatTraitement) presentes.add('etat-traitement');
   if (f.video) presentes.add('video');

@@ -9,16 +9,20 @@
 
 import { supabase } from '@/lib/supabase';
 
+import { compterPointsTrace } from '@/services/circuitsService';
+
 import {
   bornesJourneeLocale,
   FAITS_SANS_SOURCE,
   lireCoachLie,
   lireEtatTraitement,
   lireRunsDeLaJournee,
+  lireTraceCircuit,
   lireTracePosition,
 } from '../faitsSeanceService';
 
 jest.mock('@/lib/supabase', () => ({ supabase: { from: jest.fn() } }));
+jest.mock('@/services/circuitsService', () => ({ compterPointsTrace: jest.fn() }));
 
 const depuis = supabase.from as unknown as jest.Mock;
 
@@ -192,5 +196,45 @@ describe('les six faits sans source', () => {
 
   it('sont exactement sept clés — six absences plus la consigne', () => {
     expect(Object.keys(FAITS_SANS_SOURCE)).toHaveLength(7);
+  });
+});
+
+/**
+ * LE TRACÉ DU CIRCUIT — une géométrie, pas une mesure.
+ *
+ * Scindé de `tracePosition` le 01/09/2026, parce que le multi-circuit rend la
+ * différence visible : ce qui varie d'un circuit à l'autre, c'est justement de
+ * savoir s'il porte un tracé. Bouteville 139 points, le Bugatti 589, Albi 138,
+ * un circuit neuf aucun.
+ */
+describe('lireTraceCircuit', () => {
+  const compte = compterPointsTrace as unknown as jest.Mock;
+
+  beforeEach(() => compte.mockReset());
+
+  it('un tracé de la base ouvre la lecture', async () => {
+    compte.mockResolvedValue(139);
+    await expect(lireTraceCircuit('c1')).resolves.toBe(true);
+  });
+
+  /**
+   * Le plancher est celui de `parseCenterline`, repris et non réinventé : un
+   * tracé que l'application refuse de charger n'est pas un tracé affichable.
+   */
+  it('trois points ne suffisent pas — le même plancher que la lecture', async () => {
+    compte.mockResolvedValue(3);
+    await expect(lireTraceCircuit('c1')).resolves.toBe(false);
+    compte.mockResolvedValue(4);
+    await expect(lireTraceCircuit('c1')).resolves.toBe(true);
+  });
+
+  it('aucun circuit rattaché : rien à demander', async () => {
+    await expect(lireTraceCircuit(null)).resolves.toBe(false);
+    expect(compte).not.toHaveBeenCalled();
+  });
+
+  it('un circuit sans tracé ferme la lecture', async () => {
+    compte.mockResolvedValue(0);
+    await expect(lireTraceCircuit('c1')).resolves.toBe(false);
   });
 });

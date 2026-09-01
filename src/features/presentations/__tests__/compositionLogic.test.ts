@@ -40,6 +40,7 @@ const SEANCE_MAIGRE = {
 
 const FAITS_RICHES: FaitsSeance = {
   tracePosition: true,
+  traceCircuit: true,
   santeChaine: true,
   etatTraitement: true,
   video: true,
@@ -57,6 +58,7 @@ const FAITS_RICHES: FaitsSeance = {
 
 const FAITS_NUS: FaitsSeance = {
   tracePosition: false,
+  traceCircuit: false,
   santeChaine: false,
   etatTraitement: false,
   video: false,
