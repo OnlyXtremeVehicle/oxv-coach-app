@@ -44,6 +44,7 @@ import {
   type TrajectoryPoint,
 } from '@/components/CircuitMap';
 import { estHauteSaintonge } from '@/lib/circuitTopology';
+import { publierReference } from '@/services/referencesPartageesService';
 import {
   BreathingGlow,
   CountUpNumber,
@@ -292,6 +293,7 @@ function StudioHeader({ data, isConsole }: { data: StudioSession; isConsole: boo
         </Text>
         <Text style={s.meta}>{subParts.join(' · ')}</Text>
         <SortiesLecture sessionId={data.sessionId} />
+        <PublierReference data={data} />
       </View>
     </View>
   );
@@ -341,6 +343,73 @@ function ReportButton({ sessionId, full }: { sessionId: string; full?: boolean }
  * toucher : le hitSlop redevient symétrique. Le mode présentation reviendra
  * avec son écran, pas avant.
  */
+/**
+ * PUBLIER CETTE SÉANCE COMME RÉFÉRENCE — M09.
+ *
+ * Le coach publie ; le PILOTE consent. C'est l'« équitable » du cahier de
+ * veille, et la table le tient : une référence naît sans consentement et n'est
+ * lue par personne d'autre que son propriétaire et le coach qui l'a posée,
+ * jusqu'à ce que le pilote l'accorde depuis ses réglages.
+ *
+ * `demontre` est OBLIGATOIRE — le catalogue écrit « provenance obligatoire », et
+ * la base refuse une phrase vide. Une référence sans phrase serait un chrono nu,
+ * donc un classement. On propose donc une phrase de départ tirée de ce que la
+ * séance porte réellement, que le coach reprend à sa main.
+ *
+ * ANONYME par défaut, et le geste ne l'expose pas : lever l'anonymat est un
+ * second choix, qui viendra avec l'écran de gestion des références (P59). Le
+ * défaut suit le brief — « jamais à un autre pilote nommé ».
+ */
+function PublierReference({ data }: { data: StudioSession }) {
+  const [etat, setEtat] = useState<'repos' | 'envoi' | 'posee'>('repos');
+  const [erreur, setErreur] = useState<string | null>(null);
+
+  const pilotId = data.pilotId;
+  if (pilotId === null) return null;
+
+  const phrase = data.circuitName
+    ? `Tour de référence sur ${data.circuitName}.`
+    : 'Tour de référence de cette séance.';
+
+  const publier = async () => {
+    setEtat('envoi');
+    setErreur(null);
+    const r = await publierReference({
+      sessionId: data.sessionId,
+      ownerId: pilotId,
+      lapNumber: null,
+      demontre: phrase,
+      portee: 'coach_seul',
+      anonyme: true,
+    });
+    if (r.ok) {
+      setEtat('posee');
+      return;
+    }
+    setEtat('repos');
+    setErreur(r.error ?? 'La référence n’a pas pu être publiée.');
+  };
+
+  if (etat === 'posee') {
+    return <Text style={s.meta}>Référence proposée — elle attend l’accord du pilote.</Text>;
+  }
+
+  return (
+    <View style={{ marginTop: spacing.sm, alignSelf: 'flex-start' }}>
+      <PressableScale
+        accessibilityRole="button"
+        accessibilityLabel="Proposer cette séance comme référence, sous réserve de l’accord du pilote"
+        hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+        onPress={() => void publier()}
+        disabled={etat === 'envoi'}
+      >
+        <Text style={s.link}>{etat === 'envoi' ? 'Publication…' : 'Proposer en référence ›'}</Text>
+      </PressableScale>
+      {erreur !== null ? <Text style={s.meta}>{erreur}</Text> : null}
+    </View>
+  );
+}
+
 function SortiesLecture({ sessionId }: { sessionId: string }) {
   return (
     <View style={{ marginTop: spacing.md, alignSelf: 'flex-start' }}>

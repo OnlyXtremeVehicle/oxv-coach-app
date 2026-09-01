@@ -23,7 +23,7 @@
  * Doctrine : sobre, vouvoiement, zéro emoji, jamais prescriptif.
  */
 
-import { type ReactNode, useEffect, useState } from 'react';
+import { type ReactNode, useCallback, useEffect, useState } from 'react';
 import { ScrollView, StyleSheet, Switch, Text, View } from 'react-native';
 import { router } from 'expo-router';
 import Animated from 'react-native-reanimated';
@@ -37,6 +37,13 @@ import {
   requiresCaptureRevokeConfirm,
 } from '@/features/vous/reglagesConsentLogic';
 import { useReglages } from '@/features/vous/useReglages';
+import { useAuthStore } from '@/store/useAuthStore';
+import {
+  consentirReference,
+  mesReferences,
+  revoquerReference,
+  type ReferencePartagee,
+} from '@/services/referencesPartageesService';
 import {
   Dial,
   ListRow,
@@ -152,7 +159,38 @@ export default function ReglagesScreen() {
   const r = useReglages();
   const s = r.state;
 
+  const moiId = useAuthStore((st) => st.profile?.id);
   const [bioConfirm, setBioConfirm] = useState(false);
+
+  /**
+   * LES RÉFÉRENCES QUI PORTENT MA DONNÉE — consenties ou non, révoquées ou non.
+   *
+   * On montre AUSSI celles qui attendent : une référence en attente d'accord
+   * qu'on ne montrerait pas serait un accord arraché par le silence.
+   *
+   * Une panne rend une liste vide, donc un groupe absent — jamais un groupe qui
+   * laisserait croire qu'aucun partage n'existe.
+   */
+  const [references, setReferences] = useState<ReferencePartagee[]>([]);
+  const chargerReferences = useCallback(() => {
+    if (!moiId) return;
+    mesReferences(moiId)
+      .then(setReferences)
+      .catch(() => undefined);
+  }, [moiId]);
+  useEffect(chargerReferences, [chargerReferences]);
+
+  /**
+   * Consentir, ou révoquer. Puis RELIRE — la vérité reste en base.
+   *
+   * Un état local qui bascule sans confirmation serveur afficherait « révoquée »
+   * sur une référence toujours vivante. Sur un consentement, c'est la pire
+   * erreur possible.
+   */
+  const basculerReference = async (id: string, accorde: boolean) => {
+    const res = accorde ? await consentirReference(id) : await revoquerReference(id);
+    if (res.ok) chargerReferences();
+  };
 
   /**
    * DRAPEAU BIOMÉTRIE — il manquait ici.
@@ -374,6 +412,44 @@ export default function ReglagesScreen() {
             </>
           ) : null}
         </Group>
+
+        {/*
+          RÉFÉRENCES PARTAGÉES — M09, et son adjectif le plus lourd.
+
+          Le cahier de veille autorise le partage inter-pilotes à trois
+          conditions : « équitable, RÉVOCABLE et anonymisable ». La table les
+          tient toutes les trois — mais une révocation qu'aucun écran n'offre
+          n'est pas une révocation, et un consentement qu'on ne peut pas retirer
+          n'en est pas un.
+
+          Ce groupe est donc la contrepartie de la table, pas un ornement. Il
+          n'apparaît que si une référence porte la donnée de ce pilote : un
+          groupe vide dirait qu'un partage existe là où il n'y en a aucun.
+
+          Chaque ligne dit CE QUE LA RÉFÉRENCE DÉMONTRE — la phrase du coach,
+          obligatoire en base. Le pilote consent ou révoque en connaissance de
+          ce qui est montré, pas d'un identifiant.
+        */}
+        {references.length > 0 ? (
+          <Group eyebrow="RÉFÉRENCES PARTAGÉES">
+            {references.map((ref, i) => (
+              <ToggleRow
+                key={ref.id}
+                label={ref.demontre}
+                caption={
+                  ref.consentLe !== null && ref.revoqueeLe === null
+                    ? ref.anonyme
+                      ? 'Partagée sans votre nom.'
+                      : 'Partagée avec votre nom.'
+                    : 'En attente de votre accord.'
+                }
+                value={ref.consentLe !== null && ref.revoqueeLe === null}
+                onValueChange={(next: boolean) => void basculerReference(ref.id, next)}
+                divider={i < references.length - 1}
+              />
+            ))}
+          </Group>
+        ) : null}
 
         {/* 3 — DONNÉES & SÉCURITÉ */}
         <Group eyebrow="DONNÉES & SÉCURITÉ">
