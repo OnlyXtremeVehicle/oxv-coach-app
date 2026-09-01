@@ -45,6 +45,7 @@ import {
 import { supabase } from '@/lib/supabase';
 import { compterPointsTrace } from '@/services/circuitsService';
 import { consignePorteSurSeance } from '@/services/coachConsignesService';
+import { referenceDisponible } from '@/services/referencesPartageesService';
 import { POINTS_TRACE_MIN } from '@/trackviz/pisteDepuisBase';
 
 /**
@@ -263,9 +264,11 @@ export function lireEtatTraitement(statutSeance: string | null): boolean {
  *   longitudinal, calculée. La lire comme un canal véhicule ferait passer un
  *   calcul pour une mesure.
  *
- *   `referencePartagee` — aucune source. Elle exige un modèle de CONSENTEMENT
- *   inter-pilotes, qui est une décision du fondateur, et le seul chemin qui
- *   produirait une référence entre pilotes heurterait l'interdit de classement.
+ *   (`referencePartagee` A QUITTÉ CETTE LISTE le 01/09/2026. Le fondateur a
+ *   tranché en QCM pour la construire avant Le Mans, et le cahier de veille
+ *   spécifiait déjà M09 avec sa propre limite : « partage inter-pilotes
+ *   autorisé, équitable, révocable et anonymisable ». `session_references`
+ *   tient les trois, et `referenceDisponible` la lit.)
  *
  *   `live` / `flotteLive` — le direct a été RETIRÉ du périmètre par arbitrage.
  *   Le chemin technique subsiste dans le dépôt, écrit et testé ; il n'est pas
@@ -281,7 +284,6 @@ export const FAITS_SANS_SOURCE = {
   santeChaine: false,
   video: false,
   canauxVehicule: false,
-  referencePartagee: false,
   live: false,
   flotteLive: false,
 } as const;
@@ -313,6 +315,7 @@ export async function lireFaitsSeance(entree: EntreeFaitsSeance): Promise<FaitsS
     tracePosition,
     traceCircuit,
     consigneCoach,
+    referencePartagee,
     coachLie,
     reperePiste,
     runsDeLaJournee,
@@ -321,6 +324,7 @@ export async function lireFaitsSeance(entree: EntreeFaitsSeance): Promise<FaitsS
     lireTracePosition(captureId),
     lireTraceCircuit(circuitId),
     consignePorteSurSeance(captureId),
+    referenceDisponible(),
     lireCoachLie(piloteId),
     circuitId !== null ? lireReperePiste({ piloteId, circuitId }) : Promise.resolve(false),
     lireRunsDeLaJournee({ piloteId, debutSeance }),
@@ -331,6 +335,7 @@ export async function lireFaitsSeance(entree: EntreeFaitsSeance): Promise<FaitsS
     tracePosition,
     traceCircuit,
     consigneCoach,
+    referencePartagee,
     etatTraitement: lireEtatTraitement(statutSeance),
     coachLie,
     voixCoach: humains.voixCoach,

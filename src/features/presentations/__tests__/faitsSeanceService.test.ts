@@ -191,14 +191,22 @@ describe('les faits sans source', () => {
       santeChaine: false,
       video: false,
       canauxVehicule: false,
-      referencePartagee: false,
       live: false,
       flotteLive: false,
     });
   });
 
-  it('sont exactement six clés', () => {
-    expect(Object.keys(FAITS_SANS_SOURCE)).toHaveLength(6);
+  it('sont exactement cinq clés', () => {
+    expect(Object.keys(FAITS_SANS_SOURCE)).toHaveLength(5);
+  });
+
+  /**
+   * `referencePartagee` est sortie le 01/09/2026 : `session_references` tient
+   * les trois limites de M09 — équitable, révocable, anonymisable — et
+   * `referenceDisponible` la lit. Une absence déclarée qu'on comble se retire.
+   */
+  it('la référence partagée n’y est plus — elle a une table', () => {
+    expect(Object.keys(FAITS_SANS_SOURCE)).not.toContain('referencePartagee');
   });
 
   it('la consigne n’y est plus — elle a une table', () => {
