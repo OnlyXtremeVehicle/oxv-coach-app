@@ -476,6 +476,9 @@ export function useBilan(sessionId: string | undefined): UseBilanResult {
           segmentName: sg.segmentName,
           maxGLateral: sg.maxGLateral,
         })),
+        // Repli quand aucun segment n'est analysé : la capture a écrit le
+        // maximum de la séance entière, seule sa position manque.
+        gLateralMaxSeance: session.max_g_lateral ?? null,
       });
 
       const coachNotes = buildCoachNotes(annotations, threads, virages);

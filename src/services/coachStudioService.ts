@@ -117,6 +117,9 @@ export async function getStudioSession(telemetrySessionId: string): Promise<Stud
       segmentName: s.segmentName,
       maxGLateral: s.maxGLateral,
     })),
+    gLateralMaxSeance: nombreOuNull(
+      (session as { max_g_lateral?: number | string | null }).max_g_lateral
+    ),
   });
 
   return {

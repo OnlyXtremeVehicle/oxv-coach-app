@@ -36,8 +36,41 @@ function fmtLap(s: number): string {
   return virgule(`${m}:${r.toFixed(3).padStart(6, '0')}`);
 }
 
+/**
+ * L'APPUI MAXIMUM DE LA SÉANCE, QUAND AUCUN SEGMENT NE LE PORTE.
+ *
+ * « Le passage le plus engagé » exigeait une ligne de `app_segment_analyses` :
+ * un G latéral ET un segment pour le situer. Cette table est vide sur toute
+ * séance réelle, et le moment disparaissait — alors que `telemetry_sessions`
+ * porte `max_g_lateral` depuis la capture. Sur la séance de référence, la base
+ * dit 0,62 g et l'écran ne disait rien.
+ *
+ * On sépare donc les deux faits. La VALEUR est mesurée et s'affiche. Le LIEU ne
+ * l'est pas sans segment : on ne l'invente pas, et le titre cesse de le
+ * promettre — « le passage » devient « l'appui ».
+ */
+function momentAppuiMaximum(gLateralMax: number | null | undefined): KeyMoment | null {
+  if (typeof gLateralMax !== 'number' || !Number.isFinite(gLateralMax) || gLateralMax <= 0) {
+    return null;
+  }
+  return {
+    key: 'engaged',
+    title: 'L’appui latéral maximum',
+    fact: virgule(`${gLateralMax.toFixed(2)} g. Position non mesurée.`),
+  };
+}
+
 /** Dérive jusqu'à 3 moments factuels (référence, passage engagé, plus grand écart). */
-export function computeKeyMoments(input: { laps: KMLap[]; segments: KMSegment[] }): KeyMoment[] {
+export function computeKeyMoments(input: {
+  laps: KMLap[];
+  segments: KMSegment[];
+  /**
+   * `telemetry_sessions.max_g_lateral` — le maximum de la séance entière, écrit
+   * par la capture. Il sert de repli quand aucun segment n'est analysé : la
+   * valeur est mesurée, seule sa position manque.
+   */
+  gLateralMaxSeance?: number | null;
+}): KeyMoment[] {
   const moments: KeyMoment[] = [];
   const valid = input.laps.filter((l) => !l.isOutlap && !l.isInlap && l.durationSeconds > 0);
 
@@ -58,6 +91,10 @@ export function computeKeyMoments(input: { laps: KMLap[]; segments: KMSegment[] 
       title: 'Le passage le plus engagé',
       fact: `${top.segmentName ?? `Virage ${top.segmentIndex}`} — ${(top.maxGLateral as number).toFixed(2).replace('.', ',')} g d'appui latéral.`,
     });
+  } else {
+    // Aucun segment analysé : la valeur reste lisible, le lieu non.
+    const appui = momentAppuiMaximum(input.gLateralMaxSeance);
+    if (appui !== null) moments.push(appui);
   }
 
   if (valid.length >= 2) {

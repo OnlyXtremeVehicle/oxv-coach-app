@@ -1,32 +1,47 @@
 /**
- * LES COLONNES `numeric` ARRIVENT EN CHAÎNES. UNE FOIS, À LA FRONTIÈRE.
+ * LES `numeric` DEVIENNENT DES NOMBRES. UNE FOIS, À LA FRONTIÈRE.
  *
  * ===========================================================================
- * LE DÉFAUT, ET POURQUOI IL REVIENT
+ * LA PRÉMISSE D'ORIGINE A ÉTÉ REMESURÉE LE 01/09/2026 — ELLE EST FAUSSE
  * ===========================================================================
  *
- * PostgREST sérialise `numeric` en CHAÎNE JSON — pour préserver la précision
- * décimale. Une colonne déclarée `number` en TypeScript vaut donc `"83.412"`
- * au runtime, et le compilateur affirme le contraire.
+ * Ce module affirmait, et vingt commentaires du dépôt le répètent après lui :
+ * *« PostgREST sérialise `numeric` en CHAÎNE JSON, pour préserver la précision
+ * décimale. »* Le brief exige qu'une affirmation de plus de deux semaines se
+ * remesure. Elle l'a été, contre l'instance de production :
  *
- * Ça ne plante jamais. Ça ment, en silence, et toujours de la même façon :
+ *     curl -H "apikey: <clé publiable>" ".../rest/v1/vehicules_eligibles?select=masse_kg&limit=2"
+ *     → [{"masse_kg":1035.0}, {"masse_kg":1550.0}]
  *
- *   Number.isFinite("83.412")   → false
- *   typeof "83.412" === 'number' → false
- *   "102.7" < "95.2"             → true   (comparaison lexicographique)
+ * `masse_kg` est un `numeric(6,1)`, `duration_seconds` un `numeric(7,3)` : même
+ * type, même sérialisation. **Les nombres arrivent NON QUOTÉS.** PostgREST
+ * construit son corps de réponse avec le JSON de PostgreSQL, et `to_json` d'un
+ * `numeric` n'émet pas de guillemets.
  *
- * Le dépôt a corrigé ce défaut TROIS FOIS, à trois endroits, sans jamais le
- * corriger à sa source :
+ * Ce qui voyage RÉELLEMENT en chaîne, et que la généralisation a englobé :
+ * les paramètres de navigation (`finLogic.ts` le dit justement), et tout ce qui
+ * transite par un stockage texte. Les défauts corrigés en août étaient réels ;
+ * leur cause a été mal nommée, et le mauvais nom s'est propagé.
  *
- *   - `distance_km`, documenté ;
- *   - `format.ts`, où le formateur rendait « — » sur des chronos présents ;
- *   - `nombresDuTour`, le 13/08/2026, quand la section DELTA affirmait
- *     « pas deux tours à comparer » sur une séance de vingt tours.
+ * ===========================================================================
+ * POURQUOI CE MODULE RESTE, ET POURQUOI RIEN NE CHANGE
+ * ===========================================================================
  *
- * Et il restait vivant sur `telemetry_sessions`, où il produisait le pire des
- * trois : **toute séance était célébrée comme record personnel**, parce que
- * `typeof s.best_lap_seconds === 'number'` écartait TOUTES les autres séances
- * et laissait la comparaison sans rien à comparer.
+ * Une coercition de frontière est juste quelle que soit la forme reçue :
+ * `Number(92.5)` vaut `Number("92.5")`. Le comportement de l'application est
+ * donc IDENTIQUE avant et après cette relecture — aucune ligne de code n'est
+ * touchée, seule la raison change.
+ *
+ * Et elle garde une vertu que la prémisse fausse cachait : elle transforme une
+ * valeur illisible en `null` plutôt qu'en `NaN`. `NaN` traverse les gardes
+ * `!== null` sans broncher et ressort en « — », en trait corrompu, ou en
+ * comparaison toujours fausse. `null` dit l'absence, et toutes les lectures du
+ * dépôt savent la rendre.
+ *
+ * CE QU'IL NE FAUT PLUS FAIRE : diagnostiquer un défaut avec cette prémisse.
+ * Deux constats de la recette du 30/08 ont été écrits ainsi — « la marge
+ * globale ne s'affiche pas, `typeof === 'number'` échoue sur la chaîne
+ * PostgREST » — et les deux étaient faux. Le fil affichait bien ses 60,4 %.
  *
  * ===========================================================================
  * POURQUOI ICI, ET PAS CHEZ LES APPELANTS
@@ -38,8 +53,7 @@
  *
  * Les listes de colonnes sont figées par `numeriquesPostgrest.guard.test.ts`,
  * qui les compare au SCHÉMA RÉEL : une colonne `numeric` ajoutée en base sans
- * être ajoutée ici rouvre le trou en silence, et c'est exactement comme ça
- * qu'il a survécu à trois corrections.
+ * être ajoutée ici sort du champ de la conversion en silence.
  */
 
 /** Colonnes `numeric` de `telemetry_sessions`. */

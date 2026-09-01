@@ -88,6 +88,9 @@ export async function loadTraceOfDay(
       segmentName: sg.segmentName,
       maxGLateral: sg.maxGLateral,
     })),
+    // `telemetry_sessions.max_g_lateral` : le maximum de la séance entière,
+    // écrit par la capture. Repli quand aucun segment n'est analysé.
+    gLateralMaxSeance: session.max_g_lateral ?? null,
   });
 
   const dq = insights?.data_quality;
