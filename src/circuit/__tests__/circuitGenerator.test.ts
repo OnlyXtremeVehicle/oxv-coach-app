@@ -182,13 +182,7 @@ describe('parseOsmRelation — chaîner ce qu’OSM livre en désordre', () => {
       ],
     });
     expect(r.closed).toBe(true);
-    expect(r.points.map((p) => `${p.lat},${p.lon}`)).toEqual([
-      '0,0',
-      '0,1',
-      '1,1',
-      '1,0',
-      '0,0',
-    ]);
+    expect(r.points.map((p) => `${p.lat},${p.lon}`)).toEqual(['0,0', '0,1', '1,1', '1,0', '0,0']);
   });
 
   /**

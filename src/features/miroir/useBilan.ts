@@ -34,10 +34,7 @@ import { nombresDeSeance } from '@/lib/numeriquesPostgrest';
 import { supabase } from '@/lib/supabase';
 import { getAnalysisForSession } from '@/services/analysesService';
 import { fetchSessionCircuitCenterlineExact } from '@/services/circuitsService';
-import {
-  listSessionNotes,
-  listVisibleCornerAnnotations,
-} from '@/services/coachAnnotationsService';
+import { listSessionNotes, listVisibleCornerAnnotations } from '@/services/coachAnnotationsService';
 import {
   listMyThreads,
   markThreadRead,
@@ -52,10 +49,7 @@ import { fetchSessionCircuitCorners } from '@/services/circuitsService';
 import { getIntentionForSession, type SessionIntention } from '@/services/intentionsService';
 import { isFlagEnabled } from '@/services/featureFlagsService';
 import { computeKeyMoments, type KeyMoment } from '@/services/keyMomentsLogic';
-import {
-  composerPresentations,
-  type Composition,
-} from '@/features/presentations/compositionLogic';
+import { composerPresentations, type Composition } from '@/features/presentations/compositionLogic';
 import { lireEntreeComposition } from '@/features/presentations/entreeCompositionService';
 import { QDI_ALGO_VERSION } from '@/services/qdiLogic';
 import { getOrComputeQdiForSession } from '@/services/qdiService';

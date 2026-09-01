@@ -254,11 +254,7 @@ export function calculeTendanceSession(tours: readonly TourSession[]): TendanceS
   }
 
   const libelle =
-    direction === 'se degrade'
-      ? tardive
-        ? LIBELLE_TARDIF
-        : LIBELLE_HAUSSE
-      : LIBELLES[direction];
+    direction === 'se degrade' ? (tardive ? LIBELLE_TARDIF : LIBELLE_HAUSSE) : LIBELLES[direction];
 
   return {
     version: PROGRESSION_ALGO_VERSION,

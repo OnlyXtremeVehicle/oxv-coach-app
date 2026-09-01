@@ -136,7 +136,8 @@ export default function CoachAnnoterScreen() {
     };
   }, [params.sessionId]);
 
-  const corner = cornerIndex != null ? (virages.find((v) => v.index === cornerIndex) ?? null) : null;
+  const corner =
+    cornerIndex != null ? (virages.find((v) => v.index === cornerIndex) ?? null) : null;
   const cornerName = cornerIndex != null ? nomVirage(virages, cornerIndex) : '';
   const [saveError, setSaveError] = useState<string | null>(null);
 

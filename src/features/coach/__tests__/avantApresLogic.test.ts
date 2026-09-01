@@ -147,10 +147,7 @@ describe('litEffetAvantApres', () => {
       // L'intervention tombe entre le bouclage du tour 3 et celui du tour 4 :
       // elle appartient au tour 4, qui n'entre dans aucune fenêtre.
       const tours = [1, 2, 3, 4, 5, 6, 7].map((n) => tour(n, 92 - n * 0.1));
-      const e = litEffetAvantApres(
-        { tour: null, instantMs: T0 + 3 * 90_000 + 10_000 },
-        tours
-      );
+      const e = litEffetAvantApres({ tour: null, instantMs: T0 + 3 * 90_000 + 10_000 }, tours);
       expect(e.fenetres.toursAvant).toEqual([3, 2, 1]);
       expect(e.fenetres.toursApres).toEqual([5, 6, 7]);
     });

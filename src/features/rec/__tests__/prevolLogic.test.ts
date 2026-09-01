@@ -182,9 +182,7 @@ describe('seuils', () => {
   });
 
   it('la valeur exactement AU seuil bloquant reste a_verifier (bornes strictes)', () => {
-    const auSeuil = evaluerPrevol(
-      etatsSains({ batteriePct: SEUIL_BATTERIE_BOITIER_BLOQUANT_PCT })
-    );
+    const auSeuil = evaluerPrevol(etatsSains({ batteriePct: SEUIL_BATTERIE_BOITIER_BLOQUANT_PCT }));
     expect(poste(auSeuil, 'batterie_boitier').etat).toBe('a_verifier');
     const auSeuilVerif = evaluerPrevol(
       etatsSains({ batteriePct: SEUIL_BATTERIE_BOITIER_A_VERIFIER_PCT })

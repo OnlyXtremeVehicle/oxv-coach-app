@@ -747,9 +747,7 @@ export default function PlacementScreen() {
               accessibilityLabel={`${p.fait}${ORAL_ETAT[p.etat]}`}
             >
               <PastillePrevol etat={p.etat} />
-              <Text
-                style={[styles.prevolFait, p.etat === 'non_mesure' && styles.prevolFaitAbsent]}
-              >
+              <Text style={[styles.prevolFait, p.etat === 'non_mesure' && styles.prevolFaitAbsent]}>
                 {p.fait}
               </Text>
             </View>

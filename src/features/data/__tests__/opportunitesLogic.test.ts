@@ -178,7 +178,10 @@ describe('confiance et estampille', () => {
 
 describe('DOCTRINE — verrou lexical de la source', () => {
   it('le module opportunitesLogic.ts n’attribue aucune cause et ne prescrit rien', () => {
-    const source = readFileSync(join(__dirname, '..', 'opportunitesLogic.ts'), 'utf8').toLowerCase();
+    const source = readFileSync(
+      join(__dirname, '..', 'opportunitesLogic.ts'),
+      'utf8'
+    ).toLowerCase();
     const banned = [
       'freinez',
       'accélérez',

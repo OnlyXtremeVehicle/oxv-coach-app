@@ -172,10 +172,7 @@ export interface ResultatChevauchement {
   observations: string[];
 }
 
-function resultatChevauchementVide(
-  ignores: number,
-  observation: string
-): ResultatChevauchement {
+function resultatChevauchementVide(ignores: number, observation: string): ResultatChevauchement {
   return {
     version: VERSION_CHEVAUCHEMENT,
     confiance: 'faible',
@@ -206,9 +203,7 @@ function resultatChevauchementVide(
  * une observation : décélération et rotation peuvent aussi se succéder, et le
  * dire est une lecture, pas un échec.
  */
-export function lireChevauchement(
-  serie: readonly EchantillonVirage[]
-): ResultatChevauchement {
+export function lireChevauchement(serie: readonly EchantillonVirage[]): ResultatChevauchement {
   const tries = parTemps(serie);
   const exploitables = tries.filter((e) => estNombre(e.gLong));
   const ignores = tries.length - exploitables.length + (serie.length - tries.length);
@@ -308,8 +303,7 @@ export function lireChevauchement(
 
   // -- Confiance : la qualité de la mesure, pas le contenu du constat --------
   const partIgnoree = ignores / Math.max(1, ignores + exploitables.length);
-  const confiance: Confiance =
-    meilleure.length >= 10 && partIgnoree < 0.1 ? 'haute' : 'moyenne';
+  const confiance: Confiance = meilleure.length >= 10 && partIgnoree < 0.1 ? 'haute' : 'moyenne';
 
   if (fenetre !== null && observations.length === 0) {
     observations.push('Décélération et montée de l’appui latéral coexistent sur cette fenêtre.');
@@ -456,7 +450,10 @@ export function lireRotation(serie: readonly EchantillonRotation[]): ResultatRot
   for (let i = iDebut; i < canal.length - 1; i++) {
     const dt = canal[i + 1].tMs - canal[i].tMs;
     if (dt <= 0) continue;
-    derivees.push({ tMs: canal[i + 1].tMs, d: ((canal[i + 1].lacet - canal[i].lacet) / dt) * 1000 });
+    derivees.push({
+      tMs: canal[i + 1].tMs,
+      d: ((canal[i + 1].lacet - canal[i].lacet) / dt) * 1000,
+    });
   }
 
   let oscillations = 0;
@@ -499,14 +496,18 @@ export function lireRotation(serie: readonly EchantillonRotation[]): ResultatRot
 
   const observations: string[] = [];
   if (lecture === 'rotation en un geste') {
-    observations.push('La vitesse de lacet monte, passe son pic et redescend sans reprise comptée.');
+    observations.push(
+      'La vitesse de lacet monte, passe son pic et redescend sans reprise comptée.'
+    );
   } else {
     observations.push(
       `${oscillations} alternances de la dérivée de lacet observées au-delà du seuil.`
     );
   }
   if (stabilisationMs === null) {
-    observations.push('Aucune fenêtre de calme observée après le pic — la rotation ne se stabilise pas dans ce passage.');
+    observations.push(
+      'Aucune fenêtre de calme observée après le pic — la rotation ne se stabilise pas dans ce passage.'
+    );
   }
 
   return {

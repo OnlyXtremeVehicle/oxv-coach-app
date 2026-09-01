@@ -28,7 +28,11 @@ import {
 } from '../confianceLogic';
 
 /** Une trame propre : fix valide, hAcc 1 m, PDOP 1.5, 14 satellites. */
-function trame(elapsedMs: number, distanceM: number | null, extra?: Partial<TrameQualite>): TrameQualite {
+function trame(
+  elapsedMs: number,
+  distanceM: number | null,
+  extra?: Partial<TrameQualite>
+): TrameQualite {
   return {
     elapsedMs,
     distanceM,
@@ -123,7 +127,11 @@ describe('jamais une note sans ses motifs', () => {
 
 describe('les canaux de qualité', () => {
   it('une précision GPS dégradée sur la majorité des trames rend faible, motif à l’appui', () => {
-    const z = evaluerZone(defilement(0, 100, { gpsAccuracyM: SEUIL_HACC_DEGRADE_M + 5 }), ZONE_100, true);
+    const z = evaluerZone(
+      defilement(0, 100, { gpsAccuracyM: SEUIL_HACC_DEGRADE_M + 5 }),
+      ZONE_100,
+      true
+    );
     expect(z.niveau).toBe('faible');
     expect(z.motifs.some((m) => m.includes('précision GPS dégradée'))).toBe(true);
     expect(z.motifs.some((m) => m.includes(`hAcc > ${SEUIL_HACC_DEGRADE_M} m`))).toBe(true);

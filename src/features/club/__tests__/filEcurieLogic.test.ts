@@ -113,7 +113,7 @@ describe('le fil se groupe par jour', () => {
   it('les messages sortent du plus ancien au plus récent', () => {
     const j = grouperParJour(
       [msg('b', '2026-08-27T15:00:00Z'), msg('a', '2026-08-27T09:00:00Z')],
-      new Date('2026-08-27T18:00:00Z'),
+      new Date('2026-08-27T18:00:00Z')
     );
     expect(j).toHaveLength(1);
     expect(j[0].messages.map((m) => m.id)).toEqual(['a', 'b']);
@@ -126,7 +126,7 @@ describe('le fil se groupe par jour', () => {
   it('aujourd’hui et hier se nomment', () => {
     const j = grouperParJour(
       [msg('a', '2026-08-26T09:00:00Z'), msg('b', '2026-08-27T09:00:00Z')],
-      new Date('2026-08-27T18:00:00Z'),
+      new Date('2026-08-27T18:00:00Z')
     );
     expect(j.map((x) => x.libelle)).toEqual(['Hier', 'Aujourd’hui']);
   });

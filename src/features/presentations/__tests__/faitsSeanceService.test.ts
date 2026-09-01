@@ -138,7 +138,9 @@ describe('bornesJourneeLocale', () => {
 describe('lireRunsDeLaJournee', () => {
   it('rend le compte de la base', async () => {
     depuis.mockReturnValue(chaine({ count: 3, error: null }));
-    await expect(lireRunsDeLaJournee({ piloteId: 'p1', debutSeance: '2026-08-12T23:35:54Z' })).resolves.toBe(3);
+    await expect(
+      lireRunsDeLaJournee({ piloteId: 'p1', debutSeance: '2026-08-12T23:35:54Z' })
+    ).resolves.toBe(3);
   });
 
   it('sans date, aucune requête et zéro', async () => {
@@ -148,7 +150,9 @@ describe('lireRunsDeLaJournee', () => {
 
   it('une panne rend zéro — la lecture se ferme, elle ne suppose pas', async () => {
     depuis.mockReturnValue(chaine({ count: null, error: { message: 'timeout' } }));
-    await expect(lireRunsDeLaJournee({ piloteId: 'p1', debutSeance: '2026-08-12T23:35:54Z' })).resolves.toBe(0);
+    await expect(
+      lireRunsDeLaJournee({ piloteId: 'p1', debutSeance: '2026-08-12T23:35:54Z' })
+    ).resolves.toBe(0);
   });
 });
 

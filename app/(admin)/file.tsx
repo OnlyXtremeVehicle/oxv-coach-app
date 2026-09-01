@@ -79,9 +79,19 @@ export default function FileAdminScreen() {
   const [postes, setPostes] = useState<PosteClasse[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
-  // L'instant de référence est figé au chargement : un `new Date()` évalué à
-  // chaque rendu ferait basculer une échéance pendant qu'on la lit.
-  const [maintenant, setMaintenant] = useState(() => new Date());
+  /**
+   * L'INSTANT DE RÉFÉRENCE EST FIGÉ AU CHARGEMENT — et il n'a pas besoin d'être
+   * un état.
+   *
+   * Un `new Date()` évalué à chaque rendu ferait basculer une échéance pendant
+   * qu'on la lit. C'est bien ce qui est évité : `classerFile` reçoit l'instant
+   * UNE fois par chargement et inscrit `etat` dans chaque poste ; le rendu lit
+   * `p.etat`, jamais l'heure.
+   *
+   * Un état `maintenant` vivait ici, écrit à chaque rechargement et lu par
+   * personne. Il ne figeait rien de plus et donnait à croire que le rendu
+   * dépendait de l'heure.
+   */
 
   const reload = useCallback(async () => {
     setLoading(true);
@@ -89,7 +99,6 @@ export default function FileAdminScreen() {
     try {
       const bruts = await listerFileAdministration();
       const instant = new Date();
-      setMaintenant(instant);
       setPostes(classerFile(bruts, instant));
     } catch {
       setError(true);
@@ -139,15 +148,10 @@ export default function FileAdminScreen() {
               const presse = p.etat === 'depassee' || p.etat === 'echeance_proche';
               const destination = DESTINATION[p.domaine];
               const etatTexte =
-                p.etat === 'sans_engagement'
-                  ? 'Sans échéance'
-                  : LIBELLE_ETAT_DELAI[p.etat];
+                p.etat === 'sans_engagement' ? 'Sans échéance' : LIBELLE_ETAT_DELAI[p.etat];
 
               const contenu = (
-                <Card
-                  key={p.refId}
-                  style={{ borderColor: presse ? ADMIN : theme.palette.line }}
-                >
+                <Card key={p.refId} style={{ borderColor: presse ? ADMIN : theme.palette.line }}>
                   <Text style={s.domaine}>{LIBELLE_DOMAINE[p.domaine]}</Text>
                   <Text style={s.titre}>{p.titre}</Text>
                   {p.detail ? <Text style={s.detail}>{p.detail}</Text> : null}

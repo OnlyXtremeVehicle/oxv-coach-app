@@ -264,8 +264,7 @@ function marquesPropresAuTour(t: TourMesure): MarqueTour[] {
 /** Le tour est-il hors du chronométrage ? Pas de temps exploitable, ou tour de stands. */
 function horsChrono(marques: readonly MarqueTour[]): boolean {
   return marques.some(
-    (m) =>
-      m.code === 'non_chronometre' || m.code === 'sortie_stands' || m.code === 'rentree_stands'
+    (m) => m.code === 'non_chronometre' || m.code === 'sortie_stands' || m.code === 'rentree_stands'
   );
 }
 

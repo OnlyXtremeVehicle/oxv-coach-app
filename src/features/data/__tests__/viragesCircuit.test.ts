@@ -7,12 +7,7 @@
  * circuits du calendrier : Bouteville 12 virages, le Bugatti 9, Albi 8.
  */
 
-import {
-  indexDesVirages,
-  lireViragesCircuit,
-  nomVirage,
-  reperesApex,
-} from '../viragesCircuit';
+import { indexDesVirages, lireViragesCircuit, nomVirage, reperesApex } from '../viragesCircuit';
 
 /** La forme réelle, telle que `detect-circuit-corners` l'écrit. */
 const CHARGE_REELLE = {
@@ -122,7 +117,10 @@ describe('lireViragesCircuit', () => {
 
   it('un nom vide ou blanc vaut absence de nom', () => {
     const v = lireViragesCircuit({
-      corners: [{ corner_index: 1, name: '   ' }, { corner_index: 2, name: '' }],
+      corners: [
+        { corner_index: 1, name: '   ' },
+        { corner_index: 2, name: '' },
+      ],
     });
     expect(v[0].nom).toBeNull();
     expect(v[1].nom).toBeNull();

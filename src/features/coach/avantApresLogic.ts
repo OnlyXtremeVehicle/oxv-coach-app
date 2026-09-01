@@ -170,11 +170,7 @@ function tourDeLIntervention(
   marqueur: MarqueurIntervention,
   tours: readonly TourMetrique[]
 ): number | null {
-  if (
-    typeof marqueur.tour === 'number' &&
-    Number.isFinite(marqueur.tour) &&
-    marqueur.tour >= 1
-  ) {
+  if (typeof marqueur.tour === 'number' && Number.isFinite(marqueur.tour) && marqueur.tour >= 1) {
     return Math.floor(marqueur.tour);
   }
   const at = marqueur.instantMs;

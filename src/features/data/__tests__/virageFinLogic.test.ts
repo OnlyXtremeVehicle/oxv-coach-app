@@ -331,7 +331,12 @@ describe('lireRotation (M15)', () => {
   });
 
   it('trop peu d’échantillons : signal insuffisant, avec des lectures alternatives', () => {
-    const r = lireRotation(serieRotation(200, [[0, 10], [200, 20]]).slice(0, 4));
+    const r = lireRotation(
+      serieRotation(200, [
+        [0, 10],
+        [200, 20],
+      ]).slice(0, 4)
+    );
     expect(r.lecture).toBe('signal insuffisant');
     expect(r.alternatives.length).toBeGreaterThan(0);
     expect(r.debutMs).toBeNull();

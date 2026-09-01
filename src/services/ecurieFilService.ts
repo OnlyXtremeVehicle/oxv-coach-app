@@ -99,7 +99,7 @@ export async function listerMessagesFil(crewId: string): Promise<FilCharge> {
 export async function envoyerMessage(
   crewId: string,
   auteurId: string,
-  texte: string,
+  texte: string
 ): Promise<boolean> {
   const propre = texte.trim();
   if (propre.length === 0 || propre.length > 2000) return false;
@@ -146,7 +146,7 @@ export async function reservationEnCours(crewId: string): Promise<ReservationEcu
   const { data, error } = await supabase
     .from('reservations_ecurie' as never)
     .select(
-      'id, statut, formule, effectif_annonce, session_id, reservations_ecurie_dates(date_souhaitee, rang)' as never,
+      'id, statut, formule, effectif_annonce, session_id, reservations_ecurie_dates(date_souhaitee, rang)' as never
     )
     .eq('crew_id', crewId)
     .in('statut', ['deposee', 'dates_proposees', 'confirmee'])
@@ -205,9 +205,12 @@ interface LigneAvancement {
  * inconnus par courriel, le capitaine relance des amis.
  */
 export async function avancementEcurie(crewId: string): Promise<AvancementEcurie | null> {
-  const { data, error } = await supabase.rpc('oxv_avancement_ecurie' as never, {
-    p_crew_id: crewId,
-  } as never);
+  const { data, error } = await supabase.rpc(
+    'oxv_avancement_ecurie' as never,
+    {
+      p_crew_id: crewId,
+    } as never
+  );
 
   if (error || !data) {
     if (error) console.warn('[ecurieFil] avancementEcurie:', error.message);
@@ -243,14 +246,17 @@ export async function deposerReservationEcurie(
   effectif: number,
   message: string | null,
   sessionId: string | null,
-  dates: readonly string[] | null,
+  dates: readonly string[] | null
 ): Promise<{ id: string } | EchecDepot> {
-  const { data, error } = await supabase.rpc('oxv_deposer_reservation_ecurie' as never, {
-    p_effectif: effectif,
-    p_message: message,
-    p_session_id: sessionId,
-    p_dates: dates && dates.length > 0 ? dates : null,
-  } as never);
+  const { data, error } = await supabase.rpc(
+    'oxv_deposer_reservation_ecurie' as never,
+    {
+      p_effectif: effectif,
+      p_message: message,
+      p_session_id: sessionId,
+      p_dates: dates && dates.length > 0 ? dates : null,
+    } as never
+  );
 
   if (error) {
     console.warn('[ecurieFil] deposerReservationEcurie:', error.message);

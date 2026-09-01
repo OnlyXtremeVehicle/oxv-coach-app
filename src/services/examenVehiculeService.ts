@@ -56,11 +56,7 @@ export const STATUTS_EXAMEN: readonly StatutExamen[] = [
  * partie : c'est l'état initial, pas une décision — mais le déclencheur en
  * base sait y revenir (et efface alors la date d'instruction).
  */
-export const ISSUES_EXAMEN: readonly StatutExamen[] = [
-  'referencee',
-  'instruite',
-  'hors_perimetre',
-];
+export const ISSUES_EXAMEN: readonly StatutExamen[] = ['referencee', 'instruite', 'hors_perimetre'];
 
 /** Libellés publiés. « Hors du périmètre » ne dit pas « refusé ». */
 export const LIBELLE_STATUT: Readonly<Record<StatutExamen, string>> = {
@@ -169,7 +165,7 @@ export async function listerDemandesExamen(): Promise<DemandeExamen[]> {
 export async function instruireDemande(
   id: string,
   statut: StatutExamen,
-  reponse: string | null,
+  reponse: string | null
 ): Promise<boolean> {
   const { error } = await supabase
     .from('demandes_examen_vehicule' as never)
@@ -201,7 +197,7 @@ export async function instruireDemande(
  * N+1 sur une file qui a vocation à s'allonger.
  */
 export async function compterInscriptionsParPlaque(
-  plaques: readonly string[],
+  plaques: readonly string[]
 ): Promise<Record<string, number>> {
   const uniques = [...new Set(plaques.filter((p) => p.length > 0))];
   if (uniques.length === 0) return {};
@@ -276,7 +272,7 @@ export async function listerInscriptionsAExaminer(): Promise<InscriptionAExamine
   const { data, error } = await supabase
     .from('registrations' as never)
     .select(
-      'id, status, offer_type, immatriculation, modifications_detail, users:user_id(first_name,last_name), sessions:session_id(date)' as never,
+      'id, status, offer_type, immatriculation, modifications_detail, users:user_id(first_name,last_name), sessions:session_id(date)' as never
     )
     .eq('modifications_declarees' as never, true as never)
     .in('status' as never, ['pending', 'en_examen'] as never);
@@ -311,7 +307,7 @@ export async function listerInscriptionsAExaminer(): Promise<InscriptionAExamine
  */
 export async function poserStatutInscription(
   id: string,
-  statut: 'en_examen' | 'pending',
+  statut: 'en_examen' | 'pending'
 ): Promise<boolean> {
   const { error } = await supabase
     .from('registrations' as never)

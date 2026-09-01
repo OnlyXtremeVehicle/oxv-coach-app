@@ -84,10 +84,7 @@ export function annonceFormule(effectif: number): string | null {
 // Les trois dates
 // ===========================================================================
 
-export type MotifDatesInvalides =
-  | 'nombre'
-  | 'doublon'
-  | 'passee';
+export type MotifDatesInvalides = 'nombre' | 'doublon' | 'passee';
 
 export interface VerdictDates {
   valides: boolean;
@@ -158,10 +155,7 @@ function jourDe(iso: string): string {
  * Un fil de discussion sans séparateurs de jour se lit mal dès la deuxième
  * page : on ne sait plus si « 14:20 » était hier ou il y a trois semaines.
  */
-export function grouperParJour(
-  messages: readonly MessageFil[],
-  maintenant: Date,
-): JourneeDeFil[] {
+export function grouperParJour(messages: readonly MessageFil[], maintenant: Date): JourneeDeFil[] {
   const parJour = new Map<string, MessageFil[]>();
 
   for (const m of [...messages].sort((a, b) => a.creeLe.localeCompare(b.creeLe))) {
@@ -206,7 +200,7 @@ export type StatutReservation = 'deposee' | 'dates_proposees' | 'confirmee' | 'c
  */
 export function bandeauDemande(
   statut: StatutReservation | null,
-  formule: FormuleEcurie | null,
+  formule: FormuleEcurie | null
 ): string | null {
   if (statut === null) return null;
 
@@ -231,7 +225,10 @@ export function bandeauDemande(
  * une contrainte d'exclusion. Proposer le geste alors qu'il échouera serait le
  * défaut que ce projet corrige partout ailleurs.
  */
-export function peutDeposer(estCapitaine: boolean, statutEnCours: StatutReservation | null): boolean {
+export function peutDeposer(
+  estCapitaine: boolean,
+  statutEnCours: StatutReservation | null
+): boolean {
   if (!estCapitaine) return false;
   return statutEnCours === null || statutEnCours === 'close';
 }
@@ -263,7 +260,7 @@ export function phraseAvancement(
   effectifAnnonce: number,
   inscrits: number,
   restant: number,
-  echeance: string | null,
+  echeance: string | null
 ): string | null {
   if (effectifAnnonce < 1) return null;
 

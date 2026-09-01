@@ -74,10 +74,7 @@ describe('litComparabilite', () => {
   });
 
   it('pluie d’un côté, sec de l’autre : l’adhérence n’est plus la même donnée', () => {
-    const c = litComparabilite(
-      seance(),
-      seance({ meteo: { pluie: true, temperatureC: 22 } })
-    );
+    const c = litComparabilite(seance(), seance({ meteo: { pluie: true, temperatureC: 22 } }));
     expect(c.score).toBe(100 - PENALITE_PLUIE_DIFFERENTE);
     expect(c.raisons.join(' ')).toContain('Pluie');
   });
@@ -171,7 +168,11 @@ describe('litComparabilite', () => {
 
   it('le score reste borné entre 0 et 100', () => {
     const pire = litComparabilite(
-      seance({ vehiculeId: 'a', qualiteMesure: 'limited', meteo: { pluie: true, temperatureC: 5 } }),
+      seance({
+        vehiculeId: 'a',
+        qualiteMesure: 'limited',
+        meteo: { pluie: true, temperatureC: 5 },
+      }),
       seance({
         vehiculeId: 'b',
         dateIso: '2029-01-01T00:00:00.000Z',

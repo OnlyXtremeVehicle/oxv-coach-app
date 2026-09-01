@@ -79,13 +79,10 @@ describe('aucune mesure du tout', () => {
     expect(d.raison).not.toMatch(/gyroscope|inertiel|virage/i);
   });
 
-  it.each(SANS_INSIGHTS)(
-    '« %s » reste ouverte sans insights dès qu’elle a des points',
-    (key) => {
-      const d = etatLecture(key, entrees({ insights: null, nbPointsGG: 12, nbPointsFlow: 12 }));
-      expect(d.etat).toBe('disponible');
-    }
-  );
+  it.each(SANS_INSIGHTS)('« %s » reste ouverte sans insights dès qu’elle a des points', (key) => {
+    const d = etatLecture(key, entrees({ insights: null, nbPointsGG: 12, nbPointsFlow: 12 }));
+    expect(d.etat).toBe('disponible');
+  });
 
   it.each(SANS_INSIGHTS)('« %s » dit SA raison, pas celle des insights', (key) => {
     const d = etatLecture(key, entrees({ insights: null }));

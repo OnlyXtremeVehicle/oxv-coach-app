@@ -6,13 +6,7 @@
  * qu'elles remplacent.
  */
 
-import {
-  contientMotOutil,
-  estMotCle,
-  estPhrase,
-  motifRefusMotCle,
-  mots,
-} from '../regleMotsCles';
+import { contientMotOutil, estMotCle, estPhrase, motifRefusMotCle, mots } from '../regleMotsCles';
 
 describe('estPhrase — ce que la garde refuse', () => {
   /** Les deux conditions comptent, et une seule ne suffit jamais. */
@@ -37,9 +31,9 @@ describe('estPhrase — ce que la garde refuse', () => {
    * « l'écran » d'un bloc raterait la moitié des phrases du dépôt.
    */
   it('l’apostrophe ne cache pas le mot outil', () => {
-    expect(mots("l’état de la chaîne")).toContain('l');
-    expect(estPhrase("l’état de la chaîne de mesure")).toBe(true);
-    expect(estPhrase("l’avancement du traitement de ce run")).toBe(true);
+    expect(mots('l’état de la chaîne')).toContain('l');
+    expect(estPhrase('l’état de la chaîne de mesure')).toBe(true);
+    expect(estPhrase('l’avancement du traitement de ce run')).toBe(true);
   });
 
   it('une chaîne vide ou de chiffres n’est pas une phrase', () => {

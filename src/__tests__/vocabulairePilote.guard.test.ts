@@ -410,7 +410,7 @@ describe('vocabulaire de l’espace pilote', () => {
       "    name: 'Diagramme G-G',",
       "    { label: 'G latéral', value: fmtG(maxLat), unit: 'g', tone: 'gold' },",
       '      detail: latMean !== null ? `${fmtG(latMean)} g latéral` : null,',
-      "      detail: carry !== null ? `apex à ${Math.round(carry * 100)} %` : null,",
+      '      detail: carry !== null ? `apex à ${Math.round(carry * 100)} %` : null,',
       '<Text style={styles.statusRight}>{`JERK RÉSIDUEL · ${points.length} POINTS`}</Text>',
       '<Text style={styles.heroLabel}>JERK MOYEN NON EXPLIQUÉ PAR LA TRAJECTOIRE</Text>',
       '<Text style={styles.statusRight}>COMBINÉ G-G</Text>',

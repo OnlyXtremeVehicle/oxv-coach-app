@@ -353,7 +353,10 @@ function RegleDesVirages({ apexes, width }: { apexes: readonly RepereApex[]; wid
               key={`nom-${a.index}`}
               style={[
                 styles.etiquette,
-                { left: a.position * width - LARGEUR_MIN_ETIQUETTE / 2, width: LARGEUR_MIN_ETIQUETTE },
+                {
+                  left: a.position * width - LARGEUR_MIN_ETIQUETTE / 2,
+                  width: LARGEUR_MIN_ETIQUETTE,
+                },
               ]}
               numberOfLines={1}
             >

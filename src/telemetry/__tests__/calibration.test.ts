@@ -35,7 +35,7 @@ function arret(
   tangageDeg: number,
   roulisDeg: number,
   depuisMs = 0,
-  pasMs = 40,
+  pasMs = 40
 ): MesureBrute[] {
   const [gx, gy, gz] = graviteVuePar(tangageDeg, roulisDeg);
   return Array.from({ length: n }, (_, i) => ({
@@ -260,7 +260,7 @@ describe('appliquer, sans jamais perdre le brut', () => {
     // On ne vérifie pas une valeur exacte — on vérifie que la correction a
     // DÉPLACÉ de l'énergie du latéral vers le longitudinal, dans le bon sens.
     expect(Math.abs(corrigee.gLatCorrige as number)).toBeLessThan(
-      Math.abs(vueParLeBoitier.gLat as number),
+      Math.abs(vueParLeBoitier.gLat as number)
     );
   });
 
@@ -295,7 +295,10 @@ describe('la phrase dit ce qui a été mesuré, jamais quoi faire', () => {
    * refaire — c'est la règle du miroir, et elle vaut aussi pour le matériel.
    */
   it('aucune consigne dans la phrase', () => {
-    const phrases = [phraseCalibration(null), phraseCalibration(etablirCalibration(arret(100, 9, 0)))];
+    const phrases = [
+      phraseCalibration(null),
+      phraseCalibration(etablirCalibration(arret(100, 9, 0))),
+    ];
     for (const p of phrases) {
       expect(p).not.toMatch(/redress|repositionn|il faut|vous devriez|corrigez|remontez/i);
     }

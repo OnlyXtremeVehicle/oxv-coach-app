@@ -164,11 +164,7 @@ export const LIBELLE_ETAT_DELAI: Readonly<Record<EtatDelai, string>> = {
  * cessé de courir au moment de l'instruction, et continuer à le décompter
  * afficherait un retard imaginaire sur une demande déjà traitée.
  */
-export function etatDelai(
-  statut: string,
-  creeLe: Date,
-  maintenant: Date,
-): EtatDelai {
+export function etatDelai(statut: string, creeLe: Date, maintenant: Date): EtatDelai {
   if (statut !== 'en_attente') return 'close';
   const restantes = heuresOuvreesRestantes(creeLe, maintenant);
   if (restantes <= 0) return 'depassee';

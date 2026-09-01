@@ -66,13 +66,7 @@ export default function FilEcurieScreen() {
   // le `recharger` local sort immédiatement quand `crewId` est nul, ce qui
   // est précisément le cas quand le hook a échoué — le bouton « Réessayer »
   // était donc inerte, et le pilote pouvait appuyer indéfiniment.
-  const {
-    ecurie,
-    userId,
-    loading: chargeEcurie,
-    erreur,
-    recharger: rechargerEcurie,
-  } = useEcurie();
+  const { ecurie, userId, loading: chargeEcurie, erreur, recharger: rechargerEcurie } = useEcurie();
 
   const [messages, setMessages] = useState<MessageFil[]>([]);
   const [tronque, setTronque] = useState(false);
@@ -160,7 +154,7 @@ export default function FilEcurieScreen() {
         effectif,
         null,
         null,
-        formule === 'privatisation' ? dates : null,
+        formule === 'privatisation' ? dates : null
       );
       if ('motif' in r) {
         // Le motif vient de la base, rédigé pour être lu par un capitaine.
@@ -203,7 +197,7 @@ export default function FilEcurieScreen() {
         avancement.effectifAnnonce,
         avancement.inscrits,
         avancement.restant,
-        avancement.echeance,
+        avancement.echeance
       )
     : null;
   const ouvertAuDepot = peutDeposer(capitaine, demande?.statut ?? null);
@@ -255,20 +249,20 @@ export default function FilEcurieScreen() {
               </Text>
             ) : null}
             {journees.map((j) => (
-            <View key={j.jour}>
-              <Text style={s.jour}>{j.libelle}</Text>
-              {j.messages.map((m) => {
-                const systeme = m.nature === 'systeme';
-                return (
-                  <View key={m.id} style={[s.bulle, systeme ? s.bulleSysteme : null]}>
-                    <Text style={[s.auteur, systeme ? s.auteurSysteme : null]}>
-                      {systeme ? 'OXV' : (prenoms.get(m.auteurId ?? '') ?? 'Un pilote')}
-                    </Text>
-                    <Text style={s.texte}>{m.texte}</Text>
-                  </View>
-                );
-              })}
-            </View>
+              <View key={j.jour}>
+                <Text style={s.jour}>{j.libelle}</Text>
+                {j.messages.map((m) => {
+                  const systeme = m.nature === 'systeme';
+                  return (
+                    <View key={m.id} style={[s.bulle, systeme ? s.bulleSysteme : null]}>
+                      <Text style={[s.auteur, systeme ? s.auteurSysteme : null]}>
+                        {systeme ? 'OXV' : (prenoms.get(m.auteurId ?? '') ?? 'Un pilote')}
+                      </Text>
+                      <Text style={s.texte}>{m.texte}</Text>
+                    </View>
+                  );
+                })}
+              </View>
             ))}
           </>
         )}

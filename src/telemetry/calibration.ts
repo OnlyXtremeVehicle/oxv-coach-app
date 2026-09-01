@@ -325,7 +325,7 @@ export function etablirCalibration(mesures: readonly MesureBrute[]): Calibration
       'zéro du capteur suspect : ' +
         (normeAuRepos > 1 ? 'norme au repos supérieure' : 'norme au repos inférieure') +
         ' à 1 g de ' +
-        Math.abs(normeAuRepos - 1).toFixed(3),
+        Math.abs(normeAuRepos - 1).toFixed(3)
     );
   }
 

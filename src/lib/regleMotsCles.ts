@@ -35,11 +35,34 @@
  * retranché ici — la liste est celle du dossier, mot pour mot.
  */
 export const MOTS_OUTILS: readonly string[] = [
-  'le', 'la', 'les', 'un', 'une', 'des', 'du', 'de',
-  'vous', 'votre', 'vos',
-  'est', 'sont', 'a', 'ont', 'était', 'sera',
-  'dans', 'avec', 'pour', 'que', 'qui', 'sur', 'sans',
-  'plus', 'moins', 'ce', 'cette',
+  'le',
+  'la',
+  'les',
+  'un',
+  'une',
+  'des',
+  'du',
+  'de',
+  'vous',
+  'votre',
+  'vos',
+  'est',
+  'sont',
+  'a',
+  'ont',
+  'était',
+  'sera',
+  'dans',
+  'avec',
+  'pour',
+  'que',
+  'qui',
+  'sur',
+  'sans',
+  'plus',
+  'moins',
+  'ce',
+  'cette',
 ];
 
 const OUTILS = new Set(MOTS_OUTILS);
@@ -81,12 +104,7 @@ export function estPhrase(chaine: string): boolean {
 }
 
 /** Ce qui empêche une chaîne d'être un mot-clé, ou `null` si elle en est un. */
-export type MotifRefus =
-  | 'mot outil'
-  | 'minuscules'
-  | 'trop de mots'
-  | 'verbe conjugué'
-  | 'vide';
+export type MotifRefus = 'mot outil' | 'minuscules' | 'trop de mots' | 'verbe conjugué' | 'vide';
 
 /**
  * Quelques terminaisons de verbes conjugués courantes dans ce domaine. La liste

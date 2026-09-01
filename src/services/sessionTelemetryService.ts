@@ -112,9 +112,7 @@ export const POINTS_TRACE_MAX = 3000;
  * qui vivait dans `carte.tsx` et `data-lab-canvas.tsx` (risque de divergence).
  * Filtrage/conversion délégués à `mapFramesToTrajectory` (pur, testé).
  */
-export async function loadSessionTrajectory(
-  sessionId: string
-): Promise<TrajectoryFramePoint[]> {
+export async function loadSessionTrajectory(sessionId: string): Promise<TrajectoryFramePoint[]> {
   const lignes = await lirePages(
     (debut, fin) =>
       supabase

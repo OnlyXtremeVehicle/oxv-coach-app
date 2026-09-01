@@ -64,7 +64,9 @@ const ADMIN = '#22D3EE';
 const NBSP = ' ';
 
 function entierFr(n: number): string {
-  return Math.round(n).toString().replace(/\B(?=(\d{3})+(?!\d))/g, NBSP);
+  return Math.round(n)
+    .toString()
+    .replace(/\B(?=(\d{3})+(?!\d))/g, NBSP);
 }
 
 function dateFr(iso: string): string {
@@ -172,8 +174,8 @@ export default function ExamensVehiculeScreen() {
           {enAttente > 0 ? `${enAttente} EN ATTENTE` : 'DEMANDES D’EXAMEN'}
         </Text>
         <Text style={s.rappel}>
-          Le Club répond sous soixante-douze heures ouvrées. L’examen porte sur le véhicule,
-          jamais sur le pilote.
+          Le Club répond sous soixante-douze heures ouvrées. L’examen porte sur le véhicule, jamais
+          sur le pilote.
         </Text>
 
         <StateWrapper
@@ -192,8 +194,7 @@ export default function ExamensVehiculeScreen() {
               const busy = busyId === d.id;
               const plaque = formaterPlaque(d.immatriculation);
               const dejaVenu = d.immatriculation ? (inscriptions[d.immatriculation] ?? 0) : 0;
-              const vehicule =
-                `${d.marque} ${d.modele}`.trim() + (d.annee ? ` (${d.annee})` : '');
+              const vehicule = `${d.marque} ${d.modele}`.trim() + (d.annee ? ` (${d.annee})` : '');
               const fiche = [
                 d.puissanceCh != null ? `${entierFr(d.puissanceCh)} ch` : 'puissance non déclarée',
                 d.masseKg != null ? `${entierFr(d.masseKg)} kg` : 'masse non déclarée',
@@ -251,10 +252,7 @@ export default function ExamensVehiculeScreen() {
                             ]}
                           >
                             <Text
-                              style={[
-                                s.actionT,
-                                issue === 'referencee' ? s.actionTForte : null,
-                              ]}
+                              style={[s.actionT, issue === 'referencee' ? s.actionTForte : null]}
                             >
                               {LIBELLE_STATUT[issue]}
                             </Text>
@@ -279,7 +277,10 @@ export default function ExamensVehiculeScreen() {
                           disabled={busy}
                           hitSlop={theme.hitSlop}
                           onPress={() => poser(d, 'en_attente')}
-                          style={({ pressed }) => [s.action, { opacity: pressed || busy ? 0.6 : 1 }]}
+                          style={({ pressed }) => [
+                            s.action,
+                            { opacity: pressed || busy ? 0.6 : 1 },
+                          ]}
                         >
                           <Text style={s.actionT}>Rouvrir</Text>
                         </Pressable>

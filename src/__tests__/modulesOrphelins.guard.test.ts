@@ -175,10 +175,7 @@ function orphelins(): string[] {
    * Les scripts sont racines, jamais candidats : on ne cherche pas les scripts
    * morts ici.
    */
-  const racines = [
-    ...TOUS.map(norm).filter((f) => f.startsWith(racineApp)),
-    ...SCRIPTS.map(norm),
-  ];
+  const racines = [...TOUS.map(norm).filter((f) => f.startsWith(racineApp)), ...SCRIPTS.map(norm)];
 
   const atteints = new Set<string>(racines);
   const pile = [...racines];

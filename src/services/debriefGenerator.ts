@@ -114,8 +114,7 @@ export function generateSafeDebrief(input: DebriefInput): SafeDebriefOutput {
   if (isDoctrineSafe(full.text, 'application')) return { ...full, safety: 'clean' };
 
   const noSeg = generateDebrief({ ...input, segments: [] });
-  if (isDoctrineSafe(noSeg.text, 'application'))
-    return { ...noSeg, safety: 'stripped-segments' };
+  if (isDoctrineSafe(noSeg.text, 'application')) return { ...noSeg, safety: 'stripped-segments' };
 
   return { ...GENERIC_SAFE_DEBRIEF, safety: 'generic' };
 }
@@ -128,7 +127,7 @@ function buildRecit(input: DebriefInput, zone: MarginZone): string {
   const opening = input.firstName ? `Hier, ${input.firstName}, ` : 'Hier, ';
   const lapPart = lapPhrase(input.lapCount, input.bestLapSeconds);
   const tonePart = toneByZone(zone);
-  const detailPart = detailFromSegments(input.segments, zone);
+  const detailPart = detailFromSegments(input.segments);
 
   return `${opening}${tonePart}${lapPart}${detailPart}`.trim();
 }
@@ -165,7 +164,16 @@ function lapPhrase(lapCount: number, bestLapSeconds: number | null): string {
   return `${lapCount} ${lapWord} bouclés. `;
 }
 
-function detailFromSegments(segments: SegmentAnalysisRow[], zone: MarginZone): string {
+/**
+ * `zone` A ÉTÉ RETIRÉ DE CETTE SIGNATURE le 01/09/2026.
+ *
+ * La phrase était déclinée en trois versions selon la zone de marge, et la
+ * première — « passé sans accroc » — jugeait un passage que la mesure ne décrit
+ * pas. Le fait est le même dans les trois cas : c'est ce virage qui a porté
+ * l'appui latéral le plus fort. Un paramètre qui ne départage plus rien
+ * n'appartient plus à la signature.
+ */
+function detailFromSegments(segments: SegmentAnalysisRow[]): string {
   if (segments.length === 0) return '';
 
   // Trouver le segment au maxGLateral (l'engagement le plus fort)
@@ -235,7 +243,8 @@ function balancePhrase(vehicle: number | null, pilot: number | null): string {
  */
 function buildPreparation(input: DebriefInput): string {
   const focus = focusPhrase(input.segments);
-  const ending = 'Les mesures de la séance restent consultables, tour par tour et virage par virage.';
+  const ending =
+    'Les mesures de la séance restent consultables, tour par tour et virage par virage.';
 
   if (!focus) return ending;
   return `${focus} ${ending}`;

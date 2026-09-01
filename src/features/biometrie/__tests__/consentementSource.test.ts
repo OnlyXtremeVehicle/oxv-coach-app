@@ -101,8 +101,11 @@ describe('le partage coach est DISTINCT de la capture', () => {
   });
 
   it('partage accordé mais source retirée → refus (le partage ne ressuscite rien)', () => {
-    const e = etat({ partageCoach: true,
-  coachAffilieActif: true, parSource: { ceinture_ble: 'retire' } });
+    const e = etat({
+      partageCoach: true,
+      coachAffilieActif: true,
+      parSource: { ceinture_ble: 'retire' },
+    });
     expect(decisionPartageCoach(e, SOURCE_CEINTURE)).toEqual({
       autorisee: false,
       motif: 'source_retiree',
@@ -214,9 +217,12 @@ describe('la ceinture demande un coach affilié — arbitrage du 26/08/2026', ()
 
   it('l’affiliation qui cesse ferme la source sans révoquer l’accord', () => {
     const accorde = { ceinture_ble: 'accorde' } as const;
-    expect(etatDeLaSource(etat({ coachAffilieActif: false, parSource: accorde }), 'ceinture_ble'))
-      .toBe('accorde');
-    expect(decisionCapture(etat({ coachAffilieActif: false, parSource: accorde }), SOURCE_CEINTURE).autorisee)
-      .toBe(false);
+    expect(
+      etatDeLaSource(etat({ coachAffilieActif: false, parSource: accorde }), 'ceinture_ble')
+    ).toBe('accorde');
+    expect(
+      decisionCapture(etat({ coachAffilieActif: false, parSource: accorde }), SOURCE_CEINTURE)
+        .autorisee
+    ).toBe(false);
   });
 });

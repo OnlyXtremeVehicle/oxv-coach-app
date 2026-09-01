@@ -36,7 +36,7 @@ import { QDI_ALGO_VERSION, computeQdi } from '@/services/qdiLogic';
 // être désactivée.
 const DOC = readFileSync(
   join(process.cwd(), 'docs/architecture/21_QDI_METHODOLOGIE.md'),
-  'utf8',
+  'utf8'
 ).replace(/\s+/g, ' ');
 
 describe('la méthodologie QDI reste alignée sur le calcul', () => {
@@ -52,7 +52,7 @@ describe('la méthodologie QDI reste alignée sur le calcul', () => {
   /** Les cinq branches du code sont les cinq branches du document. */
   it('les cinq branches sont décrites, et aucune autre', () => {
     const branches = Object.keys(computeQdi([], [])).filter(
-      (k) => !['algoVersion', 'lapCount', 'frameCount'].includes(k),
+      (k) => !['algoVersion', 'lapCount', 'frameCount'].includes(k)
     );
     expect(branches).toHaveLength(5);
 

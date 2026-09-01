@@ -12,12 +12,7 @@
  */
 
 import { supabase } from '@/lib/supabase';
-import {
-  RESSENTIS,
-  THEMES,
-  type RessentiQcm,
-  type ThemeQcm,
-} from '@/features/rec/qcmLogic';
+import { RESSENTIS, THEMES, type RessentiQcm, type ThemeQcm } from '@/features/rec/qcmLogic';
 
 export interface PilotNote {
   id: string;

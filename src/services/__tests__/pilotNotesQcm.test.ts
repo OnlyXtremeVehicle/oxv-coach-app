@@ -10,7 +10,9 @@ import { supabase } from '@/lib/supabase';
 
 import { lireQcmSeance } from '../pilotNotesService';
 
-jest.mock('@/lib/supabase', () => ({ supabase: { from: jest.fn(), auth: { getUser: jest.fn() } } }));
+jest.mock('@/lib/supabase', () => ({
+  supabase: { from: jest.fn(), auth: { getUser: jest.fn() } },
+}));
 
 const depuis = supabase.from as unknown as jest.Mock;
 
@@ -81,10 +83,7 @@ describe('lireQcmSeance', () => {
     const c = chaine({ data: [{ theme: 'voiture', ressenti: 'a_creuser' }], error: null });
     depuis.mockReturnValue(c);
     await lireQcmSeance('s1');
-    expect((c.order as jest.Mock).mock.calls[0]).toEqual([
-      'created_at',
-      { ascending: false },
-    ]);
+    expect((c.order as jest.Mock).mock.calls[0]).toEqual(['created_at', { ascending: false }]);
     expect((c.limit as jest.Mock).mock.calls[0]).toEqual([1]);
   });
 

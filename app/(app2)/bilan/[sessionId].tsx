@@ -401,10 +401,7 @@ export default function BilanScreen() {
             <View style={styles.section}>
               <View style={styles.intentionCard}>
                 <Text style={styles.intentionEyebrow}>
-                  {libelleIntention(
-                    data.intention.createdAt,
-                    data.session?.started_at ?? null
-                  )}
+                  {libelleIntention(data.intention.createdAt, data.session?.started_at ?? null)}
                 </Text>
                 <Text style={styles.intentionBody}>{data.intention.body}</Text>
               </View>

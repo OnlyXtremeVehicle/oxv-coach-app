@@ -182,10 +182,7 @@ export async function relaunchPendingAnalysis(): Promise<RelaunchResult> {
  * notes. On en remonte les deux nombres qui comptent : combien de trames ont
  * été lues, combien de segments ont été écrits.
  */
-export async function relaunchSegments(
-  sessionId: string,
-  userId: string
-): Promise<RelaunchResult> {
+export async function relaunchSegments(sessionId: string, userId: string): Promise<RelaunchResult> {
   try {
     const r = await analyzeAndPersistSession({ telemetrySessionId: sessionId, userId });
     if (r.segmentsPersisted > 0) {

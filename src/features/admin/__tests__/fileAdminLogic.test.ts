@@ -36,10 +36,14 @@ describe('le tri suit ce qui presse', () => {
   it('les diligences passent après les recours, même bien plus anciennes', () => {
     const file = classerFile(
       [
-        poste({ refId: 'vieille_diligence', sousEngagement: false, depuis: '2026-01-01T00:00:00Z' }),
+        poste({
+          refId: 'vieille_diligence',
+          sousEngagement: false,
+          depuis: '2026-01-01T00:00:00Z',
+        }),
         poste({ refId: 'recours_du_jour', sousEngagement: true, depuis: '2026-08-26T09:00:00Z' }),
       ],
-      MAINTENANT,
+      MAINTENANT
     );
     expect(file.map((p) => p.refId)).toEqual(['recours_du_jour', 'vieille_diligence']);
   });
@@ -50,7 +54,7 @@ describe('le tri suit ce qui presse', () => {
         poste({ refId: 'proche', depuis: '2026-08-24T00:00:00Z' }),
         poste({ refId: 'depassee', depuis: '2026-08-20T00:00:00Z' }),
       ],
-      MAINTENANT,
+      MAINTENANT
     );
     expect(file[0].refId).toBe('depassee');
     expect(file[0].etat).toBe('depassee');
@@ -62,7 +66,7 @@ describe('le tri suit ce qui presse', () => {
         poste({ refId: 'recente', sousEngagement: false, depuis: '2026-08-20T00:00:00Z' }),
         poste({ refId: 'ancienne', sousEngagement: false, depuis: '2026-08-01T00:00:00Z' }),
       ],
-      MAINTENANT,
+      MAINTENANT
     );
     expect(file.map((p) => p.refId)).toEqual(['ancienne', 'recente']);
   });
@@ -90,7 +94,7 @@ describe('le résumé compte ce qui compte', () => {
         poste({ refId: 'b', sousEngagement: false, depuis: '2026-08-01T00:00:00Z' }),
         poste({ refId: 'c', sousEngagement: false, depuis: '2026-08-02T00:00:00Z' }),
       ],
-      MAINTENANT,
+      MAINTENANT
     );
     const r = resumerFile(file);
     expect(r.total).toBe(3);
@@ -132,7 +136,7 @@ describe('l’échéance datée — le second délai', () => {
           echeance: '2026-08-25T00:00:00Z',
         }),
       ],
-      MAINTENANT,
+      MAINTENANT
     );
     expect(file[0].refId).toBe('depassee');
     expect(file[0].etat).toBe('depassee');
@@ -148,7 +152,7 @@ describe('l’échéance datée — le second délai', () => {
           echeance: '2026-08-27T12:00:00Z', // J+1
         }),
       ],
-      MAINTENANT,
+      MAINTENANT
     );
     expect(file[0].etat).toBe('echeance_proche');
   });
@@ -162,7 +166,7 @@ describe('l’échéance datée — le second délai', () => {
           echeance: '2026-09-02T12:00:00Z',
         }),
       ],
-      MAINTENANT,
+      MAINTENANT
     );
     expect(file[0].etat).toBe('dans_les_temps');
   });
@@ -181,7 +185,7 @@ describe('l’échéance datée — le second délai', () => {
           echeance: '2030-01-01T00:00:00Z',
         }),
       ],
-      MAINTENANT,
+      MAINTENANT
     );
     // 12 h ouvrées restantes sur les 72 : proche, malgré l'échéance lointaine.
     expect(file[0].etat).toBe('echeance_proche');
@@ -190,7 +194,7 @@ describe('l’échéance datée — le second délai', () => {
   it('une échéance illisible ne fabrique pas d’urgence', () => {
     const file = classerFile(
       [poste({ sousEngagement: false, echeance: 'pas-une-date' })],
-      MAINTENANT,
+      MAINTENANT
     );
     expect(file[0].etat).toBe('sans_engagement');
   });
@@ -241,7 +245,7 @@ describe('les libellés', () => {
         poste({ domaine: 'calendrier', refId: 'cal', sousEngagement: false }),
         poste({ domaine: 'tarif', refId: 'tar', sousEngagement: false }),
       ],
-      MAINTENANT,
+      MAINTENANT
     );
     // Aucun engagement de délai : ce ne sont pas des recours.
     expect(file.every((p) => p.etat === 'sans_engagement')).toBe(true);
