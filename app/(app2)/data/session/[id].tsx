@@ -1741,6 +1741,23 @@ function ToursSection({
         </Text>
       ) : null}
       {/*
+        POURQUOI AUCUN ÉCART N'EST PRONONCÉ.
+
+        Un écart net se mesure contre la médiane des tours PROPRES. En dessous
+        de quatre, cette médiane ne veut rien dire et le module se tait — le
+        refus est juste, le SILENCE ne l'était pas. Sur la séance de référence,
+        un tour à +32,9 s de ses voisins ne portait aucune marque, et rien à
+        l'écran ne disait pourquoi : le pilote lisait une absence d'écart là où
+        il y avait une absence de base.
+
+        Mot-clé, comme le reste de cette feuille.
+      */}
+      {!validation.baseEcart.suffisante ? (
+        <Text style={styles.legendMono}>
+          {`BASE D’ÉCART · ${validation.baseEcart.tours} / ${validation.baseEcart.requis}`}
+        </Text>
+      ) : null}
+      {/*
         Les déclarations qu'aucun tour affiché ne réclame. Elles existent en
         base — un tour non chargé, une détection rejouée — et les taire les
         rendrait introuvables. On dit qu'il y en a, sans prétendre les situer.

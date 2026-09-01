@@ -28,7 +28,9 @@
  *   - Notes : pilot_notes datées + météo RÉELLE du jour de la note quand elle
  *     existe (A-WEATHER-1 : jamais un 0° fabriqué, jamais un autre jour) ;
  *     composer bas (addNote) ; partage coach opt-in par note (setNoteShared) ;
- *   - Intentions : une carte par intention liée à sa séance (mini-tracé), état
+ *   - Intentions : une carte par intention liée à sa séance, avec un GLYPHE
+ *     DÉCORATIF et jamais le tracé du circuit — `CircuitGlyph` le dit dans sa
+ *     propre docstring, l'en-tête promettait le contraire ; état
  *     honorée/en attente FACTUEL (session_intentions) ;
  *   - Objectifs : perso, INVISIBLES du coach (mention text.dim en tête) ; barre
  *     hairline SEULEMENT si l'objectif porte une mesure (jamais inventée) ;

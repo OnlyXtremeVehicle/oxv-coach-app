@@ -180,6 +180,29 @@ export interface ValidationTours {
    * mieux que désigner d'office le moins mauvais.
    */
   reference: ReferenceTour | null;
+  /**
+   * LA BASE SUR LAQUELLE L'ÉCART SE MESURE — et pourquoi il se tait.
+   *
+   * Un écart net se mesure contre la médiane des tours PROPRES. En dessous de
+   * `MIN_TOURS_BASE_ECART`, cette médiane ne veut rien dire, et la boucle qui
+   * pose `ecart_net` n'est jamais atteinte.
+   *
+   * Le refus est juste ; le SILENCE ne l'était pas. Sur la séance de référence,
+   * un tour à +32,9 s de ses voisins ne portait aucune marque, et rien à
+   * l'écran ne disait pourquoi — le pilote lisait une absence d'écart là où il
+   * y avait une absence de base. C'est la règle des cinq états : un état fermé
+   * nomme ce qui manque.
+   */
+  baseEcart: BaseEcart;
+}
+
+/** De quoi dire, à l'écran, si l'écart a pu se mesurer. */
+export interface BaseEcart {
+  /** Tours propres retenus pour la médiane. */
+  tours: number;
+  /** Combien il en faudrait. */
+  requis: number;
+  suffisante: boolean;
 }
 
 // ===========================================================================
@@ -312,7 +335,13 @@ export function evaluerTours(tours: readonly TourMesure[]): ValidationTours {
   // ---- Base : les candidats qui ne portent encore aucun fait gênant -------
   const base = candidats.filter((e) => e.marques.length === 0);
 
-  if (base.length >= MIN_TOURS_BASE_ECART) {
+  const baseEcart: BaseEcart = {
+    tours: base.length,
+    requis: MIN_TOURS_BASE_ECART,
+    suffisante: base.length >= MIN_TOURS_BASE_ECART,
+  };
+
+  if (baseEcart.suffisante) {
     const temps = base.map((e) => e.tempsMs);
     const med = mediane(temps);
     const mad = mediane(temps.map((v) => Math.abs(v - med)));
@@ -386,6 +415,7 @@ export function evaluerTours(tours: readonly TourMesure[]): ValidationTours {
     tours: evalues,
     toursPropres,
     reference,
+    baseEcart,
   };
 }
 

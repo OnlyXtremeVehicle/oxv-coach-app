@@ -85,7 +85,7 @@ export const READINGS: ReadingDef[] = [
     dimension: 'brake',
     eyebrow: 'Niveau 2 · Décomposition',
     source:
-      'Vitesse GPS, G longitudinal et latéral, cap. Le point de corde est le minimum de vitesse coïncidant avec le pic de G latéral.',
+      'Vitesse GPS, G longitudinal et latéral. Le point de corde est le minimum de vitesse coïncidant avec le pic de G latéral.',
   },
   {
     key: 'gg',

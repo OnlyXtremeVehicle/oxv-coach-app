@@ -470,3 +470,58 @@ describe('hauteurBarreTour', () => {
     }
   });
 });
+
+/**
+ * LA BASE D'ÉCART — pourquoi le module se tait, quand il se tait.
+ *
+ * Un écart net se mesure contre la médiane des tours PROPRES. En dessous de
+ * quatre, cette médiane ne veut rien dire et la boucle qui pose `ecart_net`
+ * n'est jamais atteinte. Le refus est juste ; le silence ne l'était pas — sur
+ * la séance de référence, un tour à +32,9 s de ses voisins ne portait aucune
+ * marque, et rien à l'écran ne disait pourquoi.
+ */
+describe('baseEcart — le module dit pourquoi il se tait', () => {
+  function tour(index: number, ms: number) {
+    return {
+      index,
+      tempsMs: ms,
+      valide: true,
+      tags: [] as string[],
+      vitesseMiniKmh: 60,
+      trousMesureMs: 0,
+    };
+  }
+
+  it('trois tours propres : la base est insuffisante, et le dit', () => {
+    const v = evaluerTours([tour(1, 100_000), tour(2, 101_000), tour(3, 133_900)]);
+    expect(v.baseEcart.suffisante).toBe(false);
+    expect(v.baseEcart.tours).toBe(3);
+    expect(v.baseEcart.requis).toBe(4);
+  });
+
+  /** Et personne ne porte d'écart net — c'est le comportement, pas un défaut. */
+  it('sous la base, aucun écart n’est prononcé', () => {
+    const v = evaluerTours([tour(1, 100_000), tour(2, 101_000), tour(3, 133_900)]);
+    const ecarts = v.tours.flatMap((t) => t.marques.filter((m) => m.code === 'ecart_net'));
+    expect(ecarts).toEqual([]);
+  });
+
+  it('quatre tours propres : la base suffit, et l’écart se prononce', () => {
+    const v = evaluerTours([
+      tour(1, 100_000),
+      tour(2, 100_500),
+      tour(3, 101_000),
+      tour(4, 100_200),
+      tour(5, 133_900),
+    ]);
+    expect(v.baseEcart.suffisante).toBe(true);
+    const ecarts = v.tours.flatMap((t) => t.marques.filter((m) => m.code === 'ecart_net'));
+    expect(ecarts.length).toBeGreaterThan(0);
+  });
+
+  it('aucun tour : la base est vide, pas indéfinie', () => {
+    const v = evaluerTours([]);
+    expect(v.baseEcart.tours).toBe(0);
+    expect(v.baseEcart.suffisante).toBe(false);
+  });
+});

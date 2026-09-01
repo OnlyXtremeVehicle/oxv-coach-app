@@ -232,11 +232,27 @@ export default function DataHubScreen() {
   // -------------------------------------------------------------------------
   // Sélection / comparaison.
   // -------------------------------------------------------------------------
-  const onCardLongPress = useCallback((id: string) => {
-    haptic('arm');
-    setSelectionMode(true);
-    setSelected((prev) => (prev.includes(id) ? prev : toggleSelect(prev, id)));
-  }, []);
+  /**
+   * ON N'ARME PAS UN MODE DONT ON NE PEUT PAS SORTIR PAR LE HAUT.
+   *
+   * La comparaison exige EXACTEMENT deux séances. Sur une liste qui n'en porte
+   * qu'une, l'appui long armait quand même le mode : le pilote y entrait, lisait
+   * « 1/2 sélectionnées », trouvait le bouton grisé, et devait ressortir à la
+   * main d'un geste qui ne pouvait aboutir.
+   *
+   * Le refus est SILENCIEUX, et c'est voulu : rien ne s'est passé, il n'y a rien
+   * à expliquer. Une phrase ici apprendrait au pilote qu'un geste existe, au
+   * moment précis où il ne sert à rien.
+   */
+  const onCardLongPress = useCallback(
+    (id: string) => {
+      if (hubSessions.length < 2) return;
+      haptic('arm');
+      setSelectionMode(true);
+      setSelected((prev) => (prev.includes(id) ? prev : toggleSelect(prev, id)));
+    },
+    [hubSessions.length]
+  );
 
   const onCardPress = useCallback(
     (id: string) => {
