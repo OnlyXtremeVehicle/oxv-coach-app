@@ -44,6 +44,7 @@ import {
 } from '@/features/presentations/sourcesCompositionService';
 import { supabase } from '@/lib/supabase';
 import { compterPointsTrace } from '@/services/circuitsService';
+import { consignePorteSurSeance } from '@/services/coachConsignesService';
 import { POINTS_TRACE_MIN } from '@/trackviz/pisteDepuisBase';
 
 /**
@@ -270,10 +271,11 @@ export function lireEtatTraitement(statutSeance: string | null): boolean {
  *   Le chemin technique subsiste dans le dépôt, écrit et testé ; il n'est pas
  *   une source tant que la décision tient.
  *
- *   `consigneCoach` — `coach_annotations` établit qu'une NOTE du coach porte
- *   sur la séance. Une note n'est pas une consigne. Les sept fiches qui
- *   dépendent de ce champ demandent une consigne ; les ouvrir sur une note
- *   changerait ce qu'elles montrent sans que leur titre change.
+ * (`consigneCoach` A QUITTÉ CETTE LISTE le 01/09/2026. Elle y était pour la
+ * bonne raison — `coach_annotations` établit qu'une NOTE porte sur la séance,
+ * et une note n'est pas une consigne — et le fondateur a tranché en QCM contre
+ * les deux replis : ni fermer, ni ouvrir sur la note. La table `coach_consignes`
+ * existe depuis, et `consignePorteSurSeance` la lit.)
  */
 export const FAITS_SANS_SOURCE = {
   santeChaine: false,
@@ -282,7 +284,6 @@ export const FAITS_SANS_SOURCE = {
   referencePartagee: false,
   live: false,
   flotteLive: false,
-  consigneCoach: false,
 } as const;
 
 /** Ce dont `lireFaitsSeance` a besoin, et qui vient de la ligne de séance. */
@@ -307,20 +308,29 @@ export interface EntreeFaitsSeance {
 export async function lireFaitsSeance(entree: EntreeFaitsSeance): Promise<FaitsSeance> {
   const { piloteId, captureId, circuitId, debutSeance, statutSeance } = entree;
 
-  const [humains, tracePosition, traceCircuit, coachLie, reperePiste, runsDeLaJournee] =
-    await Promise.all([
-      lireFaitsHumains({ piloteId, captureId }),
-      lireTracePosition(captureId),
-      lireTraceCircuit(circuitId),
-      lireCoachLie(piloteId),
-      circuitId !== null ? lireReperePiste({ piloteId, circuitId }) : Promise.resolve(false),
-      lireRunsDeLaJournee({ piloteId, debutSeance }),
-    ]);
+  const [
+    humains,
+    tracePosition,
+    traceCircuit,
+    consigneCoach,
+    coachLie,
+    reperePiste,
+    runsDeLaJournee,
+  ] = await Promise.all([
+    lireFaitsHumains({ piloteId, captureId }),
+    lireTracePosition(captureId),
+    lireTraceCircuit(circuitId),
+    consignePorteSurSeance(captureId),
+    lireCoachLie(piloteId),
+    circuitId !== null ? lireReperePiste({ piloteId, circuitId }) : Promise.resolve(false),
+    lireRunsDeLaJournee({ piloteId, debutSeance }),
+  ]);
 
   return {
     ...FAITS_SANS_SOURCE,
     tracePosition,
     traceCircuit,
+    consigneCoach,
     etatTraitement: lireEtatTraitement(statutSeance),
     coachLie,
     voixCoach: humains.voixCoach,

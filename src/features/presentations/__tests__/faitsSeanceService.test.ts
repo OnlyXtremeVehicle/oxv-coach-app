@@ -174,14 +174,18 @@ describe('lireEtatTraitement', () => {
 });
 
 /**
- * LE CLIQUET DES SIX ABSENCES.
+ * LE CLIQUET DES ABSENCES.
  *
  * Si l'un de ces champs devient `true`, c'est qu'une source est apparue — et
  * alors ce test doit ÉCHOUER, pour qu'on écrive la source au lieu de la
  * supposer. C'est la même discipline que la liste des orphelins : une absence
  * déclarée ne se comble pas en silence.
+ *
+ * `consigneCoach` A QUITTÉ CETTE LISTE le 01/09/2026, et c'est le sens de
+ * sortie qu'on veut : la table `coach_consignes` existe, et une absence cesse
+ * d'être déclarée parce qu'elle a été comblée.
  */
-describe('les six faits sans source', () => {
+describe('les faits sans source', () => {
   it('restent faux, tous', () => {
     expect(FAITS_SANS_SOURCE).toEqual({
       santeChaine: false,
@@ -190,12 +194,15 @@ describe('les six faits sans source', () => {
       referencePartagee: false,
       live: false,
       flotteLive: false,
-      consigneCoach: false,
     });
   });
 
-  it('sont exactement sept clés — six absences plus la consigne', () => {
-    expect(Object.keys(FAITS_SANS_SOURCE)).toHaveLength(7);
+  it('sont exactement six clés', () => {
+    expect(Object.keys(FAITS_SANS_SOURCE)).toHaveLength(6);
+  });
+
+  it('la consigne n’y est plus — elle a une table', () => {
+    expect(Object.keys(FAITS_SANS_SOURCE)).not.toContain('consigneCoach');
   });
 });
 

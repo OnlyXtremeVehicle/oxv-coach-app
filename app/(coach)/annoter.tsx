@@ -51,6 +51,7 @@ import {
 import { router, useLocalSearchParams } from 'expo-router';
 
 import { nomVirage, type VirageCircuit } from '@/features/data/viragesCircuit';
+import { poserConsigne } from '@/services/coachConsignesService';
 import { fetchSessionCircuitCorners } from '@/services/circuitsService';
 import { COACH_CONSOLE_MIN_WIDTH } from '@/lib/coachNav';
 import {
@@ -378,10 +379,52 @@ export default function CoachAnnoterScreen() {
       ) : null}
     </>
   );
+  /**
+   * POSER LA CONSIGNE — le second geste, et il n'écrit pas la même chose.
+   *
+   * Une NOTE dit ce que le coach a vu. Une CONSIGNE nomme ce qu'on suivra au
+   * prochain run, et sept fiches du catalogue l'attendent — P39 « Que dois-je
+   * modifier, et rien d'autre ? », P43 « Est-ce que l'action a fonctionné ? »,
+   * P44 « Pourquoi ne peut-on pas conclure ? ».
+   *
+   * Le même texte, donc, mais dans la table qui porte l'unicité (une seule
+   * ouverte par pilote), la séance d'observation et la confirmation du pilote.
+   * Le coach écrit une fois et choisit ce qu'il en fait.
+   *
+   * Les deux refus de la base — terme prescriptif, consigne déjà ouverte —
+   * remontent traduits : ils ne se devinent pas, et le coach doit savoir quoi
+   * faire de son texte.
+   */
+  const onPoserConsigne = async () => {
+    if (!params.pilotId || !body.trim()) return;
+    setSaving(true);
+    setSaveError(null);
+    const r = await poserConsigne({
+      pilotId: params.pilotId,
+      sessionId: params.sessionId ?? null,
+      cornerIndex,
+      body,
+    });
+    setSaving(false);
+    if (r.ok) {
+      resetForm();
+      return;
+    }
+    setSaveError(r.error ?? 'La consigne n’a pas pu être posée.');
+  };
+
   const footer = (
     <View style={[s.footer, !isConsole && s.footerStack]}>
       <View style={isConsole ? undefined : s.footerStackItem}>
         <Button label="Annuler" variant="ghost" onPress={resetForm} disabled={!dirty} />
+      </View>
+      <View style={isConsole ? undefined : s.footerStackItem}>
+        <Button
+          label="Poser en consigne"
+          variant="ghost"
+          onPress={onPoserConsigne}
+          disabled={saving || !body.trim() || editingId !== null}
+        />
       </View>
       <View style={isConsole ? { flex: 1.4 } : s.footerStackItem}>
         <SaveCta
