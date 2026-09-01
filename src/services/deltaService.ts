@@ -54,8 +54,14 @@ export interface DeltaEntreTours {
   /**
    * L'un des deux tours est-il arrivé AMPUTÉ ?
    *
-   * `loadLapFrames` plafonne à `PLAFOND_TRAMES_TOUR` trames, soit quatre-vingts
-   * secondes à vingt-cinq hertz — moins qu'un tour sur beaucoup de circuits.
+   * `loadLapFrames` pagine depuis le 01/09/2026 et borne à
+   * `PLAFOND_TRAMES_TOUR` — treize minutes à vingt-cinq hertz. Aucun tour réel
+   * n'y arrive ; celui qui l'atteindrait serait un tour resté ouvert.
+   *
+   * Le drapeau reste, et il reste utile. Avant cette date le plafond valait
+   * deux mille et servait de `.limit()` en une seule requête : les trois tours
+   * de Bouteville comptent 9 013, 8 190 et 8 489 trames, et arrivaient donc au
+   * quart. On ne retire pas le témoin le jour où la panne est réparée.
    *
    * Le piège est qu'un delta sur deux tours tronqués **se referme proprement**
    * et paraît juste : il décrit simplement un début de tour en se faisant

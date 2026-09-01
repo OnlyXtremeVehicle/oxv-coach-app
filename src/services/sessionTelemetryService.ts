@@ -12,6 +12,7 @@
 
 import { supabase } from '@/lib/supabase';
 import {
+  echantillonne,
   mapFramesToTrajectory,
   type TrajectoryFramePoint,
   type TrajectoryFrameRow,
@@ -32,23 +33,100 @@ export {
 } from '@/services/sessionTelemetryMapping';
 
 /**
+ * ===========================================================================
+ * TROIS REQUÊTES LISAIENT LE DÉBUT D'UN TOUR EN CROYANT LE LIRE ENTIER
+ * ===========================================================================
+ *
+ * Mesuré en base le 01/09/2026, sur la séance de référence de Bouteville : ses
+ * trois tours portent 9 013, 8 190 et 8 489 trames. C'est ce qu'il faut lire
+ * pour dessiner un tour.
+ *
+ * `loadLapFrames` et `loadTramesQualiteTour` demandaient `.limit(2000)` en UNE
+ * requête ; `loadSessionTrajectory` mille. Le meilleur des cas rendait donc
+ * moins d'un quart de tour, et le tracé « SÉANCE ENTIÈRE » moins d'un neuvième
+ * de séance — sans erreur, sans avertissement, sans qu'aucun écran puisse le
+ * soupçonner : le nombre reçu était plausible.
+ *
+ * (`loadSessionFrames`, elle, paginait depuis l'origine. Son commentaire de
+ * l'époque affirme que PostgREST plafonne ses réponses à mille lignes ; ce
+ * réglage n'a PAS été remesuré sur ce projet, et rien ici n'en dépend. La
+ * pagination est juste dans les deux cas — c'est précisément pourquoi on pagine
+ * au lieu de choisir une limite.)
+ *
+ * On pagine donc partout. Les plafonds qui subsistent sont des BORNES DE
+ * SÉCURITÉ, pas des fenêtres de lecture : ils bornent la boucle, et un appelant
+ * qui les atteint le sait en comparant la longueur reçue.
+ */
+const PAGE_POSTGREST = 1000;
+
+/** La forme minimale d'une réponse PostgREST, sans dépendre de ses génériques. */
+interface ReponsePage {
+  data: unknown[] | null;
+  error: { message: string } | null;
+}
+
+/**
+ * Lit une requête page par page jusqu'au plafond.
+ *
+ * `construire(debut, fin)` doit rendre la MÊME requête, bornée par `.range()`.
+ * Un tri stable est indispensable — sans `order`, deux pages peuvent se
+ * recouvrir ou se manquer.
+ */
+async function lirePages(
+  construire: (debut: number, fin: number) => PromiseLike<ReponsePage>,
+  plafond: number,
+  ou: string
+): Promise<unknown[]> {
+  const lignes: unknown[] = [];
+  for (let debut = 0; debut < plafond; debut += PAGE_POSTGREST) {
+    const fin = Math.min(debut + PAGE_POSTGREST, plafond) - 1;
+    const { data, error } = await construire(debut, fin);
+    if (error) {
+      console.warn(`[OXV][telemetry] ${ou} :`, error.message);
+      break;
+    }
+    if (!data || data.length === 0) break;
+    lignes.push(...data);
+    if (data.length < fin - debut + 1) break; // dernière page
+  }
+  return lignes;
+}
+
+/**
+ * Borne de sécurité d'une SÉANCE entière : soixante mille trames, quarante
+ * minutes à vingt-cinq hertz. Elle borne la boucle de pagination, elle ne
+ * décrit aucune fenêtre de lecture.
+ */
+export const PLAFOND_TRAMES_SEANCE = 60_000;
+
+/**
+ * Points réellement rendus à une trace de séance. Au-delà, on échantillonne à
+ * pas constant : la forme est conservée, le début ne l'est pas au détriment de
+ * la fin.
+ */
+export const POINTS_TRACE_MAX = 3000;
+
+/**
  * Trajectoire GPS d'une séance (lat / lon / vitesse), pour la carte et la Vue
  * unifiée. Source UNIQUE de la requête trajectoire — supprime la copie inline
  * qui vivait dans `carte.tsx` et `data-lab-canvas.tsx` (risque de divergence).
  * Filtrage/conversion délégués à `mapFramesToTrajectory` (pur, testé).
  */
 export async function loadSessionTrajectory(
-  sessionId: string,
-  limit = 1000
+  sessionId: string
 ): Promise<TrajectoryFramePoint[]> {
-  const { data } = await supabase
-    .from('telemetry_frames')
-    .select('latitude, longitude, speed_kmh')
-    .eq('session_id', sessionId)
-    .order('elapsed_ms', { ascending: true })
-    .limit(limit);
-  if (!data) return [];
-  return mapFramesToTrajectory(data as TrajectoryFrameRow[]);
+  const lignes = await lirePages(
+    (debut, fin) =>
+      supabase
+        .from('telemetry_frames')
+        .select('latitude, longitude, speed_kmh')
+        .eq('session_id', sessionId)
+        .order('elapsed_ms', { ascending: true })
+        .range(debut, fin),
+    PLAFOND_TRAMES_SEANCE,
+    'loadSessionTrajectory'
+  );
+  return echantillonne(mapFramesToTrajectory(lignes as TrajectoryFrameRow[]), POINTS_TRACE_MAX);
 }
 
 /**
@@ -58,31 +136,25 @@ export async function loadSessionTrajectory(
  */
 export async function loadSessionFrames(
   sessionId: string,
-  maxFrames = 60_000
+  maxFrames = PLAFOND_TRAMES_SEANCE
 ): Promise<SessionFrame[]> {
-  const PAGE = 1000;
-  const rows: FrameRow[] = [];
-  for (let from = 0; from < maxFrames; from += PAGE) {
-    const { data, error } = await supabase
-      .from('telemetry_frames')
-      // `rotation_z` = vitesse de lacet. Sans elle, `aLat`, `curvature` et tout
-      // le découpage en virages sont nuls par construction : la colonne est
-      // écrite par la capture depuis le premier jour et n'était jamais relue.
-      .select(
-        'elapsed_ms, latitude, longitude, speed_kmh, g_force_x, g_force_y, g_force_z, rotation_z'
-      )
-      .eq('session_id', sessionId)
-      .order('elapsed_ms', { ascending: true })
-      .range(from, Math.min(from + PAGE, maxFrames) - 1);
-    if (error) {
-      console.warn('[OXV][telemetry] loadSessionFrames :', error.message);
-      break;
-    }
-    if (!data || data.length === 0) break;
-    rows.push(...(data as FrameRow[]));
-    if (data.length < PAGE) break; // dernière page
-  }
-  return rows.map(frameRowToSessionFrame);
+  const lignes = await lirePages(
+    (debut, fin) =>
+      supabase
+        .from('telemetry_frames')
+        // `rotation_z` = vitesse de lacet. Sans elle, `aLat`, `curvature` et tout
+        // le découpage en virages sont nuls par construction : la colonne est
+        // écrite par la capture depuis le premier jour et n'était jamais relue.
+        .select(
+          'elapsed_ms, latitude, longitude, speed_kmh, g_force_x, g_force_y, g_force_z, rotation_z'
+        )
+        .eq('session_id', sessionId)
+        .order('elapsed_ms', { ascending: true })
+        .range(debut, fin),
+    maxFrames,
+    'loadSessionFrames'
+  );
+  return (lignes as FrameRow[]).map(frameRowToSessionFrame);
 }
 
 /**
@@ -103,18 +175,22 @@ export async function loadGGPoints(
 }
 
 /**
- * Plafond de trames rendues pour UN tour.
+ * Borne de sécurité d'UN tour — vingt mille trames, treize minutes à
+ * vingt-cinq hertz.
  *
- * Deux mille trames font quatre-vingts secondes à vingt-cinq hertz. Un tour
- * plus long — et beaucoup de circuits en produisent — revient AMPUTÉ, sans que
- * la requête ne signale quoi que ce soit.
+ * Elle valait deux mille et servait de `.limit()` en une seule requête, ce qui
+ * en faisait une fenêtre de lecture. Les trois tours de Bouteville comptent
+ * 9 013, 8 190 et 8 489 trames : les écrans en recevaient deux mille au plus,
+ * et lisaient donc le premier quart d'un tour en croyant le lire entier.
  *
- * Le plafond est exporté parce qu'un appelant ne peut détecter la troncature
- * qu'en comparant à lui : `frames.length === PLAFOND_TRAMES_TOUR` est le seul
- * indice disponible. Le laisser en nombre magique dans la requête rendrait
- * cette détection impossible à écrire sans le dupliquer.
+ * La requête pagine désormais, et ce nombre ne borne plus que la boucle. Aucun
+ * tour réel ne l'atteint ; celui qui l'atteindrait serait un tour resté ouvert,
+ * pas un tour long.
+ *
+ * Il reste EXPORTÉ parce qu'un appelant ne peut détecter une troncature qu'en
+ * comparant à lui — `deltaService` le fait, et continue de le faire.
  */
-export const PLAFOND_TRAMES_TOUR = 2000;
+export const PLAFOND_TRAMES_TOUR = 20_000;
 
 /**
  * Charge les frames d'un tour spécifique en filtrant par la fenêtre
@@ -132,24 +208,24 @@ export async function loadLapFrames(sessionId: string, lapNumber: number): Promi
   const fenetre = await fenetreElapsedTour(sessionId, lapNumber);
   if (fenetre === null) return [];
 
-  // Filtre les frames sur la fenêtre du tour
-  const { data, error } = await supabase
-    .from('telemetry_frames')
-    .select(
-      'elapsed_ms, latitude, longitude, speed_kmh, g_force_x, g_force_y, g_force_z, rotation_z'
-    )
-    .eq('session_id', sessionId)
-    .gte('elapsed_ms', fenetre.debutMs)
-    .lte('elapsed_ms', fenetre.finMs)
-    .order('elapsed_ms', { ascending: true })
-    .limit(PLAFOND_TRAMES_TOUR);
+  // Filtre les frames sur la fenêtre du tour, page par page.
+  const lignes = await lirePages(
+    (debut, fin) =>
+      supabase
+        .from('telemetry_frames')
+        .select(
+          'elapsed_ms, latitude, longitude, speed_kmh, g_force_x, g_force_y, g_force_z, rotation_z'
+        )
+        .eq('session_id', sessionId)
+        .gte('elapsed_ms', fenetre.debutMs)
+        .lte('elapsed_ms', fenetre.finMs)
+        .order('elapsed_ms', { ascending: true })
+        .range(debut, fin),
+    PLAFOND_TRAMES_TOUR,
+    'loadLapFrames frames'
+  );
 
-  if (error || !data) {
-    if (error) console.warn('[OXV][telemetry] loadLapFrames frames :', error.message);
-    return [];
-  }
-
-  return (data as FrameRow[]).map(frameRowToSessionFrame);
+  return (lignes as FrameRow[]).map(frameRowToSessionFrame);
 }
 
 /**
@@ -219,8 +295,9 @@ async function fenetreElapsedTour(
  * parce que la position curviligne se DÉRIVE (∫ v dt, cf. `confianceSource`) :
  * les trames ne portent pas leur distance.
  *
- * Même fenêtre et même plafond que `loadLapFrames` — un tour amputé au-delà de
- * `PLAFOND_TRAMES_TOUR` rend une note partielle, que la couverture dira.
+ * Même fenêtre et même pagination que `loadLapFrames`. Elle lisait deux mille
+ * trames au plus d'un tour qui en compte huit mille : la couverture de mesure
+ * s'annonçait sur le premier quart du tour, et rien à l'écran ne le disait.
  */
 export async function loadTramesQualiteTour(
   sessionId: string,
@@ -229,21 +306,21 @@ export async function loadTramesQualiteTour(
   const fenetre = await fenetreElapsedTour(sessionId, lapNumber);
   if (fenetre === null) return [];
 
-  const { data, error } = await supabase
-    .from('telemetry_frames')
-    .select('elapsed_ms, speed_kmh, gps_accuracy_m, pdop, satellites, fix_valid')
-    .eq('session_id', sessionId)
-    .gte('elapsed_ms', fenetre.debutMs)
-    .lte('elapsed_ms', fenetre.finMs)
-    .order('elapsed_ms', { ascending: true })
-    .limit(PLAFOND_TRAMES_TOUR);
+  const lignes = await lirePages(
+    (debut, fin) =>
+      supabase
+        .from('telemetry_frames')
+        .select('elapsed_ms, speed_kmh, gps_accuracy_m, pdop, satellites, fix_valid')
+        .eq('session_id', sessionId)
+        .gte('elapsed_ms', fenetre.debutMs)
+        .lte('elapsed_ms', fenetre.finMs)
+        .order('elapsed_ms', { ascending: true })
+        .range(debut, fin),
+    PLAFOND_TRAMES_TOUR,
+    'loadTramesQualiteTour'
+  );
 
-  if (error || !data) {
-    if (error) console.warn('[OXV][telemetry] loadTramesQualiteTour :', error.message);
-    return [];
-  }
-
-  return data as LigneQualite[];
+  return lignes as LigneQualite[];
 }
 
 /**

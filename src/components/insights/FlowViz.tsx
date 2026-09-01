@@ -70,9 +70,25 @@ function tracePoints(points: readonly FlowPoint[], maxResidual: number): string 
 export function FlowViz({ points }: { points: readonly FlowPoint[] }) {
   const moyenne = meanResidualGPerS(points);
 
-  // Aucune mesure : on le dit. Un 0 se lirait comme une conduite parfaitement
-  // continue, soit l'exact contraire de la vérité.
-  if (points.length === 0 || moyenne === null) {
+  /**
+   * LE ZÉRO PLAT EST UNE ABSENCE, PAS UNE MESURE — corrigé le 01/09/2026.
+   *
+   * Le garde ci-dessous ne fermait que `null`. Or `meanResidualGPerS` rend un
+   * NOMBRE dès qu'il reste un point lisible, et ce nombre vaut zéro quand tous
+   * les résidus sont nuls. L'en-tête affichait alors « 0,0 g/s » — exactement la
+   * lecture que le commentaire d'origine interdisait : une conduite parfaitement
+   * continue, ce qu'aucune séance réelle n'est.
+   *
+   * Un résidu identiquement nul sur des milliers de points ne décrit pas un
+   * pilotage, il décrit un canal qui n'a rien produit. On le dit donc au lieu de
+   * le chiffrer. Un maximum strictement positif suffit à distinguer les deux :
+   * dès qu'une seule transition ressort, la moyenne redevient une mesure, même
+   * très petite.
+   */
+  const residuelMax = points.reduce((m, p) => (p.jerkResidual > m ? p.jerkResidual : m), 0);
+  const platEtNul = moyenne === 0 && residuelMax === 0;
+
+  if (points.length === 0 || moyenne === null || platEtNul) {
     return (
       <View style={styles.card}>
         <Text style={styles.statusLabel}>Cohérence du flow</Text>
@@ -85,7 +101,7 @@ export function FlowViz({ points }: { points: readonly FlowPoint[] }) {
   }
 
   const bins = jerkDistribution(points);
-  const maxResidual = points.reduce((m, p) => (p.jerkResidual > m ? p.jerkResidual : m), 0);
+  const maxResidual = residuelMax;
   const maxCount = bins.reduce((m, b) => (b.count > m ? b.count : m), 0);
   const trace = tracePoints(points, maxResidual);
   const binW = bins.length > 0 ? HIST_W / bins.length : 0;

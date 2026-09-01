@@ -31,3 +31,26 @@ export function mapFramesToTrajectory(rows: TrajectoryFrameRow[]): TrajectoryFra
       speed: r.speed_kmh !== null ? Number(r.speed_kmh) : null,
     }));
 }
+
+/**
+ * Un point sur k, à pas constant, premier et dernier conservés.
+ *
+ * La carte n'a rien à gagner à recevoir vingt-sept mille positions : à l'échelle
+ * d'un écran, la moitié retombe sur le même pixel. Mais elle a tout à perdre à
+ * n'en recevoir que les mille premières — c'est la différence entre une trace
+ * DENSE et une trace AMPUTÉE. On lit donc toute la séance, et on allège le
+ * DESSIN.
+ *
+ * Le dernier point est ajouté explicitement : un pas de neuf sur vingt-sept
+ * mille points s'arrêterait sinon huit positions avant la ligne, et une trace
+ * qui n'atteint pas sa fin est exactement le défaut qu'on répare.
+ */
+export function echantillonne<T>(points: T[], maximum: number): T[] {
+  if (maximum <= 0 || points.length <= maximum) return points;
+  const pas = Math.ceil(points.length / maximum);
+  const sortie: T[] = [];
+  for (let i = 0; i < points.length; i += pas) sortie.push(points[i]);
+  const dernier = points[points.length - 1];
+  if (sortie[sortie.length - 1] !== dernier) sortie.push(dernier);
+  return sortie;
+}

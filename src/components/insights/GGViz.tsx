@@ -44,6 +44,26 @@ const PX_PER_G = R_LIM / G_MAX;
 // Nuage insuffisant sous ce seuil → vide honnête (pas de signature lisible).
 const MIN_POINTS = 20;
 
+/**
+ * PLAFOND DE CERCLES DESSINÉS — posé le 01/09/2026.
+ *
+ * La séance de référence porte 26 999 trames, et chaque trame produisait ici
+ * un `<Circle>` react-native-svg. Sur un repère de 240 unités, la moitié des
+ * cercles retombe au pixel près sur un autre : la lisibilité ne gagne rien
+ * au-delà de quelques milliers, et le temps de montage, lui, se paie.
+ *
+ * Le nuage dessiné est donc échantillonné à pas constant — la FORME est
+ * conservée, un point sur k dans l'ordre du temps. Les MESURES, elles, restent
+ * calculées sur la totalité des trames : appui latéral, freinage, combiné et
+ * pic p95 ne bougent pas d'un millième. C'est la ligne à ne pas franchir —
+ * on allège le dessin, jamais le chiffre.
+ *
+ * Les points d'enveloppe (`edge`) échappent au pas : ils sont rares et ce sont
+ * eux qui portent le sens du diagramme. Les décimer rétrécirait le nuage sans
+ * que rien ne le dise.
+ */
+const PLAFOND_CERCLES = 4000;
+
 type Tier = 'edge' | 'mid' | 'inner';
 interface Pt {
   x: number;
@@ -83,6 +103,22 @@ function p95(sortedAsc: number[]): number {
 }
 
 /**
+ * Le nuage tel qu'il sera DESSINÉ : au plus `PLAFOND_CERCLES` cercles.
+ *
+ * Pas constant sur l'ordre du temps, et tous les points d'enveloppe conservés.
+ * En dessous du plafond, la liste ressort telle quelle.
+ */
+function nuageDessine(tous: Pt[]): Pt[] {
+  if (tous.length <= PLAFOND_CERCLES) return tous;
+  const pas = Math.ceil(tous.length / PLAFOND_CERCLES);
+  const garde: Pt[] = [];
+  for (let i = 0; i < tous.length; i++) {
+    if (i % pas === 0 || tous[i].tier === 'edge') garde.push(tous[i]);
+  }
+  return garde;
+}
+
+/**
  * Dérive le rendu (nuage + nombre central + 3 mesures) du VRAI g-g.
  * - Placement : gLat → axe G/D (x), gLong → axe FREIN/ACCÉL (y, accél vers le haut).
  * - Tier (halo bord / cœur / intérieur) : rayon atteint / R_LIM, mêmes seuils que
@@ -95,7 +131,7 @@ function p95(sortedAsc: number[]): number {
 function deriveModel(points: GGPoint[] | null | undefined): GGModel | null {
   if (!points || points.length < MIN_POINTS) return null;
 
-  const pts: Pt[] = [];
+  const tous: Pt[] = [];
   const mags: number[] = [];
   let maxLat = 0;
   let maxBrake = 0;
@@ -107,7 +143,7 @@ function deriveModel(points: GGPoint[] | null | undefined): GGModel | null {
     const mag = Math.hypot(p.gLat, p.gLong);
     const reach = (mag * PX_PER_G) / R_LIM; // 0 centre → ~1 bord de l'enveloppe
     const tier: Tier = reach > 0.74 ? 'edge' : reach > 0.5 ? 'mid' : 'inner';
-    pts.push({ x, y, r: tier === 'edge' ? 2.1 : tier === 'mid' ? 1.8 : 1.6, tier });
+    tous.push({ x, y, r: tier === 'edge' ? 2.1 : tier === 'mid' ? 1.8 : 1.6, tier });
 
     mags.push(mag);
     if (Math.abs(p.gLat) > maxLat) maxLat = Math.abs(p.gLat);
@@ -130,7 +166,7 @@ function deriveModel(points: GGPoint[] | null | undefined): GGModel | null {
     { label: 'Combiné', value: fmtG(maxCombined), unit: 'g', tone: 'mute' },
   ];
 
-  return { pts, envelopePct, stats };
+  return { pts: nuageDessine(tous), envelopePct, stats };
 }
 
 export function GGViz({ points }: GGVizProps) {

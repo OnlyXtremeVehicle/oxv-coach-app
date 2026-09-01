@@ -111,6 +111,12 @@ function chronosLisibles(bloc: unknown): boolean {
 }
 
 /**
+ * Les deux lectures qui ne lisent PAS `session_insights`. Elles comptent des
+ * points venus des trames ; l'absence d'insights ne les concerne pas.
+ */
+export const SANS_INSIGHTS: readonly ReadingKey[] = ['gg', 'flow'];
+
+/**
  * État d'UNE lecture.
  *
  * Aucune lecture n'est `disponible` par défaut : chacune doit prouver qu'elle a
@@ -120,11 +126,24 @@ function chronosLisibles(bloc: unknown): boolean {
 export function etatLecture(key: ReadingKey, e: EntreesLectures): Disponibilite {
   const i = e.insights;
 
-  if (i == null) return { key, etat: 'absent', raison: RAISONS.aucuneMesure };
+  // LE PORTILLON NE FERME QUE CE QU'IL GOUVERNE — corrige le 01/09/2026.
+  //
+  // Il sortait AVANT le switch : `insights` nul fermait les six lectures. Or
+  // deux d'entre elles ne lisent jamais `insights`. Le diagramme G-G compte des
+  // points (G long, G lat) et la coherence du flow des points de jerk : les uns
+  // et les autres viennent des trames, que la seance porte des insights ou non.
+  //
+  // Sur la seance de reference — 26 999 trames, `session_insights` vide — le
+  // pilote lisait donc « Aucune mesure sur cette seance » devant deux lectures
+  // que ses propres trames alimentaient. C'est le contresens exact que ce
+  // module existe pour supprimer, une porte fermee de plus.
+  if (i == null && !SANS_INSIGHTS.includes(key)) {
+    return { key, etat: 'absent', raison: RAISONS.aucuneMesure };
+  }
 
   switch (key) {
     case 'anatomie':
-      return aDuContenu(i.anatomy)
+      return i != null && aDuContenu(i.anatomy)
         ? { key, etat: 'disponible' }
         : { key, etat: 'absent', raison: RAISONS.pasDeVirage };
 
@@ -134,12 +153,12 @@ export function etatLecture(key: ReadingKey, e: EntreesLectures): Disponibilite 
         : { key, etat: 'absent', raison: RAISONS.pasDInertiel };
 
     case 'dispersion':
-      return aDuContenu(i.dispersion)
+      return i != null && aDuContenu(i.dispersion)
         ? { key, etat: 'disponible' }
         : { key, etat: 'absent', raison: RAISONS.pasAssezDeTours };
 
     case 'tour-ideal':
-      return chronosLisibles(i.ideal_lap)
+      return i != null && chronosLisibles(i.ideal_lap)
         ? { key, etat: 'disponible' }
         : { key, etat: 'absent', raison: RAISONS.pasDeChrono };
 
@@ -149,7 +168,7 @@ export function etatLecture(key: ReadingKey, e: EntreesLectures): Disponibilite 
         : { key, etat: 'absent', raison: RAISONS.pasDInertiel };
 
     case 'transfert':
-      return aDuContenu(i.load_transfer)
+      return i != null && aDuContenu(i.load_transfer)
         ? { key, etat: 'disponible' }
         : { key, etat: 'absent', raison: RAISONS.pasDeGyroscope };
 

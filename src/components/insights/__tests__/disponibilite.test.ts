@@ -20,6 +20,7 @@
 import {
   etatLecture,
   productionAutorise,
+  SANS_INSIGHTS,
   sectionAffichable,
   type Disponibilite,
   type EntreesLectures,
@@ -50,11 +51,32 @@ function entrees(p: Partial<EntreesLectures> = {}): EntreesLectures {
 }
 
 describe('aucune mesure du tout', () => {
-  // `insights` absent : la séance n'a même pas été calculée.
-  it.each(TOUTES)('« %s » est absente quand insights est null', (key) => {
+  /**
+   * `insights` absent : la séance n'a même pas été calculée — SAUF pour les deux
+   * lectures qui n'en lisent jamais. Le G-G et le flow comptent des points venus
+   * des trames ; leur fermer la porte au nom d'un bloc qu'elles n'ouvrent pas
+   * était le contresens du 01/09.
+   */
+  const DEPENDANTES = TOUTES.filter((k) => !SANS_INSIGHTS.includes(k));
+
+  it.each(DEPENDANTES)('« %s » est absente quand insights est null', (key) => {
     const d = etatLecture(key, entrees({ insights: null }));
     expect(d.etat).toBe('absent');
     expect(d.raison).toBe('Aucune mesure sur cette séance');
+  });
+
+  it.each(SANS_INSIGHTS)(
+    '« %s » reste ouverte sans insights dès qu’elle a des points',
+    (key) => {
+      const d = etatLecture(key, entrees({ insights: null, nbPointsGG: 12, nbPointsFlow: 12 }));
+      expect(d.etat).toBe('disponible');
+    }
+  );
+
+  it.each(SANS_INSIGHTS)('« %s » dit SA raison, pas celle des insights', (key) => {
+    const d = etatLecture(key, entrees({ insights: null }));
+    expect(d.etat).toBe('absent');
+    expect(d.raison).toBe('Signal inertiel absent');
   });
 
   // Calculée, mais tous les blocs vides : chaque lecture dit SA raison à elle.

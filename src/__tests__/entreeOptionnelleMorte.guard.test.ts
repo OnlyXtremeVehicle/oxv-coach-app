@@ -135,7 +135,6 @@ const INVENTAIRE = [
   '/src/services/routing/scenicRouteService.ts::planScenicRoute(ScenicRouteRequest.distanceKm?)',
   '/src/services/routing/scenicRoutesService.ts::rejectRoute(notes?)',
   '/src/services/sessionTelemetryService.ts::loadSessionFrames(maxFrames?)',
-  '/src/services/sessionTelemetryService.ts::loadSessionTrajectory(limit?)',
   '/src/services/supportAdminService.ts::listAllTickets(AdminTicketFilter.status?)',
   '/src/services/supportService.ts::createTicket(CreateTicketInput.deviceId?)',
   '/src/services/supportService.ts::createTicket(CreateTicketInput.sessionId?)',

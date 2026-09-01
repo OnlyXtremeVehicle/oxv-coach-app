@@ -88,9 +88,10 @@ export interface CourbeDeltaProps {
   /**
    * L'un des deux tours a-t-il été tronqué au chargement ?
    *
-   * `loadLapFrames` plafonne à deux mille trames, soit quatre-vingts secondes à
-   * vingt-cinq hertz. Un tour plus long arrive amputé, et le delta se refermerait
-   * proprement sur un morceau de tour sans que rien ne le dise.
+   * `loadLapFrames` pagine depuis le 01/09/2026 : un tour arrive entier. Le
+   * drapeau demeure parce qu'un delta sur deux tours amputés se referme
+   * proprement et paraît juste — il décrit un début de tour en se faisant
+   * passer pour le tour. C'est un témoin, pas une fatalité.
    */
   tronque?: boolean;
 }

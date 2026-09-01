@@ -327,12 +327,19 @@ function ReportButton({ sessionId, full }: { sessionId: string; full?: boolean }
 }
 
 /**
- * Les deux sorties de lecture d'une séance.
+ * LA SORTIE DE LECTURE D'UNE SÉANCE — il n'y en a plus qu'une.
  *
- * HITSLOP VOLONTAIREMENT ASYMÉTRIQUE. Deux liens empilés dont les zones de
- * toucher se recouvrent laissent le dernier frère rafler le geste destiné au
- * premier — le piège est connu et a déjà mordu ici. Chaque lien ne déborde donc
- * que du côté opposé à son voisin, et un vrai espace les sépare.
+ * Elles étaient deux : le fil, et le mode présentation. `(coach)/debrief` a été
+ * supprimé le jour du correctif de cron (2102359), et le second lien n'a pas
+ * été retiré avec lui — il a été recâblé sur la MÊME destination que le
+ * premier. Le Studio offrait donc deux liens rigoureusement identiques : même
+ * texte, même libellé d'accessibilité, même écran d'arrivée. Un lecteur d'écran
+ * annonçait deux fois « Ouvrir le fil de la séance », et le second geste ne
+ * menait nulle part de neuf.
+ *
+ * Un lien seul n'a plus de voisin, donc plus de recouvrement de zone de
+ * toucher : le hitSlop redevient symétrique. Le mode présentation reviendra
+ * avec son écran, pas avant.
  */
 function SortiesLecture({ sessionId }: { sessionId: string }) {
   return (
@@ -340,18 +347,8 @@ function SortiesLecture({ sessionId }: { sessionId: string }) {
       <PressableScale
         accessibilityRole="button"
         accessibilityLabel="Ouvrir le fil de la séance"
-        hitSlop={{ top: 16, bottom: 4, left: 12, right: 12 }}
+        hitSlop={{ top: 16, bottom: 16, left: 12, right: 12 }}
         onPress={() => router.push({ pathname: '/(coach)/fil', params: { sessionId } } as never)}
-      >
-        <Text style={s.link}>Le fil de la séance ›</Text>
-      </PressableScale>
-
-      <PressableScale
-        accessibilityRole="button"
-        accessibilityLabel="Ouvrir le fil de la séance"
-        hitSlop={{ top: 4, bottom: 16, left: 12, right: 12 }}
-        onPress={() => router.push({ pathname: '/(coach)/fil', params: { sessionId } } as never)}
-        style={{ marginTop: spacing.md }}
       >
         <Text style={s.link}>Le fil de la séance ›</Text>
       </PressableScale>
