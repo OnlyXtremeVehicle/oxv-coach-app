@@ -671,6 +671,25 @@ function fallbackPreparation(): string {
 export const DEBRIEF_PENDING_TEXT = 'Le débrief littéraire personnalisé arrive sous 24 h.';
 
 /**
+ * D'OÙ VIENT LE TEXTE — les deux provenances, nommées.
+ *
+ * Le bandeau n'existait que pour le texte GÉNÉRÉ. Le repli par gabarits, lui,
+ * avançait masqué : trois actes de modèle, dont le premier insère le PRÉNOM du
+ * pilote — d'où une apparence de personnalisation que rien ne justifie. Sur
+ * toute séance sans débrief en base, c'est-à-dire toutes aujourd'hui, le pilote
+ * lisait un texte type en croyant lire le sien.
+ *
+ * Les deux chaînes sont des MOTS-CLÉS : le bilan est une feuille de données.
+ * L'ancienne formule — « RÉCIT GÉNÉRÉ AUTOMATIQUEMENT À PARTIR DE VOTRE
+ * SÉANCE » — comptait huit mots et deux mots outils, et pesait donc dans le
+ * plafond de phrases de cet écran.
+ */
+export const DEBRIEF_PROVENANCE = {
+  genere: 'RÉCIT GÉNÉRÉ · SÉANCE',
+  gabarit: 'TEXTE TYPE · RÉCIT NON RÉDIGÉ',
+} as const;
+
+/**
  * Modèle de la carte Debrief J+1 :
  *   - analyse absente → pending (la carte le dit, sans meubler) ;
  *   - debrief_text présent ET doctrinalement sûr → actes générés SEULS

@@ -72,6 +72,7 @@ import {
 import {
   bilanHeroMorphId,
   DEBRIEF_PENDING_TEXT,
+  DEBRIEF_PROVENANCE,
   lastThreadMessages,
   libelleIntention,
   momentColor,
@@ -569,11 +570,20 @@ export default function BilanScreen() {
                 <Text style={styles.debriefPending}>{DEBRIEF_PENDING_TEXT}</Text>
               ) : (
                 <>
-                  {data.debrief.kind === 'generated' ? (
-                    <Text style={styles.debriefProvenance}>
-                      RÉCIT GÉNÉRÉ AUTOMATIQUEMENT À PARTIR DE VOTRE SÉANCE
-                    </Text>
-                  ) : null}
+                  {/*
+                    LES DEUX PROVENANCES, ET PAS UNE SEULE.
+
+                    Le bandeau n'existait que pour le texte généré. Le repli par
+                    gabarits avançait masqué — trois actes de modèle, dont le
+                    premier insère le prénom du pilote. Sur toute séance sans
+                    débrief en base, c'est-à-dire toutes aujourd'hui, le pilote
+                    lisait un texte type en croyant lire le sien.
+                  */}
+                  <Text style={styles.debriefProvenance}>
+                    {data.debrief.kind === 'generated'
+                      ? DEBRIEF_PROVENANCE.genere
+                      : DEBRIEF_PROVENANCE.gabarit}
+                  </Text>
                   {data.debrief.acts.map((act, i) => (
                     <View key={act.title} style={i > 0 ? { marginTop: space.lg } : undefined}>
                       <Text style={styles.debriefActTitle} accessibilityRole="header">

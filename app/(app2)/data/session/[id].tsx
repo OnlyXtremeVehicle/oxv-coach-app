@@ -3370,7 +3370,20 @@ function ConstatsSection({
    * ancres de défilement (`registerSection`). Une section qui dit pourquoi elle
    * est vide vaut mieux qu'une section qui s'évapore.
    */
-  if (!sectionAffichable(etats)) {
+  /**
+   * L'ÉTAT VIDE GLOBAL NE S'AFFICHE QUE SI RIEN N'A RIEN À DIRE.
+   *
+   * `sectionAffichable` ne compte que les SIX lectures approfondies. Les deux
+   * constats de fin de virage (M14/M15) ne pèsent pas dans sa décision, et ils
+   * étaient pourtant effacés par elle — alors qu'ils portent chacun leur raison,
+   * prête, deux blocs plus haut : « Aucun tour chronométré sur cette séance »,
+   * « Aucun virage segmenté sur cette séance ».
+   *
+   * Le pilote voyait donc disparaître deux lignes qui savaient dire pourquoi.
+   * C'est exactement la porte fermée sans explication que ce lot existe pour
+   * supprimer.
+   */
+  if (!sectionAffichable(etats) && !virageFinDispo) {
     return (
       <StateView
         state="empty"

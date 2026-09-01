@@ -38,7 +38,25 @@ export async function fetchSessionInsights(
     .limit(1)
     .maybeSingle();
 
-  if (error || !data) return null;
+  /**
+   * UNE PANNE N'EST PAS UN VIDE — corrigé le 01/09/2026.
+   *
+   * Les deux cas étaient confondus dans un seul `return null`, et la promesse
+   * était donc TOUJOURS tenue. L'appelant, lui, distingue les deux : l'écran de
+   * séance est en `Promise.allSettled` et pose `failed.constats` sur un rejet,
+   * pour afficher « Lectures indisponibles pour le moment » au lieu d'un vide.
+   * Cette branche d'erreur était INATTEIGNABLE — un état honnête écrit, testé,
+   * et que rien ne pouvait déclencher.
+   *
+   * Une base qui ne répond pas et une séance non calculée se lisent
+   * différemment : la première invite à réessayer, la seconde à attendre un
+   * calcul. Les confondre fait passer une panne pour un état normal.
+   *
+   * Le contre-exemple vivait dans le même écran : `loadSeanceWeather` lève déjà
+   * sur `error`.
+   */
+  if (error) throw new Error(error.message);
+  if (!data) return null;
 
   // Second verrou, côté client : si le filtre serveur venait à sauter — requête
   // modifiée, vue interposée — on refuse quand même. Le fail-closed vit ici,

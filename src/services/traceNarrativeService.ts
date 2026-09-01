@@ -66,7 +66,12 @@ export async function loadTraceOfDay(
   const [laps, segments, insights, intention] = await Promise.all([
     fetchSessionLaps(session.id),
     listSegmentAnalysesForSession(session.id),
-    fetchSessionInsights(session.id),
+    // `fetchSessionInsights` LÈVE sur une panne depuis le 01/09 — la distinction
+    // panne/vide était morte, et l'écran de séance en avait besoin. Ici elle ne
+    // sert pas : le récit du tracé se compose sans les lectures, et il ne doit
+    // pas tomber parce qu'une table n'a pas répondu. On retombe donc sur `null`,
+    // explicitement, comme `comparer` le fait déjà.
+    fetchSessionInsights(session.id).catch(() => null),
     getIntentionForSession(session.id),
   ]);
 
