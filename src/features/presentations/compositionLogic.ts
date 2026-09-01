@@ -268,7 +268,18 @@ export interface EntreeComposition {
 
 export interface PresentationComposee {
   id: IdPresentation;
+  /** Le nom du catalogue. Il documente ; il ne s'affiche pas sur une feuille. */
   nom: string;
+  /**
+   * Le libellé À AFFICHER — mot-clé, majuscules, jamais une phrase.
+   *
+   * Les deux voyagent ensemble parce qu'ils ne servent pas au même endroit :
+   * une feuille de données montre `court`, une feuille de récit ou un document
+   * peut porter `nom`. Ne transporter que l'un des deux obligerait la surface à
+   * retrouver l'autre dans le registre, et c'est ainsi qu'un nom de catalogue
+   * finit sur un écran.
+   */
+  court: string;
   niveau: NiveauLecture;
   role: RolePresentation;
   moment: MomentPresentation;
@@ -599,6 +610,7 @@ export function composerPresentations(entree: EntreeComposition): Composition {
     return {
       id: c.fiche.id,
       nom: c.fiche.nom,
+      court: c.fiche.court,
       niveau: c.fiche.niveau,
       role: c.fiche.role,
       moment: c.fiche.moment,

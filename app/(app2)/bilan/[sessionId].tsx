@@ -498,7 +498,11 @@ export default function BilanScreen() {
                     .map((p) => (
                       <ListRow
                         key={p.id}
-                        label={p.nom}
+                        // `court`, jamais `nom` : cette feuille est une feuille
+                        // de données, et les soixante-cinq noms du catalogue
+                        // sont des phrases au sens de la règle. Le nom complet
+                        // part au libellé d'accessibilité avec les motifs.
+                        label={p.court}
                         accessibilityLabel={`${p.nom}. ${p.motifs.join('. ')}`}
                       />
                     ))}

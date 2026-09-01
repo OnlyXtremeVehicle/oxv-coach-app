@@ -250,6 +250,23 @@ export interface Presentation {
   readonly id: string;
   /** Nom de la fiche, tel que l'index le donne. */
   readonly nom: string;
+  /**
+   * LE LIBELLÉ AFFICHÉ SUR UNE FEUILLE DE DONNÉES — mot-clé, jamais phrase.
+   *
+   * `nom` est le nom du CATALOGUE : « Ce que je retiens », « Effet jusqu'à la
+   * zone suivante ». Il se lit bien dans un index et dans un document ; sur une
+   * feuille de données, il enfreint la règle des mots-clés — les soixante-cinq
+   * la violent, mesuré le 01/09/2026.
+   *
+   * `court` est la forme que le pilote lit : majuscules, `SUJET` ou
+   * `SUJET · PRÉCISION`, aucun mot outil, trois mots au plus de chaque côté du
+   * point médian. La décision du fondateur du 30/08 le rend OBLIGATOIRE, et
+   * `registreMotsCles.guard.test.ts` refuse toute fiche qui n'en porte pas un.
+   *
+   * Les deux coexistent : le nom du catalogue ne se perd pas, il cesse
+   * seulement de s'afficher là où la règle l'interdit.
+   */
+  readonly court: string;
   /** CRÉER / ADAPTER / REPRENDRE. */
   readonly choix: ChoixPresentation;
   /** Surfaces de l'index, dans l'ordre où il les écrit. */
@@ -284,6 +301,7 @@ export const REGISTRE_PRESENTATIONS = [
   {
     id: 'P01',
     nom: 'Objectif du run',
+    court: 'OBJECTIF · RUN',
     choix: 'adapter',
     surfaces: ['pilote', 'coach'],
     niveau: 1,
@@ -297,6 +315,7 @@ export const REGISTRE_PRESENTATIONS = [
   {
     id: 'P02',
     nom: 'Prévol sans jargon',
+    court: 'PRÉVOL · SIMPLIFIÉ',
     choix: 'adapter',
     surfaces: ['pilote', 'operateur'],
     niveau: 1,
@@ -310,6 +329,7 @@ export const REGISTRE_PRESENTATIONS = [
   {
     id: 'P03',
     nom: 'Ressenti en six touches',
+    court: 'RESSENTI · SIX TOUCHES',
     choix: 'creer',
     surfaces: ['pilote'],
     niveau: 1,
@@ -325,6 +345,7 @@ export const REGISTRE_PRESENTATIONS = [
   {
     id: 'P04',
     nom: 'Note vocale 15 secondes',
+    court: 'NOTE VOCALE · 15 SECONDES',
     choix: 'creer',
     surfaces: ['pilote'],
     niveau: 1,
@@ -338,6 +359,7 @@ export const REGISTRE_PRESENTATIONS = [
   {
     id: 'P05',
     nom: 'Virage vécu comme difficile',
+    court: 'VIRAGE · RESSENTI DIFFICILE',
     choix: 'creer',
     surfaces: ['pilote'],
     niveau: 1,
@@ -353,6 +375,7 @@ export const REGISTRE_PRESENTATIONS = [
   {
     id: 'P06',
     nom: 'Confiance du pilote',
+    court: 'CONFIANCE PILOTE',
     choix: 'creer',
     surfaces: ['pilote'],
     niveau: 1,
@@ -366,6 +389,7 @@ export const REGISTRE_PRESENTATIONS = [
   {
     id: 'P07',
     nom: 'Fin du run en un geste',
+    court: 'CLÔTURE · GESTE UNIQUE',
     choix: 'creer',
     surfaces: ['pilote'],
     niveau: 1,
@@ -381,6 +405,7 @@ export const REGISTRE_PRESENTATIONS = [
   {
     id: 'P08',
     nom: 'Verdict du run',
+    court: 'VERDICT · RUN',
     choix: 'creer',
     surfaces: ['pilote'],
     niveau: 1,
@@ -396,6 +421,7 @@ export const REGISTRE_PRESENTATIONS = [
   {
     id: 'P09',
     nom: 'Réussite du run',
+    court: 'RÉUSSITE · RUN',
     choix: 'creer',
     surfaces: ['pilote'],
     niveau: 1,
@@ -410,6 +436,7 @@ export const REGISTRE_PRESENTATIONS = [
   {
     id: 'P10',
     nom: 'Opportunité principale',
+    court: 'OPPORTUNITÉ PRINCIPALE',
     choix: 'creer',
     surfaces: ['pilote'],
     niveau: 1,
@@ -424,6 +451,7 @@ export const REGISTRE_PRESENTATIONS = [
   {
     id: 'P11',
     nom: 'Ce que je retiens',
+    court: 'POINT RETENU',
     choix: 'creer',
     surfaces: ['pilote'],
     niveau: 1,
@@ -437,6 +465,7 @@ export const REGISTRE_PRESENTATIONS = [
   {
     id: 'P12',
     nom: 'Monnaie du temps',
+    court: 'MONNAIE · TEMPS',
     choix: 'creer',
     surfaces: ['pilote'],
     niveau: 1,
@@ -452,6 +481,7 @@ export const REGISTRE_PRESENTATIONS = [
   {
     id: 'P13',
     nom: 'Carte récit du circuit',
+    court: 'CARTE RÉCIT · CIRCUIT',
     choix: 'creer',
     surfaces: ['pilote'],
     niveau: 1,
@@ -467,6 +497,7 @@ export const REGISTRE_PRESENTATIONS = [
   {
     id: 'P14',
     nom: 'Top 3 à ouvrir',
+    court: 'TOP 3 · LECTURES',
     choix: 'adapter',
     surfaces: ['pilote'],
     niveau: 1,
@@ -487,6 +518,7 @@ export const REGISTRE_PRESENTATIONS = [
   {
     id: 'P15',
     nom: 'Progression dans la session',
+    court: 'PROGRESSION · SÉANCE',
     choix: 'adapter',
     surfaces: ['pilote'],
     niveau: 1,
@@ -500,6 +532,7 @@ export const REGISTRE_PRESENTATIONS = [
   {
     id: 'P16',
     nom: 'Meilleur passage répétable',
+    court: 'PASSAGE RÉPÉTABLE',
     choix: 'creer',
     surfaces: ['pilote'],
     niveau: 1,
@@ -514,6 +547,7 @@ export const REGISTRE_PRESENTATIONS = [
   {
     id: 'P17',
     nom: 'Fiabilité de la conclusion',
+    court: 'FIABILITÉ · CONCLUSION',
     choix: 'adapter',
     surfaces: ['pilote'],
     niveau: 1,
@@ -531,6 +565,7 @@ export const REGISTRE_PRESENTATIONS = [
   {
     id: 'P18',
     nom: 'Film du virage',
+    court: 'FILM · VIRAGE',
     choix: 'creer',
     surfaces: ['pilote', 'coach'],
     niveau: 2,
@@ -544,6 +579,7 @@ export const REGISTRE_PRESENTATIONS = [
   {
     id: 'P19',
     nom: 'Ruban des quatre phases',
+    court: 'RUBAN · QUATRE PHASES',
     choix: 'creer',
     surfaces: ['pilote'],
     niveau: 2,
@@ -559,6 +595,7 @@ export const REGISTRE_PRESENTATIONS = [
   {
     id: 'P20',
     nom: 'Mirror Twin',
+    court: 'MIRROR TWIN',
     choix: 'creer',
     surfaces: ['pilote'],
     niveau: 2,
@@ -572,6 +609,7 @@ export const REGISTRE_PRESENTATIONS = [
   {
     id: 'P21',
     nom: 'Différence seulement',
+    court: 'DIFFÉRENCE SEULE',
     choix: 'creer',
     surfaces: ['pilote'],
     niveau: 2,
@@ -585,6 +623,7 @@ export const REGISTRE_PRESENTATIONS = [
   {
     id: 'P22',
     nom: 'Avant / après côte à côte',
+    court: 'AVANT · APRÈS',
     choix: 'adapter',
     surfaces: ['pilote', 'coach'],
     niveau: 2,
@@ -598,6 +637,7 @@ export const REGISTRE_PRESENTATIONS = [
   {
     id: 'P23',
     nom: 'Ressenti contre réalité',
+    court: 'RESSENTI · MESURE',
     choix: 'creer',
     surfaces: ['pilote', 'coach'],
     niveau: 2,
@@ -612,6 +652,7 @@ export const REGISTRE_PRESENTATIONS = [
   {
     id: 'P24',
     nom: 'Blind Reveal',
+    court: 'BLIND REVEAL',
     choix: 'creer',
     surfaces: ['pilote'],
     niveau: 2,
@@ -625,6 +666,7 @@ export const REGISTRE_PRESENTATIONS = [
   {
     id: 'P25',
     nom: 'Effet jusqu’à la zone suivante',
+    court: 'EFFET · ZONE SUIVANTE',
     choix: 'creer',
     surfaces: ['pilote'],
     niveau: 2,
@@ -638,6 +680,7 @@ export const REGISTRE_PRESENTATIONS = [
   {
     id: 'P26',
     nom: 'Couloir de placement',
+    court: 'COULOIR · PLACEMENT',
     choix: 'adapter',
     surfaces: ['pilote', 'coach'],
     niveau: 2,
@@ -652,6 +695,7 @@ export const REGISTRE_PRESENTATIONS = [
   {
     id: 'P27',
     nom: 'Repère de décélération observée',
+    court: 'REPÈRE · DÉCÉLÉRATION',
     choix: 'adapter',
     surfaces: ['pilote', 'coach'],
     niveau: 2,
@@ -665,6 +709,7 @@ export const REGISTRE_PRESENTATIONS = [
   {
     id: 'P28',
     nom: 'Point le plus lent',
+    court: 'POINT LENT',
     choix: 'adapter',
     surfaces: ['pilote'],
     niveau: 2,
@@ -678,6 +723,7 @@ export const REGISTRE_PRESENTATIONS = [
   {
     id: 'P29',
     nom: 'Rotation et stabilité',
+    court: 'ROTATION · STABILITÉ',
     choix: 'adapter',
     surfaces: ['pilote', 'coach'],
     niveau: 2,
@@ -691,6 +737,7 @@ export const REGISTRE_PRESENTATIONS = [
   {
     id: 'P30',
     nom: 'Grip simplifié',
+    court: 'GRIP SIMPLIFIÉ',
     choix: 'adapter',
     surfaces: ['pilote'],
     niveau: 2,
@@ -704,6 +751,7 @@ export const REGISTRE_PRESENTATIONS = [
   {
     id: 'P31',
     nom: 'Régularité par cases',
+    court: 'RÉGULARITÉ · CASES',
     choix: 'adapter',
     surfaces: ['pilote', 'coach'],
     niveau: 2,
@@ -717,6 +765,7 @@ export const REGISTRE_PRESENTATIONS = [
   {
     id: 'P32',
     nom: 'Vidéo synchronisée',
+    court: 'VIDÉO SYNCHRONISÉE',
     choix: 'reprendre',
     surfaces: ['pilote', 'coach'],
     niveau: 2,
@@ -730,6 +779,7 @@ export const REGISTRE_PRESENTATIONS = [
   {
     id: 'P33',
     nom: 'Voir la preuve technique',
+    court: 'PREUVE TECHNIQUE',
     choix: 'reprendre',
     surfaces: ['coach', 'lab'],
     // Exception de section, motivée par la fiche : TEXTE « Caché par défaut »,
@@ -747,6 +797,7 @@ export const REGISTRE_PRESENTATIONS = [
   {
     id: 'P34',
     nom: 'Pile de preuves coach',
+    court: 'PILE · PREUVES COACH',
     choix: 'adapter',
     surfaces: ['coach'],
     niveau: 2,
@@ -760,6 +811,7 @@ export const REGISTRE_PRESENTATIONS = [
   {
     id: 'P35',
     nom: 'Phrase coach liée à la preuve',
+    court: 'PHRASE COACH · PREUVE',
     choix: 'creer',
     surfaces: ['pilote', 'coach'],
     niveau: 2,
@@ -773,6 +825,7 @@ export const REGISTRE_PRESENTATIONS = [
   {
     id: 'P36',
     nom: 'Voix coach sur le passage',
+    court: 'VOIX COACH · PASSAGE',
     choix: 'adapter',
     surfaces: ['pilote', 'coach'],
     niveau: 2,
@@ -786,6 +839,7 @@ export const REGISTRE_PRESENTATIONS = [
   {
     id: 'P37',
     nom: 'Confirmation de compréhension',
+    court: 'CONFIRMATION · COMPRÉHENSION',
     choix: 'creer',
     surfaces: ['pilote'],
     niveau: 2,
@@ -799,6 +853,7 @@ export const REGISTRE_PRESENTATIONS = [
   {
     id: 'P38',
     nom: 'Repère mémoire',
+    court: 'REPÈRE MÉMOIRE',
     choix: 'creer',
     surfaces: ['pilote', 'coach'],
     niveau: 2,
@@ -812,6 +867,7 @@ export const REGISTRE_PRESENTATIONS = [
   {
     id: 'P39',
     nom: 'Mode un seul changement',
+    court: 'MODE · CHANGEMENT UNIQUE',
     choix: 'creer',
     surfaces: ['pilote'],
     niveau: 2,
@@ -825,6 +881,7 @@ export const REGISTRE_PRESENTATIONS = [
   {
     id: 'P40',
     nom: 'Défi du prochain run',
+    court: 'DÉFI · PROCHAIN RUN',
     choix: 'creer',
     surfaces: ['pilote', 'coach'],
     niveau: 2,
@@ -838,6 +895,7 @@ export const REGISTRE_PRESENTATIONS = [
   {
     id: 'P41',
     nom: 'File de consignes live',
+    court: 'FILE · CONSIGNES LIVE',
     choix: 'creer',
     surfaces: ['coach'],
     niveau: 2,
@@ -851,6 +909,7 @@ export const REGISTRE_PRESENTATIONS = [
   {
     id: 'P42',
     nom: 'Fenêtre cognitive',
+    court: 'FENÊTRE COGNITIVE',
     choix: 'creer',
     surfaces: ['coach', 'systeme'],
     niveau: 2,
@@ -864,6 +923,7 @@ export const REGISTRE_PRESENTATIONS = [
   {
     id: 'P43',
     nom: 'Résultat après intervention',
+    court: 'RÉSULTAT · APRÈS INTERVENTION',
     choix: 'creer',
     surfaces: ['pilote', 'coach'],
     niveau: 2,
@@ -883,6 +943,7 @@ export const REGISTRE_PRESENTATIONS = [
   {
     id: 'P44',
     nom: 'Résultat non concluant',
+    court: 'RÉSULTAT NON CONCLUANT',
     choix: 'creer',
     surfaces: ['pilote', 'coach'],
     niveau: 2,
@@ -896,6 +957,7 @@ export const REGISTRE_PRESENTATIONS = [
   {
     id: 'P45',
     nom: 'Résumé coach de session',
+    court: 'RÉSUMÉ COACH · SÉANCE',
     choix: 'adapter',
     surfaces: ['coach'],
     // Exception de section, motivée par la fiche : TEXTE « 3 cartes », qui est
@@ -913,6 +975,7 @@ export const REGISTRE_PRESENTATIONS = [
   {
     id: 'P46',
     nom: 'Passeport de compétences',
+    court: 'PASSEPORT · COMPÉTENCES',
     choix: 'creer',
     surfaces: ['pilote', 'coach'],
     niveau: 2,
@@ -926,6 +989,7 @@ export const REGISTRE_PRESENTATIONS = [
   {
     id: 'P47',
     nom: 'Carte preuve d’une compétence',
+    court: 'CARTE PREUVE · COMPÉTENCE',
     choix: 'creer',
     surfaces: ['pilote', 'coach'],
     niveau: 2,
@@ -939,6 +1003,7 @@ export const REGISTRE_PRESENTATIONS = [
   {
     id: 'P48',
     nom: 'Rétention au prochain événement',
+    court: 'RÉTENTION · PROCHAIN ÉVÉNEMENT',
     choix: 'creer',
     surfaces: ['pilote', 'coach'],
     niveau: 2,
@@ -952,6 +1017,7 @@ export const REGISTRE_PRESENTATIONS = [
   {
     id: 'P49',
     nom: 'Ligne du temps saison',
+    court: 'CHRONOLOGIE · SAISON',
     choix: 'adapter',
     surfaces: ['pilote'],
     niveau: 2,
@@ -965,6 +1031,7 @@ export const REGISTRE_PRESENTATIONS = [
   {
     id: 'P50',
     nom: 'Album des forces',
+    court: 'ALBUM · FORCES',
     choix: 'creer',
     surfaces: ['pilote'],
     niveau: 2,
@@ -980,6 +1047,7 @@ export const REGISTRE_PRESENTATIONS = [
   {
     id: 'P51',
     nom: 'Transfert entre circuits',
+    court: 'TRANSFERT · CIRCUITS',
     choix: 'creer',
     surfaces: ['pilote', 'coach'],
     niveau: 2,
@@ -993,6 +1061,7 @@ export const REGISTRE_PRESENTATIONS = [
   {
     id: 'P52',
     nom: 'Story de fin de journée',
+    court: 'STORY · FIN JOURNÉE',
     choix: 'creer',
     surfaces: ['pilote'],
     niveau: 2,
@@ -1007,6 +1076,7 @@ export const REGISTRE_PRESENTATIONS = [
   {
     id: 'P53',
     nom: 'Clip partageable',
+    court: 'CLIP PARTAGEABLE',
     choix: 'adapter',
     surfaces: ['pilote'],
     niveau: 2,
@@ -1020,6 +1090,7 @@ export const REGISTRE_PRESENTATIONS = [
   {
     id: 'P54',
     nom: 'Rapport premium',
+    court: 'RAPPORT PREMIUM',
     choix: 'adapter',
     surfaces: ['pilote', 'client'],
     niveau: 2,
@@ -1037,6 +1108,7 @@ export const REGISTRE_PRESENTATIONS = [
   {
     id: 'P55',
     nom: 'Tableau des tours',
+    court: 'TABLEAU · TOURS',
     choix: 'reprendre',
     surfaces: ['coach', 'lab'],
     niveau: 3,
@@ -1050,6 +1122,7 @@ export const REGISTRE_PRESENTATIONS = [
   {
     id: 'P56',
     nom: 'Delta temps / distance',
+    court: 'DELTA · TEMPS DISTANCE',
     choix: 'reprendre',
     surfaces: ['coach', 'lab'],
     niveau: 3,
@@ -1063,6 +1136,7 @@ export const REGISTRE_PRESENTATIONS = [
   {
     id: 'P57',
     nom: 'Vitesse / distance',
+    court: 'VITESSE · DISTANCE',
     choix: 'reprendre',
     surfaces: ['coach', 'lab'],
     niveau: 3,
@@ -1076,6 +1150,7 @@ export const REGISTRE_PRESENTATIONS = [
   {
     id: 'P58',
     nom: 'Index détaillé des virages',
+    court: 'INDEX · VIRAGES',
     choix: 'reprendre',
     surfaces: ['coach', 'lab'],
     niveau: 3,
@@ -1089,6 +1164,7 @@ export const REGISTRE_PRESENTATIONS = [
   {
     id: 'P59',
     nom: 'Gestionnaire de références',
+    court: 'GESTIONNAIRE · RÉFÉRENCES',
     choix: 'reprendre',
     surfaces: ['coach', 'lab'],
     niveau: 3,
@@ -1102,6 +1178,7 @@ export const REGISTRE_PRESENTATIONS = [
   {
     id: 'P60',
     nom: 'Enveloppe G-G complète',
+    court: 'ENVELOPPE G-G',
     choix: 'reprendre',
     surfaces: ['coach', 'lab'],
     niveau: 3,
@@ -1115,6 +1192,7 @@ export const REGISTRE_PRESENTATIONS = [
   {
     id: 'P61',
     nom: 'Workspace à curseur commun',
+    court: 'WORKSPACE · CURSEUR COMMUN',
     choix: 'reprendre',
     surfaces: ['coach', 'lab'],
     niveau: 3,
@@ -1130,6 +1208,7 @@ export const REGISTRE_PRESENTATIONS = [
   {
     id: 'P62',
     nom: 'Live Wall flotte',
+    court: 'LIVE WALL · FLOTTE',
     choix: 'reprendre',
     surfaces: ['coach', 'operateur'],
     niveau: 3,
@@ -1143,6 +1222,7 @@ export const REGISTRE_PRESENTATIONS = [
   {
     id: 'P63',
     nom: 'Live pilote sélectionné',
+    court: 'LIVE · PILOTE SÉLECTIONNÉ',
     choix: 'reprendre',
     surfaces: ['coach'],
     niveau: 3,
@@ -1156,6 +1236,7 @@ export const REGISTRE_PRESENTATIONS = [
   {
     id: 'P64',
     nom: 'Qualité et mode dégradé',
+    court: 'QUALITÉ · MODE DÉGRADÉ',
     choix: 'reprendre',
     surfaces: ['coach', 'operateur'],
     niveau: 3,
@@ -1169,6 +1250,7 @@ export const REGISTRE_PRESENTATIONS = [
   {
     id: 'P65',
     nom: 'Canaux véhicule optionnels',
+    court: 'CANAUX VÉHICULE',
     choix: 'reprendre',
     surfaces: ['coach', 'lab'],
     niveau: 3,

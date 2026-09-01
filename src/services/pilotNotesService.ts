@@ -12,6 +12,12 @@
  */
 
 import { supabase } from '@/lib/supabase';
+import {
+  RESSENTIS,
+  THEMES,
+  type RessentiQcm,
+  type ThemeQcm,
+} from '@/features/rec/qcmLogic';
 
 export interface PilotNote {
   id: string;
@@ -169,4 +175,65 @@ export async function listSharedNotesForPilot(pilotId: string): Promise<PilotNot
       );
   }
   return notes;
+}
+
+/**
+ * LE QCM D'ENTRE-RUNS D'UNE SÉANCE — thème et ressenti, validés.
+ *
+ * ===========================================================================
+ * LA DONNÉE ÉTAIT ÉCRITE, ELLE N'ÉTAIT PAS RELUE PAR LE MOTEUR
+ * ===========================================================================
+ *
+ * `rec/entre-runs` écrit le QCM depuis le 12/08 : `addNote(body, sessionId,
+ * { theme, ressenti })`. `listSessionNotes` le relit pour l'afficher. Mais le
+ * moteur de composition, lui, recevait `theme: null` et `ressenti: null` —
+ * la troisième fois dans ce dépôt qu'une colonne est écrite, transportée, puis
+ * perdue au dernier maillon.
+ *
+ * ===========================================================================
+ * DEUX VALIDATIONS, ET UNE SEULE VIENT DE POSTGRES
+ * ===========================================================================
+ *
+ * `theme` est CONTRAINT en base (`pilot_notes_theme_check`) sur les quatre
+ * valeurs de `ThemeQcm` : ce qui sort de la table est déjà licite.
+ *
+ * `ressenti` ne l'est PAS — la colonne est un `text` libre. On le valide donc
+ * ici, contre `RESSENTIS`, et une valeur hors liste devient `null` au lieu
+ * d'entrer dans le moteur. Le jour où une cinquième réponse s'ajoute à l'écran
+ * sans s'ajouter au type, elle se voit ici plutôt que de départager des fiches
+ * en silence.
+ *
+ * ===========================================================================
+ * LA PLUS RÉCENTE, ET RIEN QU'ELLE
+ * ===========================================================================
+ *
+ * Un pilote peut répondre plusieurs fois sur une même séance. La dernière
+ * réponse est celle qui vaut : les précédentes sont des états intermédiaires
+ * d'un geste, pas des avis successifs. On ne les agrège pas — une moyenne de
+ * ressentis ne veut rien dire.
+ */
+export async function lireQcmSeance(
+  sessionId: string
+): Promise<{ theme: ThemeQcm | null; ressenti: RessentiQcm | null }> {
+  const vide = { theme: null, ressenti: null };
+  if (typeof sessionId !== 'string' || sessionId.length === 0) return vide;
+
+  const { data, error } = await supabase
+    .from('pilot_notes')
+    .select('theme, ressenti, created_at')
+    .eq('session_id', sessionId)
+    .not('theme', 'is', null)
+    .order('created_at', { ascending: false })
+    .limit(1);
+
+  if (error) {
+    console.warn('[OXV][notes] lireQcmSeance :', error.message);
+    return vide;
+  }
+  const ligne = (data ?? [])[0] as { theme?: unknown; ressenti?: unknown } | undefined;
+  if (ligne === undefined) return vide;
+
+  const theme = THEMES.find((t) => t.cle === ligne.theme)?.cle ?? null;
+  const ressenti = RESSENTIS.find((r) => r.cle === ligne.ressenti)?.cle ?? null;
+  return { theme, ressenti };
 }

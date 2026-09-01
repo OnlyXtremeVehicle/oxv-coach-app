@@ -19,15 +19,20 @@
  * DEUX ENTRÉES RESTENT NULLES, ET CE N'EST PAS UN OUBLI
  * ===========================================================================
  *
- * `souhait.theme` et `souhait.ressenti` viennent du QCM d'entre-runs. Le QCM
- * EXISTE — `qcmLogic` porte ses quatre thèmes et ses quatre ressentis — mais
- * aucune table ne les garde : recherche faite sur `supabase/migrations`, aucun
- * écrivain, aucune colonne. Une réponse donnée après un run n'est lisible que
- * pendant la session d'application qui l'a reçue.
+ * `souhait.theme` et `souhait.ressenti` viennent du QCM d'entre-runs, et une
+ * première rédaction de cet en-tête affirmait qu'aucune table ne les gardait.
+ * C'ÉTAIT FAUX, et la vérification l'a montré le jour même : l'écran
+ * `rec/entre-runs` appelle `addNote(body, sessionId, { theme, ressenti })`
+ * depuis le 12/08, et `pilot_notes` porte les deux colonnes — `theme` est même
+ * CONTRAINTE en base sur les quatre valeurs de `ThemeQcm`.
  *
- * On rend donc `null`, et le moteur en tire la conséquence lui-même : la clé
- * `ressenti` reste absente, et le bonus de thème ne s'applique à aucune fiche.
- * Le jour où le QCM se persiste, il se branche ici en deux lignes.
+ * La leçon est celle que `pilotNotesService` avait déjà écrite pour lui-même :
+ * un ajout de colonne se vérifie sur le trajet COMPLET, aller ET retour. Ici
+ * le retour manquait au moteur, pas à la base.
+ *
+ * `ressenti`, lui, n'est pas contraint côté Postgres : la validation se fait
+ * donc en TypeScript, contre `RESSENTIS`. Une valeur hors liste devient `null`
+ * plutôt que d'entrer dans le moteur.
  *
  * `disponibilite.confiance` est DEMANDÉE à l'appelant, jamais devinée — et
  * `null` y veut dire « non évaluée », ce que le moteur sait lire. La note se
@@ -51,6 +56,7 @@ import {
 import type { NiveauConfiance } from '@/features/data/confianceLogic';
 import { supabase } from '@/lib/supabase';
 import { getIntentionForSession } from '@/services/intentionsService';
+import { lireQcmSeance } from '@/services/pilotNotesService';
 import { loadEtatSeance, ETAT_SEANCE_VIDE } from '@/services/etatSeanceService';
 
 /**
@@ -157,7 +163,7 @@ export interface EntreeAssemblage {
  * `ecartees` dit laquelle.
  */
 export async function lireEntreeComposition(e: EntreeAssemblage): Promise<EntreeComposition> {
-  const [experience, faits, etat, travailActif, intention] = await Promise.all([
+  const [experience, faits, etat, travailActif, intention, qcm] = await Promise.all([
     lireExperience(e.piloteId),
     lireFaitsSeance({
       piloteId: e.piloteId,
@@ -169,6 +175,7 @@ export async function lireEntreeComposition(e: EntreeAssemblage): Promise<Entree
     loadEtatSeance(e.captureId).catch(() => ETAT_SEANCE_VIDE),
     lireTravailActif(e.piloteId),
     getIntentionForSession(e.captureId),
+    lireQcmSeance(e.captureId),
   ]);
 
   /**
@@ -193,7 +200,7 @@ export async function lireEntreeComposition(e: EntreeAssemblage): Promise<Entree
   return {
     surface: e.surface,
     experience,
-    souhait: { plan, theme: null, ressenti: null },
+    souhait: { plan, theme: qcm.theme, ressenti: qcm.ressenti },
     disponibilite: { etat, confiance: e.confiance ?? null, faits },
     travailActif,
   };
