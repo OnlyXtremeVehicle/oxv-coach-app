@@ -217,66 +217,62 @@ et 12,2 km/h. Elle valide la chaîne ; elle ne calibre pas un seuil de piste.
   approfondie ne peut naître, quel que soit l'état des moteurs.
 - `cycle_steps` et `coach_annotations` : **zéro ligne**. Les fiches P36 et
   P46–P51 resteront écartées.
-- Deux tracés sur six **ne se referment pas** : Bouteville 85,3 m entre son
-  dernier point et son premier, Haute Saintonge 17,1 m ; Albi, le Bugatti,
-  Ricardo Tormo et la Charente à 0,0 m. Une trame qui tombe dans ce trou se
-  projetait sur un sommet, et son écart latéral — la moitié du trou — retirait
-  la moitié de la marge du virage. Corrigé le 01/09 (`horsTrace`,
-  `ecartBouclageM`) : l'écart de ces trames ne compte plus. **Le trou de
-  Bouteville, lui, est toujours là** : c'est une donnée à reprendre, pas du
-  code.
+- **Haute Saintonge** ne se referme pas : 17,1 m entre son dernier point et
+  son premier. Albi, le Bugatti, Ricardo Tormo, la Charente et — depuis le
+  02/09 — Bouteville sont à 0,0 m. Une trame qui tombe dans un tel trou se
+  projette sur un sommet, et son écart latéral vaut la moitié du trou : comme
+  `computeSegmentMargin` lit le MAXIMUM d'écart du virage, **une seule trame
+  retirait la moitié de la marge** (86,04 → 37,5, mesuré). Le garde de recalage
+  mesure la MÉDIANE et ne pouvait pas le voir. `horsTrace` neutralise l'effet
+  depuis le 01/09 ; Haute Saintonge est le tracé de démonstration, sa cause
+  n'est pas reprise.
 
-### Le tracé de Bouteville porte DEUX défauts, mesurés le 02/09/2026
+### Le tracé de Bouteville a été repris le 02/09/2026
 
-Aucun des deux n'était dans la recette. Ils se réparent ensemble ou pas du
-tout, et c'est une décision du fondateur — le brief a déjà tranché ce genre de
-chose pour Albi et le Bugatti.
+Il portait deux défauts, au même endroit, dont aucun n'était dans la recette.
+Les deux sont réparés, et le circuit rejoint Albi et le Bugatti.
 
-**1. L'anneau n'est pas refermé, et la longueur déclarée le prouve.**
+**1. L'anneau n'était pas refermé — et la longueur déclarée le prouvait.**
 
-| Circuit | Déclarée | Polyligne | Manque | Écart de bouclage |
+| Circuit | Déclarée | Polyligne | Manque | Bouclage |
 |---|---|---|---|---|
-| **Bouteville** | 5 910 m | 5 820,8 m | **89,2 m** | **85,3 m** |
+| **Bouteville, avant** | 5 910 m | 5 820,8 m | **89,2 m** | **85,3 m** |
 | **Haute Saintonge** | 2 210 m | 2 189,9 m | **20,1 m** | **17,1 m** |
-| Albi | 3 570 m | 3 562,5 m | 7,5 m | 0,0 m |
-| Bugatti | 4 190 m | 4 163,7 m | 26,3 m | 0,0 m |
-| Ricardo Tormo | 4 000 m | 3 999,8 m | 0,2 m | 0,0 m |
-| Charente | 1 540 m | 1 542,8 m | −2,8 m | 0,0 m |
+| Albi · Bugatti · Tormo · Charente | — | — | ≤ 26 m | 0,0 m |
 
-Sur les deux tracés ouverts, et **sur eux seuls**, le manque égale l'écart de
-bouclage à quatre mètres près. `length_km` compte donc un segment de fermeture
-que `centerline_latlon` ne porte pas : le point de fermeture a été perdu à la
-génération. Ce n'est pas une route non relevée, c'est un point tombé.
+Sur les deux tracés ouverts, et sur eux seuls, le manque égalait le bouclage à
+quatre mètres près. `length_km` comptait donc un segment que
+`centerline_latlon` ne portait pas. **Le fichier source l'avait**, lui :
+`src/circuit/data/bouteville.geojson` porte 140 points, fermé à 0,00 m, long de
+5 906,1 m. Un seul point — celui de fermeture — avait été perdu à l'import du
+12/08. La description en base disait d'ailleurs elle-même « boucle fermée à
+0,00 m » : elle décrivait le fichier, pas ce qui avait été stocké.
 
-**Conséquence pour qui voudrait refermer :** appliquer la convention des quatre
-autres — répéter le premier point à la fin — porte la longueur de 5 820,8 à
-5 906,1 m, soit **+1,46 %**. Or `apex_s_norm` est *normalisé* et a été calculé
-sur l'ancienne longueur : les douze cordes se déplaceraient jusqu'à 85 m.
-**Refermer impose de relancer le détecteur de virages.** Ce n'est pas une ligne
-de SQL.
+**2. Le tracé ne commençait pas à la ligne — 1 735 m.** Albi (0,5 m) et le
+Bugatti (1,1 m) avaient été recalés le 30/08 ; Bouteville est antérieur et ne
+l'avait jamais été.
 
-**2. Le tracé ne commence pas à la ligne — 1 735 m de décalage.**
+**Ce qui a été fait**, méthode d'Albi : départ au **pied de la perpendiculaire**
+sur le segment 44 (t = 0,218), à **4,37 m** de la ligne — le sommet le plus
+proche était à 23,31 m. Résultat en base : **141 points, bouclage 0,00 m,
+5 906,1 m, premier point à 4,37 m de la ligne.** Cap au franchissement
+**336,7°** contre 336,6° annoncés : le sens du tour est inchangé.
 
-| Circuit | Premier point → ligne | Dernier point → ligne |
-|---|---|---|
-| **Bouteville** | **1 735,0 m** | **1 686,8 m** |
-| Charente | 0,0 m | 0,0 m |
-| Albi | 0,5 m | 0,5 m |
-| Bugatti | 1,1 m | 1,1 m |
-| Ricardo Tormo | 45,7 m | 45,7 m |
-| Haute Saintonge | 280,4 m | 287,1 m |
+**Les virages ont été recalculés, et il y en a treize, plus douze.** Ce n'est
+pas une dérive de réglage — les paramètres sont identiques : c'est la couture de
+85 m qui coupait une courbe en deux morceaux dont aucun ne franchissait le seuil
+de rayon. Le calcul a été fait par `generateCircuit`, le module que la fonction
+edge **importe** — pas par une réimplémentation.
 
-Albi et le Bugatti ont été **recalés pour démarrer à la ligne** le 30/08 — le
-tableau des décisions le dit. Bouteville est antérieur et ne l'a jamais été.
-Donc `progress = 0` tombe au milieu du tour, et la couture du tracé — là où
-`pisteDepuisBase` pose délibérément ses bornes à 0 et à 1 sans faire le tour —
-tombe au même endroit. C'est aussi là que se trouve le trou de 85 m.
-
-**Les deux défauts sont au même endroit et se réparent d'un seul geste :**
-régénérer le tracé fermé et tourné pour partir de la ligne, puis relancer
-`detect-circuit-corners`. Tant que ce n'est pas fait, rien n'est faux à
-l'écran — `app_segment_analyses` est vide — mais la première analyse qui
-tournera héritera des deux.
+**La provenance était fausse, et c'est une obligation, pas une nuance.**
+« Relevée par le fondateur » : faux. Les sommets sont des nœuds OpenStreetMap —
+way 675583973 (D152), way 806776936 (Rue du Prévôt), way 80842946 (D699). Et
+l'objection sérieuse — un relevé versé *dans* OSM — se ferme par l'historique
+des nœuds : 1615886624 version 1 de **2012**, 6326714723 version 1 de **2019**,
+jamais rééditées. Le circuit a été créé en base **3 h 26 avant** la première
+trame du 12/08. **Les six tracés sur six sont OSM**, donc sous ODbL, donc
+l'attribution est due partout où ils sont montrés — ce que `CircuitMap` ne
+faisait pas, corrigé le 02/09.
 
 **TROIS LIGNES DE CETTE SECTION ÉTAIENT FAUSSES AU MOMENT OÙ ELLE A ÉTÉ
 ÉCRITE — remesuré le 02/09/2026.** Le brief exige qu'on corrige une

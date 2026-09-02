@@ -1,0 +1,104 @@
+-- BOUTEVILLE — le trace referme et recale sur la ligne.
+--
+-- ===========================================================================
+-- CE QUI ETAIT MESURE, ET CE QUE CELA CASSAIT
+-- ===========================================================================
+--
+-- Deux defauts, au meme endroit, mesures le 02/09/2026.
+--
+-- 1. L ANNEAU N ETAIT PAS REFERME : 85,3 m entre le dernier point et le
+--    premier. Le fichier source, lui, EST ferme :
+--
+--        src/circuit/data/bouteville.geojson : 140 points, bouclage 0,00 m,
+--        longueur 5 906,1 m
+--        centerline_latlon en base           : 139 points, bouclage 85,3 m,
+--        longueur 5 820,8 m
+--
+--    Un seul point — celui de fermeture — a ete perdu a l import du 12/08.
+--    Trois pieces le prouvent sans supposer : la longueur declaree
+--    (length_km = 5,91) compte le segment manquant ; la description de la
+--    ligne dit elle-meme « boucle fermee a 0,00 m » alors que la donnee
+--    stockee ne l est pas ; et 5 820,8 + 85,3 = 5 906,1, la longueur exacte
+--    du fichier source.
+--
+--    Ce que ce trou fabriquait est mesure ailleurs : une trame qui y tombait
+--    se projetait sur un sommet, son ecart lateral valait la moitie du trou,
+--    et comme computeSegmentMargin lit le MAXIMUM d ecart du virage, UNE
+--    trame retirait la moitie de la marge — 86,04 tombait a 37,5. Le garde
+--    de recalage mesure la MEDIANE et ne pouvait pas voir 143 trames sur
+--    26 999. Le correctif applicatif du 01/09 (horsTrace) neutralise l effet ;
+--    cette migration retire la cause.
+--
+-- 2. LE TRACE NE COMMENCAIT PAS A LA LIGNE : 1 735 m de decalage, alors
+--    qu Albi (0,5 m) et le Bugatti (1,1 m) ont ete recales le 30/08.
+--    progress = 0 tombait donc au milieu du tour, et la couture du trace —
+--    la ou pisteDepuisBase pose ses bornes a 0 et a 1 sans faire le tour —
+--    tombait au meme endroit que le trou.
+--
+-- ===========================================================================
+-- LA METHODE, CELLE D ALBI
+-- ===========================================================================
+--
+-- Le point de depart est le PIED DE LA PERPENDICULAIRE sur le segment, pas un
+-- sommet — meme choix qu Albi, et pour la meme raison : le sommet le plus
+-- proche de la ligne est a 23,31 m, le segment a 4,37 m.
+--
+--     segment retenu       #44, t = 0,218
+--     pied F               45.5971377 / -0.1334348
+--     F a la ligne         4,37 m   (la description annoncait 4,38 m)
+--     cap au franchissement 336,7 deg (la description annonce 336,6 deg)
+--     longueur             5 906,1 m, bouclage 0,00 m
+--     141 points           139 sommets + F + le point de fermeture
+--
+-- Le cap confirme que le SENS DU TOUR est preserve : on tourne dans le meme
+-- sens qu avant, on ne fait que changer l endroit ou le tour commence.
+--
+-- ===========================================================================
+-- CORNERS REMIS A NULL — ce n est pas un oubli
+-- ===========================================================================
+--
+-- apex_s_norm est NORMALISE sur la longueur du trace. Passer de 5 820,8 m a
+-- 5 906,1 m, et deplacer l origine de 1 735 m, rend les douze positions de
+-- corde fausses de plusieurs dizaines de metres. Les garder serait pire que
+-- ne rien avoir : pisteDepuisBase construirait douze segments places au
+-- hasard. On les efface, et le detecteur les recalcule.
+--
+-- Rien ne se casse dans l intervalle : app_segment_analyses est VIDE sur
+-- toute la table, session_insights aussi. C est le meilleur moment possible
+-- pour ce geste.
+--
+-- ===========================================================================
+-- LA PROVENANCE — la description disait faux
+-- ===========================================================================
+--
+-- « relevee par le fondateur » est FAUX, mesure le 02/09/2026 sommet par
+-- sommet contre OpenStreetMap :
+--
+--     sommets 0-12    = les 13 premiers noeuds du way 675583973 (ref=D 152)
+--     sommet 45       = noeud 1615886624, way 806776936 (Rue du Prevot)
+--     sommets 110,130 = noeuds 6326714723 / 6326720302, way 80842946 (D 699)
+--
+-- L objection serieuse — un releve fondateur VERSE dans OSM — se ferme par
+-- l historique des noeuds, lu a l API le 02/09/2026 :
+--
+--     noeud 1615886624   version 1, 2012-02-02, jamais reeditee
+--     noeud 6326714723   version 1, 2019-03-09, jamais reeditee
+--     noeud 640171667    version 2, 2019-03-17   (Charente, meme cas)
+--
+-- Quatorze ans et sept ans avant le pretendu releve. Et le circuit a ete cree
+-- en base 3 h 26 AVANT la premiere trame de la seance du 12/08 : il ne peut
+-- pas etre le releve de ce roulage. Aucun de ses 139 sommets ne coincide avec
+-- une trame de telemetry_frames.
+--
+-- La consequence pratique est une obligation, pas une nuance : la donnee est
+-- sous ODbL, l attribution est due partout ou elle est montree.
+
+update public.circuits
+set centerline_latlon = '[{"lat":45.5971377,"lon":-0.1334348},{"lat":45.5978174,"lon":-0.1338533},{"lat":45.5983739,"lon":-0.1340769},{"lat":45.5987091,"lon":-0.1341871},{"lat":45.5989659,"lon":-0.1342443},{"lat":45.5989918,"lon":-0.1342558},{"lat":45.5989939,"lon":-0.1341965},{"lat":45.5989743,"lon":-0.1341104},{"lat":45.598778,"lon":-0.133545},{"lat":45.5985958,"lon":-0.1330342},{"lat":45.5984774,"lon":-0.1326629},{"lat":45.598434,"lon":-0.1324783},{"lat":45.5984104,"lon":-0.1322707},{"lat":45.5984169,"lon":-0.1320631},{"lat":45.5984551,"lon":-0.1318206},{"lat":45.5986923,"lon":-0.1308002},{"lat":45.5987445,"lon":-0.1304345},{"lat":45.598743,"lon":-0.1300044},{"lat":45.598687,"lon":-0.1295682},{"lat":45.5986248,"lon":-0.1291658},{"lat":45.5985425,"lon":-0.1286664},{"lat":45.598468,"lon":-0.1282386},{"lat":45.5984432,"lon":-0.1279901},{"lat":45.5984372,"lon":-0.1277578},{"lat":45.5984539,"lon":-0.1274348},{"lat":45.5984044,"lon":-0.1273723},{"lat":45.5983757,"lon":-0.1272553},{"lat":45.5983097,"lon":-0.1269669},{"lat":45.5982174,"lon":-0.1267267},{"lat":45.5981204,"lon":-0.1265476},{"lat":45.5980008,"lon":-0.1263684},{"lat":45.5976423,"lon":-0.1260038},{"lat":45.597523,"lon":-0.125841},{"lat":45.597473,"lon":-0.1256731},{"lat":45.5973768,"lon":-0.1253601},{"lat":45.5972607,"lon":-0.125118},{"lat":45.5966713,"lon":-0.1242981},{"lat":45.596452,"lon":-0.1239903},{"lat":45.5963004,"lon":-0.1236186},{"lat":45.5960803,"lon":-0.1226195},{"lat":45.5953317,"lon":-0.1202711},{"lat":45.5944499,"lon":-0.1176893},{"lat":45.593817,"lon":-0.1164634},{"lat":45.5931563,"lon":-0.1155727},{"lat":45.5930332,"lon":-0.1154068},{"lat":45.5923732,"lon":-0.1144578},{"lat":45.5914303,"lon":-0.1133118},{"lat":45.5905168,"lon":-0.1125586},{"lat":45.590181,"lon":-0.1123237},{"lat":45.5898737,"lon":-0.1121087},{"lat":45.5898307,"lon":-0.1120794},{"lat":45.5892,"lon":-0.1116505},{"lat":45.5886142,"lon":-0.1112196},{"lat":45.5882349,"lon":-0.1109336},{"lat":45.588194,"lon":-0.1108976},{"lat":45.5879939,"lon":-0.1114133},{"lat":45.5877735,"lon":-0.1119365},{"lat":45.5876346,"lon":-0.1121987},{"lat":45.5873762,"lon":-0.1126088},{"lat":45.5870108,"lon":-0.113145},{"lat":45.5864761,"lon":-0.1139257},{"lat":45.5861815,"lon":-0.1143749},{"lat":45.5859095,"lon":-0.1148242},{"lat":45.5850159,"lon":-0.1163754},{"lat":45.5839559,"lon":-0.1182583},{"lat":45.5838729,"lon":-0.1183711},{"lat":45.5837701,"lon":-0.1184131},{"lat":45.5836737,"lon":-0.1184167},{"lat":45.583603,"lon":-0.1183889},{"lat":45.583536,"lon":-0.1183451},{"lat":45.5832927,"lon":-0.1180826},{"lat":45.5829931,"lon":-0.1177235},{"lat":45.5829277,"lon":-0.1176734},{"lat":45.5828624,"lon":-0.1176608},{"lat":45.5828088,"lon":-0.1176997},{"lat":45.5827721,"lon":-0.1177761},{"lat":45.582771,"lon":-0.1178763},{"lat":45.5827925,"lon":-0.1179632},{"lat":45.5830862,"lon":-0.1184762},{"lat":45.5832499,"lon":-0.1186951},{"lat":45.5834531,"lon":-0.1189086},{"lat":45.5845238,"lon":-0.1198167},{"lat":45.5846297,"lon":-0.119921},{"lat":45.5847186,"lon":-0.1200709},{"lat":45.5847628,"lon":-0.120219},{"lat":45.5847848,"lon":-0.120395},{"lat":45.5847865,"lon":-0.1205662},{"lat":45.5847243,"lon":-0.1211908},{"lat":45.5846841,"lon":-0.1214181},{"lat":45.5846213,"lon":-0.1216239},{"lat":45.5845272,"lon":-0.1218305},{"lat":45.5843842,"lon":-0.1220666},{"lat":45.5843059,"lon":-0.1221818},{"lat":45.5841864,"lon":-0.1223105},{"lat":45.5840632,"lon":-0.1224259},{"lat":45.5833762,"lon":-0.122914},{"lat":45.5834121,"lon":-0.1229451},{"lat":45.5836095,"lon":-0.122944},{"lat":45.5842859,"lon":-0.1228828},{"lat":45.5847937,"lon":-0.1228497},{"lat":45.5850021,"lon":-0.1228576},{"lat":45.5854277,"lon":-0.123013},{"lat":45.5855268,"lon":-0.1231225},{"lat":45.5855969,"lon":-0.1233079},{"lat":45.5857567,"lon":-0.1239321},{"lat":45.5858716,"lon":-0.1242282},{"lat":45.5860374,"lon":-0.1245243},{"lat":45.5867862,"lon":-0.1252312},{"lat":45.5871265,"lon":-0.1255128},{"lat":45.5873076,"lon":-0.1255942},{"lat":45.5874908,"lon":-0.1255923},{"lat":45.5876486,"lon":-0.1255358},{"lat":45.5878699,"lon":-0.1253262},{"lat":45.5880461,"lon":-0.1252123},{"lat":45.5881909,"lon":-0.1251653},{"lat":45.5883333,"lon":-0.1251889},{"lat":45.5884781,"lon":-0.1252484},{"lat":45.5886588,"lon":-0.1254143},{"lat":45.5893353,"lon":-0.1261583},{"lat":45.5901667,"lon":-0.1267703},{"lat":45.5903815,"lon":-0.1269627},{"lat":45.590625,"lon":-0.1272134},{"lat":45.5910124,"lon":-0.1277532},{"lat":45.5910528,"lon":-0.1278208},{"lat":45.5914533,"lon":-0.1283895},{"lat":45.5919906,"lon":-0.1291222},{"lat":45.5924013,"lon":-0.1296826},{"lat":45.5925843,"lon":-0.1300142},{"lat":45.5927355,"lon":-0.1304277},{"lat":45.592907,"lon":-0.1309752},{"lat":45.5930402,"lon":-0.1312951},{"lat":45.593223,"lon":-0.1315168},{"lat":45.5933488,"lon":-0.1316272},{"lat":45.5939738,"lon":-0.132026},{"lat":45.5944451,"lon":-0.1323181},{"lat":45.5952597,"lon":-0.1325121},{"lat":45.5956573,"lon":-0.1326379},{"lat":45.5960473,"lon":-0.1328238},{"lat":45.5967597,"lon":-0.1332146},{"lat":45.5969483,"lon":-0.1333181},{"lat":45.5971377,"lon":-0.1334348}]'::jsonb,
+    corners = null,
+    corners_engine_version = null,
+    corners_computed_at = null,
+    length_km = 5.906,
+    description = 'Boucle routiere de 5,906 km derivee d OpenStreetMap — fusion des routes D152 (way 675583973), Rue du Prevot (way 806776936), Echauguette, Chateauneuf et D699 (way 80842946). La mention « relevee par le fondateur » portee jusqu au 02/09/2026 etait fausse : les sommets sont des noeuds OSM anterieurs de sept a quatorze ans (noeud 1615886624 version 1 de 2012, noeud 6326714723 version 1 de 2019), et le circuit a ete cree 3 h 26 avant la premiere trame de la seance du 12/08. Donnee sous ODbL : attribution due partout ou elle est montree. Trace referme (bouclage 0,00 m, 141 points) et recale pour demarrer a la ligne le 02/09/2026, sur la methode d Albi : le depart est le PIED de la perpendiculaire sur le segment 44 (t = 0,218), a 4,37 m de la ligne, le sommet le plus proche etant a 23,31 m. Cap au franchissement 336,7 degres — le sens du tour est inchange. Virages remis a NULL : apex_s_norm est normalise et devait etre recalcule.',
+    updated_at = now()
+where id = '723c9dfc-d0d3-428c-a0d7-f04178e9cd7e';

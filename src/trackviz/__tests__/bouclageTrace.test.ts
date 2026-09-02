@@ -5,8 +5,8 @@
  * LA MESURE QUI OUVRE CE FICHIER
  * ===========================================================================
  *
- * Un circuit est un anneau. Six tracés vivent en base ; quatre le disent en
- * répétant leur premier point à la fin, deux ne le disent pas. Mesuré le
+ * Un circuit est un anneau. Six tracés vivent en base ; quatre le disaient en
+ * répétant leur premier point à la fin, deux ne le disaient pas. Mesuré le
  * 01/09/2026 sur la base de production :
  *
  *     Bouteville        85,3 m      Albi              0,0 m
@@ -14,7 +14,21 @@
  *                                   Ricardo Tormo     0,0 m
  *                                   Charente          0,0 m
  *
- * Bouteville est le circuit de LA SÉANCE DE RÉFÉRENCE.
+ * Bouteville était le circuit de LA SÉANCE DE RÉFÉRENCE.
+ *
+ * ---------------------------------------------------------------------------
+ * BOUTEVILLE A ÉTÉ REPRIS LE 02/09/2026 — et ce fichier reste utile
+ * ---------------------------------------------------------------------------
+ *
+ * La CAUSE a été retirée en base : le tracé est refermé (141 points, 0,00 m,
+ * 5 906,1 m) et recalé pour démarrer à la ligne. Le point de fermeture n'était
+ * pas une route non relevée, c'était un point tombé à l'import — le fichier
+ * source `bouteville.geojson` le portait depuis le début.
+ *
+ * Ces tests ne suivent PAS la base : ils éprouvent la géométrie sur un tracé
+ * fabriqué ici. Ils restent donc le cliquet qui empêche le défaut de revenir —
+ * par un nouveau circuit importé de travers, ou par Haute Saintonge, qui porte
+ * toujours ses 17,1 m et reste le tracé de démonstration.
  *
  * ===========================================================================
  * POURQUOI C'ÉTAIT UNE MARGE FAUSSE, ET PAS UNE IMPRÉCISION

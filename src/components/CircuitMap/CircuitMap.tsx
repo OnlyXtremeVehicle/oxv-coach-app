@@ -112,6 +112,37 @@ export const CircuitMap = memo(function CircuitMap({
       <Svg width="100%" height="100%" viewBox={viewBox}>
         {children}
       </Svg>
+
+      {/*
+        ODbL — LA MENTION MANQUAIT, ET C'EST LE MAUVAIS CÔTÉ DU RISQUE.
+
+        Tout ce que ce composant dessine vient de `HAUTE_SAINTONGE_TRACK`
+        (`projection.ts:46`), que `src/trackviz/hauteSaintonge.ts:2` déclare
+        « OpenStreetMap way 54412766 ». La garde ci-dessus le rend inconditionnel :
+        si `estHauteSaintonge` est faux, rien n'est dessiné ; si elle est vraie,
+        c'est de la donnée OSM. Il n'existe donc aucun cas où ce bloc s'affiche
+        sans que l'attribution soit due.
+
+        `TraceCircuit` la portait depuis l'origine, ce composant-ci jamais —
+        et il sert trois écrans, dont deux côté coach. Sur-attribuer n'a pas de
+        créancier ; sous-attribuer en a un.
+
+        Jetons de `@/theme/v2` et non de `src/ui/v2` : R3, les deux univers ne
+        se mélangent pas, et cet écran est de l'univers coach.
+      */}
+      <Text
+        style={{
+          position: 'absolute',
+          right: 8,
+          bottom: 6,
+          fontFamily: theme.fonts.mono,
+          fontSize: theme.fontSize.micro,
+          letterSpacing: 0.4,
+          color: theme.palette.eyebrow,
+        }}
+      >
+        © contributeurs OpenStreetMap
+      </Text>
     </View>
   );
 });
