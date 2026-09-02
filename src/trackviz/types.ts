@@ -53,8 +53,22 @@ export interface TrackVizSample extends TrackVizRecordingSample {
   progress: number;
   /** Distance parcourue depuis le départ (m). */
   distance_m: number;
-  /** Distance latérale au tracé de référence (m), signe = côté. */
+  /**
+   * Distance latérale au tracé de référence (m). TOUJOURS POSITIVE.
+   *
+   * Ce champ a documenté « signe = côté » de son écriture au 01/09/2026, alors
+   * que `mapMatchPoint` rend `bestDistance`, une distance haversine — jamais
+   * négative. Aucun appelant ne pouvait donc lire un côté, et rien ne le
+   * signalait. Le côté demanderait un produit vectoriel sur le segment retenu ;
+   * c'est un calcul qui n'existe pas ici, et on ne le documente pas d'avance.
+   */
   lateral_error_m: number;
+  /**
+   * La projection est tombée au-delà d'un bout du tracé — voir
+   * `MapMatchResult.horsTrace`. L'écart latéral de ce point mesure la distance
+   * à un sommet, pas à une trajectoire : il ne compte dans aucune statistique.
+   */
+  hors_trace: boolean;
   /** Phase courante du virage (ou 'straight' hors virage). */
   phase: SegmentPhase;
   /** Ajouté lors de l'upsert Supabase. */

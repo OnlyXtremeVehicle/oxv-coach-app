@@ -17,6 +17,21 @@ export interface TrackGeometry {
   cumulativeDistances: number[];
   /** Longueur totale du tracé en mètres. */
   totalLengthM: number;
+  /**
+   * Distance entre le PREMIER et le DERNIER point du tracé, en mètres.
+   *
+   * Un circuit est un anneau : le tour se referme. Quatre des six tracés en
+   * base portent ce bouclage explicitement — leur dernier point est le premier,
+   * à 0,0 m. Deux ne le portent pas, mesuré le 01/09/2026 :
+   *
+   *     Bouteville        85,3 m     Haute Saintonge   17,1 m
+   *     Albi · Bugatti · Ricardo Tormo · Charente      0,0 m
+   *
+   * Cet écart n'est pas un détail de représentation : la polyligne s'ARRÊTE, et
+   * `mapMatchPoint` n'a plus rien sur quoi projeter les points qui tombent
+   * dedans. Voir `horsTrace` pour ce que cela fabriquait.
+   */
+  ecartBouclageM: number;
 }
 
 export function buildTrackGeometry(points: { lat: number; lon: number }[]): TrackGeometry {
@@ -27,10 +42,16 @@ export function buildTrackGeometry(points: { lat: number; lon: number }[]): Trac
         haversineDistance(points[i - 1].lat, points[i - 1].lon, points[i].lat, points[i].lon)
     );
   }
+  const premier = points[0];
+  const dernier = points[points.length - 1];
   return {
     trackPoints: points,
     cumulativeDistances: cum,
     totalLengthM: cum[cum.length - 1] ?? 0,
+    ecartBouclageM:
+      points.length >= 2
+        ? haversineDistance(premier.lat, premier.lon, dernier.lat, dernier.lon)
+        : 0,
   };
 }
 
@@ -43,6 +64,34 @@ export interface MapMatchResult {
   lateralErrorM: number;
   /** Index du segment de référence le plus proche. */
   nearestSegmentIndex: number;
+  /**
+   * La projection est tombée sur une EXTRÉMITÉ de la polyligne — le point est
+   * au-delà de ce que le tracé décrit.
+   *
+   * ===========================================================================
+   * CE QUE LE TROU DE BOUCLAGE FABRIQUAIT
+   * ===========================================================================
+   *
+   * `t` est borné à [0, 1] sur chaque segment. Quand un point tombe dans le
+   * trou entre le dernier point du tracé et le premier, aucun segment ne le
+   * porte : il se projette sur le sommet le plus proche, et `lateralErrorM`
+   * devient la distance à ce SOMMET — la moitié du trou, pas un écart de
+   * trajectoire.
+   *
+   * Sur la séance de référence, mesuré : 143 trames dans le trou de 85,3 m de
+   * Bouteville, à 9,67 m d'écart médian, jusqu'à 25,3 m.
+   *
+   * Ce n'était pas une imprécision, c'était une marge fausse. `analyzeSegment`
+   * lit le MAXIMUM d'écart latéral et le divise par 4 m : UNE seule trame de
+   * trou sature `trajectoryUsage` à 1 et retire cinquante points de marge au
+   * virage entier. Le garde de recalage, lui, mesure la MÉDIANE — 1,49 m sur
+   * cette séance — et ne peut pas voir une queue de 0,5 %.
+   *
+   * On ne referme pas le trou : tracer une corde de 85 m à travers un bitume
+   * qu'aucun relevé ne décrit inventerait la géométrie contre laquelle on
+   * mesure. On le NOMME, et l'écart latéral de ces points ne compte pas.
+   */
+  horsTrace: boolean;
 }
 
 /**
@@ -96,11 +145,20 @@ export function mapMatchPoint(
   const distanceM = cumulativeDistances[bestIndex] + bestRatio * segmentLength;
   const progress = totalLengthM > 0 ? Math.max(0, Math.min(1, distanceM / totalLengthM)) : 0;
 
+  // Le point est au-delà du tracé quand sa projection s'arrête net sur l'un des
+  // deux bouts : au tout début du premier segment, ou au tout bout du dernier.
+  // C'est le seul cas où `lateralErrorM` mesure une distance à un SOMMET plutôt
+  // qu'à une trajectoire — et donc le seul où elle ne veut rien dire.
+  const dernierSegment = trackPoints.length - 2;
+  const horsTrace =
+    (bestIndex === 0 && bestRatio === 0) || (bestIndex === dernierSegment && bestRatio === 1);
+
   return {
     progress,
     distanceM,
     lateralErrorM: bestDistance,
     nearestSegmentIndex: bestIndex,
+    horsTrace,
   };
 }
 

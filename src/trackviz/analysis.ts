@@ -86,6 +86,7 @@ export function normalizeTrackVizSamples(
         progress: match.progress,
         distance_m: match.distanceM,
         lateral_error_m: match.lateralErrorM,
+        hors_trace: match.horsTrace,
         phase: phaseForProgress(match.progress, segment),
       };
     });
@@ -104,7 +105,6 @@ export function normalizeTrackVizSamples(
  * dynamique (sous/sur-virage) du document algos P2.
  */
 function computeSegmentMargin(input: { maxLateralErrorM: number; maxGLateral: number }): number {
-  const LATERAL_THRESHOLD_M = 4; // au-delà = trajectoire dispersée
   const GLAT_THRESHOLD = 1.2; // au-delà = limite pneumatique
 
   const trajectoryUsage = Math.min(1, input.maxLateralErrorM / LATERAL_THRESHOLD_M);
@@ -124,7 +124,7 @@ function analyzeSegment(
   if (inSegment.length < 2) return null;
 
   const speeds = withNumbers(inSegment.map((s) => s.speed_kmh));
-  const lateralErrors = withNumbers(inSegment.map((s) => s.lateral_error_m));
+  const lateralErrors = ecartsLateraux(inSegment);
   const gLat = withNumbers(inSegment.map((s) => Math.abs(s.g_force_y)));
   const braking = withNumbers(inSegment.map((s) => (s.g_force_x > 0 ? s.g_force_x : 0)));
   const accel = withNumbers(inSegment.map((s) => (s.g_force_x < 0 ? Math.abs(s.g_force_x) : 0)));
@@ -184,6 +184,40 @@ function analyzeSegment(
  */
 const DISTANCE_MAX_SUR_TRACE_M = 200;
 
+/**
+ * Au-delà de cet écart au tracé, la trajectoire est dite dispersée.
+ *
+ * Hissé au module le 01/09/2026 — il vivait dans `computeSegmentMargin`, et
+ * `ecartBouclageMax` en a besoin pour dire ce qu'un trou de tracé coûte.
+ */
+export const LATERAL_THRESHOLD_M = 4;
+
+/**
+ * Le trou de bouclage au-delà duquel un tracé fabrique à lui seul une
+ * trajectoire dite dispersée.
+ *
+ * Une trame au milieu d'un trou de longueur G est à peu près à G/2 du bout de
+ * tracé le plus proche. Au-delà de deux fois le seuil de dispersion, ce seul
+ * artefact suffit à saturer `trajectoryUsage`. Le nombre n'est donc pas choisi :
+ * il se déduit du seuil que le dépôt applique déjà.
+ *
+ * Mesuré le 01/09/2026 : Bouteville 85,3 m, Haute Saintonge 17,1 m, les quatre
+ * autres circuits 0,0 m.
+ */
+export const ECART_BOUCLAGE_MAX_M = 2 * LATERAL_THRESHOLD_M;
+
+/**
+ * Les écarts latéraux qui MESURENT quelque chose.
+ *
+ * Un point hors tracé porte la distance à un sommet de la polyligne, pas un
+ * écart de trajectoire. Le compter dans une moyenne l'alourdit ; le compter
+ * dans un maximum — ce que fait `computeSegmentMargin` — retire une marge
+ * entière sur une trame.
+ */
+function ecartsLateraux(samples: readonly TrackVizSample[]): number[] {
+  return withNumbers(samples.filter((s) => !s.hors_trace).map((s) => s.lateral_error_m));
+}
+
 /** Médiane, robuste aux quelques points aberrants d'un début d'enregistrement. */
 function mediane(valeurs: number[]): number {
   if (valeurs.length === 0) return 0;
@@ -223,7 +257,7 @@ export function analyzeTrackVizSession(
     .filter((s): s is TrackVizSegmentAnalysis => Boolean(s));
 
   const speeds = withNumbers(samples.map((s) => s.speed_kmh));
-  const lateralErrors = withNumbers(samples.map((s) => s.lateral_error_m));
+  const lateralErrors = ecartsLateraux(samples);
   const gLat = withNumbers(samples.map((s) => Math.abs(s.g_force_y)));
   const braking = withNumbers(samples.map((s) => (s.g_force_x > 0 ? s.g_force_x : 0)));
   const accel = withNumbers(samples.map((s) => (s.g_force_x < 0 ? Math.abs(s.g_force_x) : 0)));

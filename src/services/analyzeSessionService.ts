@@ -32,7 +32,8 @@ import * as FileSystem from 'expo-file-system/legacy';
 
 import { supabase } from '@/lib/supabase';
 import { UbxFrameBuffer, parseRaceBoxDataMessage } from '@/ubx/parser';
-import { analyzeTrackVizSession } from '@/trackviz/analysis';
+import { analyzeTrackVizSession, ECART_BOUCLAGE_MAX_M } from '@/trackviz/analysis';
+import { buildTrackGeometry } from '@/trackviz/geometry';
 import { virageACreuser } from '@/features/miroir/margeLogic';
 import { pisteDepuisBase } from '@/trackviz/pisteDepuisBase';
 import {
@@ -213,6 +214,21 @@ export async function analyzeAndPersistSession(
         `${centerline === null ? 'aucun tracé en base' : `${centerline.length} points de tracé`}, ` +
         `${viragesCircuit.length} virage(s) détecté(s).`
     );
+  }
+
+  // LE TROU DE BOUCLAGE, NOMMÉ. Un circuit est un anneau ; deux des six tracés
+  // en base ne se referment pas — Bouteville 85,3 m, Haute Saintonge 17,1 m,
+  // mesurés le 01/09/2026. Les trames qui tombent dans ce trou ne comptent plus
+  // dans les écarts latéraux (`hors_trace`), mais le tracé reste amputé, et le
+  // dire ici est la seule trace qu'en garde un lecteur humain.
+  if (piste !== null) {
+    const ecartBouclage = buildTrackGeometry([...piste.trace]).ecartBouclageM;
+    if (ecartBouclage > ECART_BOUCLAGE_MAX_M) {
+      notes.push(
+        `Tracé non refermé : ${Math.round(ecartBouclage)} m entre le dernier point et le premier. ` +
+          `Les trames de ce trou sont écartées des écarts latéraux.`
+      );
+    }
   }
 
   if (samples.length >= 2 && piste !== null) {
