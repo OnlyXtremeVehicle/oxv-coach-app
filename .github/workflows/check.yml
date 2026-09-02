@@ -126,7 +126,7 @@ jobs:
               echo "::error::Secrets CI RLS manquants — 85 tests de politique n'ont JAMAIS tourné. Voir docs/architecture/17_CI_RLS_SETUP.md. Ne jamais les pointer vers la production."
               exit 1
             fi
-            echo "::warning::Secrets CI RLS absents — les 85 tests de politique n'ont pas tourné sur ce push. Ils resteront BLOQUANTS en pull request et sur main. Provision : docs/architecture/17_CI_RLS_SETUP.md"
+            echo "::warning::Secrets CI RLS absents — les 85 tests de politique n'ont JAMAIS tourné, sur aucun push : le dépôt ne porte aucun secret (vérifié le 02/09/2026, total_count 0). Un défaut de l'aide de test a ainsi survécu dix semaines. Ils restent BLOQUANTS en pull request et sur main : cette branche ne pourra pas fusionner sans eux. Provision : docs/architecture/17_CI_RLS_SETUP.md"
             exit 0
           fi
           npm run test:rls -- --ci --reporters=default

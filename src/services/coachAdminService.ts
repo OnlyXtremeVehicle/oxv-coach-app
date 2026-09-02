@@ -198,11 +198,32 @@ export async function assignPilotToCoach(input: {
   return { ok: true };
 }
 
+/**
+ * Active ou clôt une affiliation, depuis la console d'administration.
+ *
+ * ELLE NE FAISAIT RIEN, ET ELLE RAPPORTAIT UN SUCCÈS — mesuré le 02/09/2026.
+ *
+ * Elle écrivait `active`. Depuis L32 (02/08), cette colonne est DÉRIVÉE de
+ * `status` par un déclencheur, et son commentaire en base le dit : « ne pas
+ * écrire à la main ». L'UPDATE réussissait, aucune erreur ne remontait, le
+ * déclencheur réécrivait `active` depuis un `status` inchangé, et l'écran
+ * n'affichait son alerte que sur `result.error` — il n'y en avait pas.
+ *
+ * `app/(admin)/coachs/[id].tsx` porte déjà, en commentaire, la description
+ * exacte de cette panne : « l'administrateur croyait avoir agi ». Elle décrivait
+ * un défaut réparé ailleurs ; celui-ci l'avait ramené par une autre porte.
+ *
+ * `ended` plutôt que `declined` à la fermeture : un administrateur qui clôt un
+ * binôme met fin à un lien, il ne refuse pas une demande.
+ */
 export async function toggleAssignmentActive(
   assignmentId: string,
   active: boolean
 ): Promise<{ ok: boolean; error?: string }> {
-  const { error } = await supabase.from('coach_pilots').update({ active }).eq('id', assignmentId);
+  const { error } = await supabase
+    .from('coach_pilots')
+    .update({ status: active ? 'active' : 'ended' } as never)
+    .eq('id', assignmentId);
 
   if (error) {
     console.warn('[OXV][admin] toggleAssignmentActive :', error.message);
@@ -283,11 +304,22 @@ export async function promoteToCoach(userId: string): Promise<{ ok: boolean; err
  * rouvert par un autre chemin d'écriture.
  */
 export async function demoteToPilot(userId: string): Promise<{ ok: boolean; error?: string }> {
+  // D-2, 02/09/2026 — CETTE COUPURE ÉTAIT REDEVENUE INOPÉRANTE, ET POUR UNE
+  // RAISON QUE D-1 NE POUVAIT PAS PRÉVOIR.
+  //
+  // Depuis L32 (02/08), `active` n'est plus une colonne qu'on écrit : c'est une
+  // VUE de `status`, entretenue par `trg_aligner_active_sur_status`. Écrire
+  // `active: false` réussissait sans erreur et le déclencheur la réécrivait
+  // aussitôt depuis un `status` inchangé. La faille que D-1 avait fermée s'était
+  // rouverte, silencieusement, le jour où la base a pris la main sur `active`.
+  //
+  // On écrit donc `status`. `ended` et non `declined` : le pilote n'a rien
+  // refusé, c'est le lien qui prend fin.
   const { error: affErr } = await supabase
     .from('coach_pilots')
-    .update({ active: false })
+    .update({ status: 'ended' } as never)
     .eq('coach_id', userId)
-    .eq('active', true);
+    .eq('status', 'active');
 
   if (affErr) {
     console.warn('[OXV][admin] demoteToPilot (affiliations) :', affErr.message);

@@ -19,8 +19,40 @@
 
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 
+/**
+ * CES 85 TESTS N'ONT JAMAIS TOURNÉ — mesuré le 02/09/2026.
+ *
+ * `gh api repos/OnlyXtremeVehicle/oxv-coach-app/actions/secrets` rend
+ * `{"total_count": 0}` : le dépôt n'a jamais porté `TEST_SUPABASE_URL` ni
+ * `TEST_SUPABASE_SERVICE_KEY`, donc ce drapeau a toujours valu `false`, donc
+ * chaque suite est passée en `describe.skip` depuis son écriture.
+ *
+ * Ce n'est PAS un vert silencieux, et il faut le dire précisément : la CI
+ * (`.github/workflows/check.yml`) échoue en dur — `exit 1` — dès qu'on est en
+ * pull request ou sur `main`. La porte tient donc là où elle compte. Ce qui ne
+ * tient pas, c'est ici : sur une branche de travail, `npm test` affiche « 18
+ * suites skipped » sans dire lesquelles ni pourquoi, et une suite anonyme qu'on
+ * ne lance pas ressemble beaucoup à une suite qui passe.
+ *
+ * C'est ainsi qu'un défaut de cette aide a survécu DIX SEMAINES : depuis L32
+ * (02/08), `assignCoachToPilot` posait des affiliations que le déclencheur
+ * refermait aussitôt, et pas un seul des 27 appels ne pouvait le signaler.
+ *
+ * SORTIE : créer un projet Supabase de TEST — jamais la production — et poser
+ * ses deux clés dans les secrets GitHub. Voir `docs/architecture/17_CI_RLS_SETUP.md`.
+ */
 export const RLS_TEST_ENABLED =
   Boolean(process.env.TEST_SUPABASE_URL) && Boolean(process.env.TEST_SUPABASE_SERVICE_KEY);
+
+if (!RLS_TEST_ENABLED && process.env.CI !== 'true') {
+  // Une ligne, une fois, au chargement. Le silence est ce qui a coûté dix
+  // semaines ; on ne le reproduit pas, et on ne hurle pas non plus.
+  console.warn(
+    '[OXV][RLS] 85 tests de politique NON EXÉCUTÉS — TEST_SUPABASE_URL / ' +
+      'TEST_SUPABASE_SERVICE_KEY absents. Ils sont bloquants en pull request et ' +
+      'sur main. Voir docs/architecture/17_CI_RLS_SETUP.md.'
+  );
+}
 
 const SUPABASE_URL = process.env.TEST_SUPABASE_URL ?? '';
 const SERVICE_KEY = process.env.TEST_SUPABASE_SERVICE_KEY ?? '';
