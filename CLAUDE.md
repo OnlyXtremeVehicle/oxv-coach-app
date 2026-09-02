@@ -226,6 +226,58 @@ et 12,2 km/h. Elle valide la chaîne ; elle ne calibre pas un seuil de piste.
   Bouteville, lui, est toujours là** : c'est une donnée à reprendre, pas du
   code.
 
+### Le tracé de Bouteville porte DEUX défauts, mesurés le 02/09/2026
+
+Aucun des deux n'était dans la recette. Ils se réparent ensemble ou pas du
+tout, et c'est une décision du fondateur — le brief a déjà tranché ce genre de
+chose pour Albi et le Bugatti.
+
+**1. L'anneau n'est pas refermé, et la longueur déclarée le prouve.**
+
+| Circuit | Déclarée | Polyligne | Manque | Écart de bouclage |
+|---|---|---|---|---|
+| **Bouteville** | 5 910 m | 5 820,8 m | **89,2 m** | **85,3 m** |
+| **Haute Saintonge** | 2 210 m | 2 189,9 m | **20,1 m** | **17,1 m** |
+| Albi | 3 570 m | 3 562,5 m | 7,5 m | 0,0 m |
+| Bugatti | 4 190 m | 4 163,7 m | 26,3 m | 0,0 m |
+| Ricardo Tormo | 4 000 m | 3 999,8 m | 0,2 m | 0,0 m |
+| Charente | 1 540 m | 1 542,8 m | −2,8 m | 0,0 m |
+
+Sur les deux tracés ouverts, et **sur eux seuls**, le manque égale l'écart de
+bouclage à quatre mètres près. `length_km` compte donc un segment de fermeture
+que `centerline_latlon` ne porte pas : le point de fermeture a été perdu à la
+génération. Ce n'est pas une route non relevée, c'est un point tombé.
+
+**Conséquence pour qui voudrait refermer :** appliquer la convention des quatre
+autres — répéter le premier point à la fin — porte la longueur de 5 820,8 à
+5 906,1 m, soit **+1,46 %**. Or `apex_s_norm` est *normalisé* et a été calculé
+sur l'ancienne longueur : les douze cordes se déplaceraient jusqu'à 85 m.
+**Refermer impose de relancer le détecteur de virages.** Ce n'est pas une ligne
+de SQL.
+
+**2. Le tracé ne commence pas à la ligne — 1 735 m de décalage.**
+
+| Circuit | Premier point → ligne | Dernier point → ligne |
+|---|---|---|
+| **Bouteville** | **1 735,0 m** | **1 686,8 m** |
+| Charente | 0,0 m | 0,0 m |
+| Albi | 0,5 m | 0,5 m |
+| Bugatti | 1,1 m | 1,1 m |
+| Ricardo Tormo | 45,7 m | 45,7 m |
+| Haute Saintonge | 280,4 m | 287,1 m |
+
+Albi et le Bugatti ont été **recalés pour démarrer à la ligne** le 30/08 — le
+tableau des décisions le dit. Bouteville est antérieur et ne l'a jamais été.
+Donc `progress = 0` tombe au milieu du tour, et la couture du tracé — là où
+`pisteDepuisBase` pose délibérément ses bornes à 0 et à 1 sans faire le tour —
+tombe au même endroit. C'est aussi là que se trouve le trou de 85 m.
+
+**Les deux défauts sont au même endroit et se réparent d'un seul geste :**
+régénérer le tracé fermé et tourné pour partir de la ligne, puis relancer
+`detect-circuit-corners`. Tant que ce n'est pas fait, rien n'est faux à
+l'écran — `app_segment_analyses` est vide — mais la première analyse qui
+tournera héritera des deux.
+
 **TROIS LIGNES DE CETTE SECTION ÉTAIENT FAUSSES AU MOMENT OÙ ELLE A ÉTÉ
 ÉCRITE — remesuré le 02/09/2026.** Le brief exige qu'on corrige une
 spécification qui se trompe, et il faut le faire pour lui-même :
