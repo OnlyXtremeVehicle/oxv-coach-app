@@ -48,14 +48,53 @@ export type ReadingKey = 'anatomie' | 'gg' | 'dispersion' | 'tour-ideal' | 'flow
 
 export interface ReadingDef {
   key: ReadingKey;
-  /** Nom court affiché. */
+  /**
+   * Nom du CATALOGUE. Il se lit dans un index, dans un document, dans une
+   * conversation — pas sur une feuille de données.
+   *
+   * Mesuré le 02/09/2026 : les six `name` et les six `eyebrow` sont montés sur
+   * `app/(app2)/data/session/[id].tsx`, qui est une feuille de données DÉCLARÉE
+   * (`surfacesRestitution.ts`). Passés à `motifRefusMotCle`, les douze sont
+   * refusés — quatre `name` portent un mot outil (« Anatomie DE virage »,
+   * « Dispersion DE trajectoire », « Cohérence DU flow », « Transfert DE
+   * charge »), et DEUX `eyebrow` sont des PHRASES au sens du brief :
+   *
+   *     « Niveau 4 · Cohérence du rythme »   5 mots, mot outil « du »
+   *     « Niveau 4 · Transfert de charge »   5 mots, mot outil « de »
+   *
+   * Le scanner `check-doctrine` ne pouvait pas les voir : il lit les `.tsx`, et
+   * ces chaînes naissent dans un `.ts`. C'est exactement le trou que
+   * `libellesDeService.guard.test.ts` a été écrit pour combler, et le catalogue
+   * n'y figurait pas.
+   */
   name: string;
+  /**
+   * La forme que le pilote LIT sur une feuille de données : majuscules, `SUJET`
+   * ou `SUJET · PRÉCISION`, aucun mot outil.
+   *
+   * Ce n'est pas une invention : la décision du fondateur du 30/08/2026 —
+   * « Champ `court` obligatoire ; la phrase reste au second geste » — est déjà
+   * appliquée aux soixante-cinq fiches de `registrePresentations.ts`, avec sa
+   * garde. Le catalogue des six lectures suivait la même règle et n'avait pas
+   * le même mécanisme ; il l'a maintenant.
+   *
+   * Les deux coexistent, et c'est le point : « Potentiel démontré » ne se perd
+   * pas — le brief a tranché ce nom le 26/08 — il cesse seulement de s'afficher
+   * là où la règle des mots-clés l'interdit.
+   */
+  court: string;
   /** Badge discret (N2 / N3 / N4, éventuellement « · 6 axes »). */
   badge: string;
   tier: InsightTier;
   /** Dimension QDI → couleur de donnée. */
   dimension: QdiDimension;
-  /** Eyebrow mono (ex. « Niveau 2 · Décomposition »). Sert de sous-libellé. */
+  /**
+   * Sous-libellé mono, monté sur la même feuille de données que `court`. Il est
+   * donc soumis à la même règle, et il ne l'était pas : deux des six étaient des
+   * phrases. Corrigés en place — contrairement à `name`, un eyebrow n'a pas de
+   * forme « de catalogue » à préserver, c'est une chaîne d'affichage et rien
+   * d'autre.
+   */
   eyebrow: string;
   /**
    * MÉTHODE : d'où vient la donnée, comment elle est obtenue.
@@ -80,10 +119,11 @@ export const READINGS: ReadingDef[] = [
   {
     key: 'anatomie',
     name: 'Anatomie de virage',
+    court: 'ANATOMIE · VIRAGE',
     badge: 'N2',
     tier: 'N2',
     dimension: 'brake',
-    eyebrow: 'Niveau 2 · Décomposition',
+    eyebrow: 'NIVEAU 2 · DÉCOMPOSITION',
     source:
       'Vitesse GPS, G longitudinal et latéral. Le point de corde est le minimum de vitesse coïncidant avec le pic de G latéral.',
   },
@@ -99,20 +139,22 @@ export const READINGS: ReadingDef[] = [
     // ci-dessous, qui est la MÉTHODE — nommer l'instrument n'est pas afficher un
     // verdict, et le §01 autorise la densité à qui est allé la chercher.
     name: 'Appuis combinés',
+    court: 'APPUIS COMBINÉS',
     badge: 'N2',
     tier: 'N2',
     dimension: 'brake',
-    eyebrow: 'Niveau 2 · Enveloppe d’adhérence',
+    eyebrow: 'NIVEAU 2 · ENVELOPPE ADHÉRENCE',
     source:
       'Nuage de points (G longitudinal, G latéral) sur l’ensemble du tour, mesuré par l’accéléromètre.',
   },
   {
     key: 'dispersion',
     name: 'Dispersion de trajectoire',
+    court: 'DISPERSION · TRAJECTOIRE',
     badge: 'N3',
     tier: 'N3',
     dimension: 'trajectory',
-    eyebrow: 'Niveau 3 · Dispersion spatiale',
+    eyebrow: 'NIVEAU 3 · DISPERSION SPATIALE',
     source:
       'Tours alignés sur la distance parcourue ; écart-type de la position latérale GPS en chaque point du tracé.',
   },
@@ -128,29 +170,32 @@ export const READINGS: ReadingDef[] = [
     // et le moteur app-side (`sessionInsightsEngine`) fait de même, en le
     // disant. Le mot promettait donc davantage que la donnée.
     name: 'Potentiel démontré',
+    court: 'POTENTIEL DÉMONTRÉ',
     badge: 'N3',
     tier: 'N3',
     dimension: 'accel',
-    eyebrow: 'Niveau 3 · Potentiel démontré',
+    eyebrow: 'NIVEAU 3 · POTENTIEL DÉMONTRÉ',
     source:
       'Meilleurs chronos déjà réalisés sur la séance. Aucune continuité vérifiée aux jonctions entre morceaux : jamais un tour garanti.',
   },
   {
     key: 'flow',
     name: 'Cohérence du flow',
+    court: 'COHÉRENCE · FLOW',
     badge: 'N4',
     tier: 'N4',
     dimension: 'flow',
-    eyebrow: 'Niveau 4 · Cohérence du rythme',
+    eyebrow: 'NIVEAU 4 · COHÉRENCE RYTHME',
     source: 'Jerk (dérivée de l’accélération) lissé sur le tour, à partir du signal inertiel.',
   },
   {
     key: 'transfert',
     name: 'Transfert de charge',
+    court: 'TRANSFERT · CHARGE',
     badge: 'N4 · 6 axes',
     tier: 'N4',
     dimension: 'accel',
-    eyebrow: 'Niveau 4 · Transfert de charge',
+    eyebrow: 'NIVEAU 4 · TRANSFERT CHARGE',
     source:
       'Gyroscope (pitch / roll) croisé au G longitudinal et latéral : durée entre le début de l’action et la stabilisation.',
   },

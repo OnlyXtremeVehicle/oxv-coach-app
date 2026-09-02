@@ -155,10 +155,10 @@ const PERIMETRE = [
  * `source` n'y est PAS : c'est la méthode, pas une étiquette (voir l'en-tête).
  */
 const PROPS_AFFICHEES =
-  /\b(label|sublabel|title|name|eyebrow|emptyMessage|errorMessage|accessibilityLabel|accessibilityHint|placeholder|caption|detail|text1|text2)\s*[=:]/;
+  /\b(label|sublabel|title|name|court|eyebrow|emptyMessage|errorMessage|accessibilityLabel|accessibilityHint|placeholder|caption|detail|text1|text2)\s*[=:]/;
 
 const PROP_LISTE =
-  'label|sublabel|title|name|eyebrow|emptyMessage|errorMessage|accessibilityLabel|accessibilityHint|placeholder|caption|detail|text1|text2';
+  'label|sublabel|title|name|court|eyebrow|emptyMessage|errorMessage|accessibilityLabel|accessibilityHint|placeholder|caption|detail|text1|text2';
 
 const DEBUT_PROP = new RegExp(`\\b(?:${PROP_LISTE})\\s*[=:]\\s*`, 'g');
 

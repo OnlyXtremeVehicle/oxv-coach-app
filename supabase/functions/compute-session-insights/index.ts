@@ -4,9 +4,27 @@
 // Body : { sessionId: string }
 // Calcule la ligne `session_insights` d'une session À PARTIR de l'analyse déjà
 // persistée (app_segment_analyses + laps + comptage telemetry_frames), puis
-// l'upsert. RLS : session_insights est en écriture service_role UNIQUEMENT
-// (« service writes insights » ALL) ; cette fonction est donc le SEUL chemin
-// d'écriture des insights — d'où une edge function et pas du code app.
+// REMPLACE la ligne : `delete` sur `telemetry_session_id` (colonne UNIQUE),
+// puis `insert`. Ce n'est PAS un upsert, et la nuance compte — la suppression
+// ne filtre pas sur `engine_version`, donc tout moteur qui écrit cette séance
+// efface intégralement le précédent.
+//
+// DEUX AFFIRMATIONS DE CET EN-TÊTE ÉTAIENT FAUSSES, corrigées le 02/09/2026 :
+//   — « puis l'upsert » : c'est un delete + insert ;
+//   — « cette fonction est donc le SEUL chemin d'écriture des insights » :
+//     `compute-session-insights-v3` écrit la même ligne, sur la même clé, et
+//     tournait quatorze lignes après celle-ci dans `analyzeSessionService`.
+//     Cet appel-là a été retiré ; le bouton « Recalculer les lectures » de la
+//     console admin, lui, appelle encore v1 seule.
+//
+// RLS : `session_insights` reste en écriture service_role UNIQUEMENT
+// (« service writes insights » ALL) — d'où une edge function et pas du code app.
+// Cela reste vrai, et c'est la seule des trois qui l'était.
+//
+// CE FICHIER N'A PAS ÉTÉ REDÉPLOYÉ pour cette correction : la version 11 en
+// production est identique au dépôt, commentaires faux compris, et redéployer
+// une fonction pour un commentaire n'apporte rien. Ce qui compte est que le
+// dépôt cesse de mentir à qui le relit.
 //
 // Doctrine / règle d'or (simple, conforme, non spéculatif) : on ne calcule que
 // ce qui dérive proprement de l'analyse réelle — anatomy (apex, G latéral,
@@ -27,8 +45,10 @@ const G = 9.81;
 
 // L'ABSENCE N'EST PAS UN ZERO — corrige le 14/08/2026.
 //
-// Cette fonction est le SEUL producteur en production de `session_insights.
-// anatomy` (l'app appelle `compute-session-insights` depuis analyzeSessionService).
+// Cette fonction n'est PLUS le producteur de `session_insights.anatomy` sur le
+// chemin nominal : `analyzeSessionService` n'appelle plus que v3 depuis le
+// 02/09/2026, et v3 écrit `anatomy` elle aussi. La correction ci-dessous reste
+// juste et reste utile — le bouton admin passe encore par ici.
 // Elle ecrivait `0` pour chaque grandeur non mesuree, et l'ecran rendait alors,
 // en toutes lettres : « Freinage sur 0 m avant la corde ».
 //

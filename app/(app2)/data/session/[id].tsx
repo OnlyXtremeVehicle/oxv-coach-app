@@ -3469,7 +3469,11 @@ function ConstatsSection({
           return (
             <ListRow
               key={r.key}
-              label={r.name}
+              // `court`, pas `name` : cet écran est une feuille de données
+              // déclarée, et la règle des mots-clés s'y applique. Le nom du
+              // catalogue reste lisible dans le libellé d'accessibilité, qui
+              // s'entend et ne s'affiche pas.
+              label={r.court}
               // Disponible → le niveau. Absente → la raison, à la place du
               // tiret : « — » seul n'apprendrait rien.
               sublabel={dispo ? r.eyebrow : d.raison}
@@ -3528,7 +3532,7 @@ function ConstatsSection({
       <Sheet visible={open !== null} onClose={() => setOpen(null)} snapHeight={520}>
         {reading ? (
           <ScrollView showsVerticalScrollIndicator={false}>
-            <SectionHeader eyebrow={reading.eyebrow} title={reading.name} />
+            <SectionHeader eyebrow={reading.eyebrow} title={reading.court} />
             {open ? renderReadingViz(open, insights, ggPoints, flowPoints) : null}
           </ScrollView>
         ) : null}

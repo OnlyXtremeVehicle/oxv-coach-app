@@ -215,6 +215,17 @@ et 12,2 km/h. Elle valide la chaîne ; elle ne calibre pas un seuil de piste.
   amont de tout le reste : `analyzeSessionService` ne lance les insights que
   `if (segmentsPersisted > 0)`. Tant que cette table est vide, aucune lecture
   approfondie ne peut naître, quel que soit l'état des moteurs.
+  **La chaîne n'est pas cassée, elle n'a jamais tourné** : `pisteDepuisBase` a
+  été branchée le 01/09, et la dernière séance date du 12/08. Le chemin le moins
+  cher pour l'exécuter existe déjà — le bouton « Segments » de
+  `app/(admin)/analyse-session/[id].tsx`, sans run à rouler ni bilan à ouvrir.
+  **Avertissement avant de l'appuyer** : `upsertAnalysis` estampe
+  `algo_version = 'v1.0'`, ce qui remet la séance dans la file du cron horaire
+  `analyze-pending-sessions` (job 4, actif), lequel réécrit `margin_global` avec
+  son propre calcul et re-tamponne `cron-v3.0`. La marge globale ferait donc
+  l'aller-retour. Réserve honnête : `net._http_response` est purgée, on ne peut
+  plus mesurer si la fonction edge accepte l'appel — les seules réponses qu'on
+  ait pu corréler, sur le job voisin, étaient des 401.
 - `cycle_steps` et `coach_annotations` : **zéro ligne**. Les fiches P36 et
   P46–P51 resteront écartées.
 - **Haute Saintonge** ne se referme pas : 17,1 m entre son dernier point et
@@ -381,8 +392,39 @@ secteurs officiels, l'ouverture du coach.
 
 | Sujet | Ce qu'il bloque | Butée |
 |---|---|---|
-| *(aucune)* | — | — |
 | **Geste de calibration au prévol** | Le redressement du signal, donc le filtre, donc les deux branches à zéro | 19/09 |
+| **Potentiel démontré : le jour ou le record** | Les deux moteurs d'insights s'excluent sur l'écran — voir ci-dessous | 12/09 |
+| **Météo sauvegardée du 19/07** | Sept séances de mai restent sans conditions ; on ne sait pas pourquoi la table a été vidée | — |
+
+### Les deux moteurs d'insights s'excluent — mesuré le 02/09/2026
+
+`session_insights` porte `UNIQUE (telemetry_session_id)` : **une ligne par
+séance**. Les deux fonctions edge font `delete` sur cette clé puis `insert`,
+sans filtrer sur `engine_version` — vérifié dans le code **déployé** de v1
+(version 11, ACTIVE), pas seulement dans le dépôt.
+
+v3 écrit vingt-deux colonnes, v1 en écrit douze, toutes présentes chez v3. On
+croirait v3 strictement supérieure. **Elle ne l'est pas, à cause d'une forme :**
+
+| | `ideal_lap` écrit | Lu par l'écran ? |
+|---|---|---|
+| **v1** | `{ ideal_time_s, real_best_s, … }` — **à plat** | **oui** |
+| **v3** | `{ theoretical_day, theoretical_record }` — imbriqué | **non** |
+
+`chronosLisibles` exige la forme à plat et refuse l'imbriquée **délibérément** :
+son commentaire réserve au fondateur le choix entre le potentiel du jour et
+celui du record.
+
+Donc, aujourd'hui : **v3 ouvre les quatre lectures de modules et ferme
+« Potentiel démontré » ; v1 fait l'inverse.** Aucun ordre d'appel ne donne les
+deux. Ce n'est pas un défaut de câblage, c'est une exclusion structurelle.
+
+Ce qui a été fait sans trancher : l'appel à v1 a été retiré du chemin nominal —
+son résultat y était effacé quatorze lignes plus loin, au prix de deux `COUNT`
+exacts sur 27 000 trames. Le bouton « Recalculer les lectures » de la console
+admin appelle **encore v1 seule**, et dégrade donc une séance déjà calculée par
+v3 : il n'a pas été repointé, parce que ce serait trancher. `ecritureInsightsUnique.guard`
+fige l'état et échouera le jour de la décision.
 
 ### Ce que la calibration a mesuré sur Bouteville — 30/08
 

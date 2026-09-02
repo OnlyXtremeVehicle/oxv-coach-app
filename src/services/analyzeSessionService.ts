@@ -248,7 +248,7 @@ export async function analyzeAndPersistSession(
     notes.push('Pas assez de samples pour analyse par segment.');
   }
 
-  // ── Insights (mirror-insights-v1) ────────────────────────────────────────
+  // ── Insights (mirror-insights-v3) ────────────────────────────────────────
   // Calculés CÔTÉ SERVEUR via l'edge function compute-session-insights : la
   // table session_insights est en écriture service_role uniquement (RLS), donc
   // l'app ne peut pas l'écrire elle-même. Best-effort, ne bloque jamais le
@@ -257,20 +257,29 @@ export async function analyzeAndPersistSession(
   // src/services/sessionInsightsEngine.ts (miroir de l'edge).
 
   if (segmentsPersisted > 0) {
-    try {
-      const { error: insightsError } = await supabase.functions.invoke('compute-session-insights', {
-        body: { sessionId: input.telemetrySessionId },
-      });
-      notes.push(
-        insightsError ? `Insights KO : ${insightsError.message}` : 'Insights calculés (serveur).'
-      );
-    } catch (e) {
-      notes.push(`Insights KO : ${errMsg(e)}`);
-    }
-    // v3 (modules rb-1 : gg_envelope, throttle_brake, flow_coherence,
-    // load_transfer) — les quatre visualisations de data/session/[id] la
-    // consomment et étaient VIDES depuis leur écriture faute d'invocateur
-    // (mesuré le 14/08/2026). Même contrat best-effort que v1.
+    // L'APPEL À v1 A ÉTÉ RETIRÉ ICI LE 02/09/2026, ET IL FAUT DIRE POURQUOI.
+    //
+    // `session_insights` porte UNIQUE (telemetry_session_id) — une ligne par
+    // séance, mesuré en base. Les deux fonctions edge font `delete` puis
+    // `insert` sur cette même clé, vérifié dans le code DÉPLOYÉ (v1 version 11,
+    // ACTIVE) et non seulement dans le dépôt. La seconde efface donc la
+    // première, intégralement.
+    //
+    // v1 tournait quatorze lignes avant v3. Son résultat n'a jamais atteint un
+    // écran : deux COUNT exacts sur `telemetry_frames` — 27 000 lignes sur la
+    // séance de référence — pour une ligne effacée aussitôt.
+    //
+    // CE QUE CE RETRAIT NE RÉPARE PAS, et qui est plus grave : les deux moteurs
+    // s'excluent sur l'écran, structurellement. `chronosLisibles`
+    // (`disponibilite.ts`) exige un `ideal_lap` À PLAT — la forme que v1 écrit.
+    // v3 écrit la forme IMBRIQUÉE `{theoretical_day, theoretical_record}`, que
+    // ce portillon refuse délibérément, parce que choisir entre le potentiel du
+    // jour et celui du record est une décision du fondateur.
+    //
+    // Donc, aujourd'hui : v3 ouvre les quatre lectures de modules et ferme
+    // « Potentiel démontré » ; v1 fait l'inverse. Aucun ordre d'appel ne donne
+    // les deux — la table n'a qu'une ligne par séance. Le retrait ci-dessous ne
+    // change rien à cela : il cesse seulement de payer un calcul jeté.
     try {
       const { error: v3Error } = await supabase.functions.invoke('compute-session-insights-v3', {
         body: { sessionId: input.telemetrySessionId },
