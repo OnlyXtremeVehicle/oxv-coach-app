@@ -393,8 +393,6 @@ secteurs officiels, l'ouverture du coach.
 | Sujet | Ce qu'il bloque | Butée |
 |---|---|---|
 | **Geste de calibration au prévol** | Le redressement du signal, donc le filtre, donc les deux branches à zéro | 19/09 |
-| **Potentiel démontré : le jour ou le record** | Les deux moteurs d'insights s'excluent sur l'écran — voir ci-dessous | 12/09 |
-| **Météo sauvegardée du 19/07** | Sept séances de mai restent sans conditions ; on ne sait pas pourquoi la table a été vidée | — |
 
 ### Les deux moteurs d'insights s'excluent — mesuré le 02/09/2026
 
@@ -419,12 +417,17 @@ Donc, aujourd'hui : **v3 ouvre les quatre lectures de modules et ferme
 « Potentiel démontré » ; v1 fait l'inverse.** Aucun ordre d'appel ne donne les
 deux. Ce n'est pas un défaut de câblage, c'est une exclusion structurelle.
 
-Ce qui a été fait sans trancher : l'appel à v1 a été retiré du chemin nominal —
-son résultat y était effacé quatorze lignes plus loin, au prix de deux `COUNT`
-exacts sur 27 000 trames. Le bouton « Recalculer les lectures » de la console
-admin appelle **encore v1 seule**, et dégrade donc une séance déjà calculée par
-v3 : il n'a pas été repointé, parce que ce serait trancher. `ecritureInsightsUnique.guard`
-fige l'état et échouera le jour de la décision.
+**TRANCHÉ LE 02/09/2026, et l'exclusion est levée.** v3 — version 12, déployée
+par le MCP — écrit désormais la forme **à plat en plus** de l'imbriquée,
+alimentée par le potentiel du **jour**. Les cinq lectures s'ouvrent ensemble.
+`theoretical_record` reste écrit : on a levé une exclusion, pas tranché une
+préférence, et le choix jour-vs-record reste entier.
+
+Deux choses restent, et elles sont nommées par `ecritureInsightsUnique.guard` :
+l'appel à v1 a été retiré du chemin nominal — son résultat y était effacé
+quatorze lignes plus loin, au prix de deux `COUNT` exacts sur 27 000 trames — et
+le bouton « Recalculer les lectures » de la console admin appelle **encore v1
+seule**, donc dégrade une séance calculée par v3. Le repointer reste à décider.
 
 ### Ce que la calibration a mesuré sur Bouteville — 30/08
 

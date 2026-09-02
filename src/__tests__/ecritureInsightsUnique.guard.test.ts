@@ -33,11 +33,27 @@
  * l'imbriquée DÉLIBÉRÉMENT — son commentaire réserve au fondateur le choix
  * entre le potentiel du jour et celui du record.
  *
- * Conséquence, aujourd'hui : v3 ouvre les quatre lectures de modules et FERME
- * « Potentiel démontré » ; v1 fait exactement l'inverse. **Aucun ordre d'appel
- * ne donne les deux**, puisque la table n'a qu'une ligne par séance. Ce n'est
- * pas un défaut de câblage, c'est une exclusion structurelle, et elle attend
- * une décision.
+ * Conséquence, jusqu'au 02/09/2026 : v3 ouvrait les quatre lectures de modules
+ * et FERMAIT « Potentiel démontré » ; v1 faisait exactement l'inverse. **Aucun
+ * ordre d'appel ne donnait les deux**, puisque la table n'a qu'une ligne par
+ * séance. Ce n'était pas un défaut de câblage, c'était une exclusion
+ * structurelle.
+ *
+ * ===========================================================================
+ * L'EXCLUSION EST LEVÉE — décision du fondateur, v3 version 12
+ * ===========================================================================
+ *
+ * v3 écrit désormais la forme À PLAT **en plus** de l'imbriquée, alimentée par
+ * le potentiel du JOUR — le meilleur tour réel de la séance, ce que v1
+ * calculait. Les cinq lectures s'ouvrent donc ensemble.
+ *
+ * Ce qui n'est PAS fermé par ce geste : `theoretical_record` reste écrit, donc
+ * le choix jour-vs-record que `disponibilite.ts` réserve au fondateur reste
+ * entier. On a levé une exclusion, pas tranché une préférence.
+ *
+ * CE QUI RESTE OUVERT : le bouton « Recalculer les lectures » de la console
+ * admin appelle toujours v1 SEULE, et dégrade donc une séance calculée par v3 —
+ * dix colonnes remplacées par douze. Un test ci-dessous le fige.
  *
  * ===========================================================================
  * CE QUE CETTE GARDE FAIT, ET CE QU'ELLE NE FAIT PAS
@@ -174,5 +190,36 @@ describe('une seule ligne d’insights par séance', () => {
     );
     expect(dispo).toMatch(/b\.ideal_time_s/);
     expect(dispo).not.toMatch(/b\.theoretical_day/);
+  });
+
+  /**
+   * L'EXCLUSION EST LEVÉE — décision du fondateur du 02/09/2026, déployée en
+   * version 12.
+   *
+   * v3 écrit désormais la forme À PLAT **en plus** de l'imbriquée, alimentée par
+   * le potentiel du JOUR. Les cinq lectures s'ouvrent donc ensemble, et le choix
+   * jour-vs-record reste entier : `theoretical_record` est toujours écrit.
+   *
+   * Ce test échoue si quelqu'un retire l'étalement — auquel cas « Potentiel
+   * démontré » se refermerait sans que rien ne le dise.
+   */
+  it('v3 étale le potentiel du jour à la racine, sans perdre l’imbriqué', () => {
+    expect(V3).toMatch(/const potentielDuJour = bestOfDay/);
+    expect(V3).toMatch(/\.\.\.\(potentielDuJour \?\? \{\}\)/);
+    expect(V3).toMatch(/theoretical_day: potentielDuJour/);
+    expect(V3).toMatch(/theoretical_record: recordTime != null/);
+  });
+
+  /**
+   * ET IL NE FABRIQUE PAS DE SECTEUR. v1 écrivait `worst_sector: 0`, qui nomme
+   * un secteur inexistant, alors que son propre en-tête pose la règle :
+   * « l'absence n'est pas un zéro ». v3 l'omet, et laisse
+   * `loss_by_sector_pct` vide — aucun découpage en secteurs n'est calculé.
+   */
+  it('le bloc à plat de v3 n’invente aucun secteur', () => {
+    const i = V3.indexOf('const potentielDuJour = bestOfDay');
+    const bloc = V3.slice(i, V3.indexOf('const ideal_lap', i));
+    expect(bloc).toMatch(/loss_by_sector_pct: \[\]/);
+    expect(bloc).not.toMatch(/worst_sector/);
   });
 });

@@ -264,8 +264,49 @@ Deno.serve(async (req) => {
       personal_record: recordTime != null ? { lap_time_s: recordTime, scope: recordScope } : null,
     };
 
+    // LA FORME À PLAT EST ÉCRITE EN PLUS DE LA FORME IMBRIQUÉE — décision du
+    // fondateur du 02/09/2026, et elle lève une exclusion structurelle.
+    //
+    // `session_insights` porte UNIQUE (telemetry_session_id) : une ligne par
+    // séance. v1 et v3 font toutes deux `delete` puis `insert` sur cette clé,
+    // donc la seconde efface la première, intégralement. Or les deux écrivaient
+    // `ideal_lap` sous deux formes différentes :
+    //
+    //     v1   { ideal_time_s, real_best_s, … }              À PLAT
+    //     v3   { theoretical_day, theoretical_record }       IMBRIQUÉE
+    //
+    // et `chronosLisibles` (`src/components/insights/disponibilite.ts`) n'ouvre
+    // « Potentiel démontré » que sur la forme À PLAT. Conséquence mesurée :
+    // v3 ouvrait les quatre lectures de modules et FERMAIT le potentiel ; v1
+    // faisait l'inverse. Aucun ordre d'appel ne donnait les deux.
+    //
+    // Les champs à plat portent le POTENTIEL DU JOUR — le meilleur tour réel de
+    // la séance, ce que v1 calculait. Le potentiel du RECORD reste disponible
+    // dans `theoretical_record` : la décision de le montrer un jour n'est pas
+    // fermée par ce geste, elle est seulement laissée à plus tard.
+    //
+    // CE QU'ON N'ÉCRIT PAS. `worst_sector` est OMIS, et `loss_by_sector_pct`
+    // reste vide : aucun découpage en secteurs n'est calculé ici. v1 écrivait
+    // `worst_sector: 0`, qui nomme un secteur inexistant — l'en-tête de v1 pose
+    // pourtant la règle en toutes lettres, « l'absence n'est pas un zéro ». La
+    // vue le supporte : elle lit `loss_by_sector_pct ?? []` et ne rend rien.
+    const potentielDuJour = bestOfDay
+      ? {
+          ideal_time_s: bestOfDay.lap_time_s,
+          real_best_s: bestOfDay.lap_time_s,
+          gap_s: 0,
+          best_lap: bestOfDay.lap_index,
+          loss_by_sector_pct: [],
+          sector_sources: [],
+        }
+      : null;
+
     const ideal_lap = (bestOfDay || recordTime != null) ? {
-      theoretical_day: bestOfDay ? { ideal_time_s: bestOfDay.lap_time_s, real_best_s: bestOfDay.lap_time_s, gap_s: 0, best_lap: bestOfDay.lap_index, sector_sources: [] } : null,
+      // À plat, et seulement quand le tour du jour existe : sans lui, le
+      // portillon doit rester fermé plutôt que de présenter un record comme
+      // s'il était la séance.
+      ...(potentielDuJour ?? {}),
+      theoretical_day: potentielDuJour,
       theoretical_record: recordTime != null ? { ideal_time_s: recordTime, real_best_s: recordTime, gap_s: 0, sector_sources: [] } : null,
     } : null;
 
