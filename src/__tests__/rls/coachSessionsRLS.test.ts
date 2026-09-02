@@ -5,7 +5,8 @@
  *   - telemetry_sessions_coach_select : un coach voit les sessions
  *     d'un pilote uniquement si is_coach_of(user_id) === true,
  *     c'est-à-dire :
- *       a) une ligne `coach_pilots` existe (coach_id, pilot_id, active=true)
+ *       a) une ligne `coach_pilots` existe (coach_id, pilot_id, status='active' —
+ *          `active` en est DERIVEE depuis L32, voir setup.ts)
  *       b) ET pilot_consent_at IS NOT NULL
  *
  * Skip automatique si TEST_SUPABASE_URL / TEST_SUPABASE_SERVICE_KEY

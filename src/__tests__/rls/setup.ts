@@ -107,9 +107,18 @@ export async function createTestUser(
 }
 
 /**
- * Crée une assignation coach-pilot dans `coach_pilots`. Si `consented`,
- * remplit aussi `pilot_consent_at`. `level` fixe le niveau de lecture gradué
- * (§6/§23) — par défaut `lecture_detaillee` (accès complet, comportement legacy).
+ * Crée une assignation coach-pilot ACCEPTÉE dans `coach_pilots`.
+ *
+ * Elle naît `status = 'active'`, et c'est `status` qui commande : depuis L32
+ * (02/08/2026), `active` n'est plus qu'une vue de cette colonne, entretenue par
+ * un déclencheur. Voir le corps pour ce que l'ancienne écriture provoquait.
+ *
+ * Si `consented`, remplit aussi `pilot_consent_at`. Les deux axes restent
+ * SÉPARÉS : les trois appels `consented = false` du dépôt restent négatifs par
+ * la seule clause `pilot_consent_at is not null`, sans dépendre du statut.
+ *
+ * `level` fixe le niveau de lecture gradué (§6/§23) — par défaut
+ * `lecture_detaillee` (accès complet, comportement legacy).
  */
 export async function assignCoachToPilot(
   coachId: string,
@@ -124,7 +133,22 @@ export async function assignCoachToPilot(
       coach_id: coachId,
       pilot_id: pilotId,
       pilot_consent_at: consented ? new Date().toISOString() : null,
-      active: true,
+      // `active` est DÉRIVÉE de `status` par `trg_aligner_active_sur_status`
+      // (migration 20260802183047, L32) : l'écrire à la main ne sert à rien, le
+      // déclencheur l'écrase aussitôt à `(status = 'active')`. Le commentaire de
+      // colonne posé par cette migration le dit en toutes lettres — « DÉRIVÉE de
+      // status — ne pas écrire à la main ».
+      //
+      // Cette aide écrivait `active: true` depuis le 25/05/2026, dix semaines
+      // AVANT le déclencheur. Depuis le 02/08, toute affiliation qu'elle pose
+      // naît donc `status='pending'`, donc `active=false`, et les trois
+      // fonctions d'accès rendent `false` : les assertions POSITIVES des huit
+      // suites RLS côté coach ne peuvent pas passer.
+      //
+      // Personne ne l'a vu parce que ces 85 tests n'ont jamais tourné : le
+      // dépôt n'a aucun secret `TEST_SUPABASE_*`, `RLS_TEST_ENABLED` est faux,
+      // et tout est `describe.skip`. Une garde qu'on ne lance pas ne garde rien.
+      status: 'active',
       level,
     } as never)
     .select('id')
