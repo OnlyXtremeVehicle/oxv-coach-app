@@ -207,14 +207,43 @@ et 12,2 km/h. Elle valide la chaîne ; elle ne calibre pas un seuil de piste.
   tombe à 0,629 → fluidité 78. **Ne touchez pas aux seuils sans décision
   explicite du fondateur** : c'est un incrément de `QDI_ALGO_VERSION` et un
   recalcul de l'historique.
-- `session_insights` ne contient qu'une ligne, `mirror-insights-demo`, sur une
-  séance à zéro trame. **L'application la filtre trois fois** — rien à coder.
+- `session_insights` est **vide** — remesuré le 02/09/2026. La ligne
+  `mirror-insights-demo` que cette section décrivait le 30/08 n'y est plus.
+  Les trois filtres de l'application restent en place et restent justes ; ils
+  n'ont simplement plus rien à écarter.
+- `app_segment_analyses` est **vide elle aussi**, sur toute la table. C'est
+  amont de tout le reste : `analyzeSessionService` ne lance les insights que
+  `if (segmentsPersisted > 0)`. Tant que cette table est vide, aucune lecture
+  approfondie ne peut naître, quel que soit l'état des moteurs.
 - `cycle_steps` et `coach_annotations` : **zéro ligne**. Les fiches P36 et
   P46–P51 resteront écartées.
-- Bouteville n'a **aucun virage détecté** (`corners` nul) alors qu'il porte 139
-  points de tracé médian.
-- L'intention du 12/08 existe dans `session_intentions` mais son `session_id`
-  est **nul** : rattachée au circuit, pas à la séance. P01 est écartée pour rien.
+- Deux tracés sur six **ne se referment pas** : Bouteville 85,3 m entre son
+  dernier point et son premier, Haute Saintonge 17,1 m ; Albi, le Bugatti,
+  Ricardo Tormo et la Charente à 0,0 m. Une trame qui tombe dans ce trou se
+  projetait sur un sommet, et son écart latéral — la moitié du trou — retirait
+  la moitié de la marge du virage. Corrigé le 01/09 (`horsTrace`,
+  `ecartBouclageM`) : l'écart de ces trames ne compte plus. **Le trou de
+  Bouteville, lui, est toujours là** : c'est une donnée à reprendre, pas du
+  code.
+
+**TROIS LIGNES DE CETTE SECTION ÉTAIENT FAUSSES AU MOMENT OÙ ELLE A ÉTÉ
+ÉCRITE — remesuré le 02/09/2026.** Le brief exige qu'on corrige une
+spécification qui se trompe, et il faut le faire pour lui-même :
+
+- « Bouteville n'a **aucun virage détecté** (`corners` nul) » — **faux**. Le
+  circuit porte **douze** virages, écrits le 30/08 à 23 h 55, soit deux minutes
+  avant que ce document ne soit rédigé. Piège au passage : `circuits.corners`
+  est un **objet** `{params, corners:[…], n_corners}`, pas un tableau — un
+  `jsonb_array_length` dessus échoue, il faut lire `corners->'corners'`.
+- « L'intention du 12/08 … son `session_id` est **nul** » — **faux**. Elle
+  pointe sur `ff384ace`, depuis le 30/08 à 23 h 53. **P01 n'est pas écartée**,
+  et elle porte un verbatim de six lignes du fondateur.
+- « `session_insights` ne contient qu'une ligne » — **plus vrai**, voir
+  ci-dessus.
+
+Les trois se sont démenties en quarante-huit heures. C'est la démonstration de
+la règle du dossier : **toute affirmation de plus de deux semaines se remesure,
+et celle-ci n'a pas tenu deux jours.**
 
 ---
 

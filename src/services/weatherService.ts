@@ -170,6 +170,15 @@ export async function fetchCurrentWeather(
       ].join(','),
       daily: 'sunrise,sunset,precipitation_probability_max',
       timezone: 'Europe/Paris',
+      // UNE SEULE JOURNÉE, CELLE DE L'APPEL. Ce chemin ne sait donc pas dater :
+      // appliqué à un réimport, il estamperait le ciel du jour d'ingestion et
+      // non celui du roulage.
+      //
+      // Ce qu'il faudrait est mesuré, le 02/09/2026, et ne demande aucun
+      // nouveau destinataire sortant : `api.open-meteo.com/v1/forecast` — l'hôte
+      // déjà déclaré dans `hotesDistants.guard` — accepte `start_date` et
+      // `end_date` et rend le passé. La requête du 12/08 a bien renvoyé ses deux
+      // journées. `archive-api.open-meteo.com` n'est donc pas nécessaire ici.
       forecast_days: '1',
       wind_speed_unit: 'kmh',
     });
@@ -214,6 +223,21 @@ export async function fetchCurrentWeather(
       // `is_day` absent → `null`. Le tester avec `=== 1` rendait `false` sur
       // une absence, c'est-à-dire « il fait nuit » — affirmé, jamais mesuré.
       isDay: current.is_day === undefined || current.is_day === null ? null : current.is_day === 1,
+      // ATTENTION SI CES DEUX CHAMPS SONT UN JOUR ÉCRITS EN BASE.
+      //
+      // Avec `timezone: 'Europe/Paris'` ci-dessus, Open-Meteo rend une heure
+      // MURALE LOCALE SANS DÉCALAGE. Mesuré le 02/09/2026 sur la position du
+      // circuit de Bouteville, date du 12/08 :
+      //
+      //     "sunrise": ["2026-08-12T06:57"]     "utc_offset_seconds": 7200
+      //
+      // Posée telle quelle dans un `timestamptz`, Postgres la lit en UTC : deux
+      // heures d'erreur l'été, silencieuses, sur une colonne qui se relirait
+      // comme une mesure. La réponse porte `utc_offset_seconds` — c'est avec lui
+      // qu'on recompose l'instant, pas avec une hypothèse de fuseau.
+      //
+      // Aucune colonne ne les reçoit aujourd'hui, et c'est délibéré : aucun
+      // écran ne les lit (voir le champ `isDay` plus haut).
       sunriseAt: daily.sunrise?.[0] ?? null,
       sunsetAt: daily.sunset?.[0] ?? null,
 
