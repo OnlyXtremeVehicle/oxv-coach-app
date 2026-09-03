@@ -124,3 +124,8 @@ docs/architecture/05_SCHEMA_SUPABASE_PRIVATE.sql
 
 expo-env.d.ts
 # @end expo-cli.env*
+
+# Sorties de session Claude Code — jamais versionnees.
+# Un zip de 124 ko a ete emporte par un `git add -A` le 03/09/2026 : le dossier
+# est un espace de travail local, pas du code.
+/Claude outputs/
