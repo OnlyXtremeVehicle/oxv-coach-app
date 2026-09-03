@@ -21,7 +21,7 @@
 // verify_jwt = true (déclenché côté admin à la création/maj d'un circuit).
 
 import 'jsr:@supabase/functions-js/edge-runtime.d.ts';
-import { createClient } from 'jsr:@supabase/supabase-js@2';
+import { createClient } from 'jsr:@supabase/supabase-js@2.114.0';
 
 // LE MÊME MOTEUR QUE L'APPLICATION, PAS UNE COPIE.
 //

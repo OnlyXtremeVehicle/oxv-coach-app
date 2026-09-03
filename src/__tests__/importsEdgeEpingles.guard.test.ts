@@ -7,8 +7,7 @@
  * ===========================================================================
  *
  * Deux déploiements de `compute-session-insights-v3`, sur un code dont seul un
- * bloc avait changé, et la chronologie exacte compte — je l'avais d'abord
- * écrite fausse, « treize minutes d'intervalle », avant de la mesurer :
+ * bloc avait changé :
  *
  *     02/09  21 h 14 UTC   version 12   ACTIVE
  *     03/09  16 h 18 UTC   JSR publie @supabase/supabase-js 2.115.0
@@ -16,41 +15,43 @@
  *                            '@supabase/storage-js' matching '2.115.0' »
  *     03/09  16 h 24 UTC   version 13   ACTIVE, une fois épinglée
  *
- * Les deux déploiements sont séparés de dix-neuf heures, pas de treize minutes.
- * Ce qui compte est ailleurs : **la publication en amont date de six minutes
- * avant l'échec.** On est passé au travers d'une fenêtre qui venait de se
- * fermer, et rien de notre côté n'avait bougé.
+ * **L'échec est tombé six minutes après la publication en amont**, et rien de
+ * notre côté n'avait bougé.
  *
- *   — JSR a publié `@supabase/supabase-js` **2.115.0 le 03/09/2026 à
- *     16 h 18 UTC** (lu dans `jsr.io/@supabase/supabase-js/meta.json`) ;
- *   — cette version déclare une dépendance npm sur
- *     `@supabase/storage-js@2.115.0`, **qui n'a jamais été publiée** — le
- *     registre npm s'arrête à 2.114.0 en stable, et 2.115.0 n'existe qu'en
- *     `canary.0` ;
- *   — nos fonctions importaient `jsr:@supabase/supabase-js@2`, qui n'est pas
- *     une version mais une PLAGE. Elle s'est mise à résoudre vers la version
- *     cassée, d'elle-même, un dimanche après-midi.
- *
- * Mesuré à ce moment-là : **22 fonctions sur 22 étaient dans ce cas. Aucune
- * n'était épinglée.** Aucun correctif urgent n'aurait pu partir. Après
- * l'épinglage de `compute-session-insights-v3`, il en reste **vingt-et-une**.
- *
- * NOTE DE MÉTHODE, et elle vaut d'être écrite : la première version de la liste
- * ci-dessous a été TAPÉE À LA MAIN depuis un `grep` mal cadré, et sept entrées
- * étaient fausses. C'est cette garde elle-même qui l'a refusée, par son test
- * d'entrées périmées. La liste est désormais issue de la mesure.
+ * La cause : `@supabase/supabase-js` 2.115.0 déclare une dépendance sur
+ * `@supabase/storage-js@2.115.0`, **qui n'a jamais été publiée** — le registre
+ * npm s'arrête à 2.114.0 en stable, et 2.115.0 n'existe qu'en `canary.0`.
  *
  * ===========================================================================
- * CE QUE CETTE GARDE FAIT
+ * LA CASSURE N'EST PAS PROPRE À JSR — et ma première garde l'avait manqué
  * ===========================================================================
  *
- * Elle n'exige pas zéro : épingler vingt-et-une fonctions demanderait
- * vingt-et-un déploiements, et un déploiement se décide, il ne se glisse pas
- * dans un lot. Elle fait ce que fait la liste des orphelins : elle FIGE
- * l'existant et interdit qu'il grandisse.
+ * Cette garde, dans sa première version, ne cherchait que la forme `jsr:` et ne
+ * lisait que les `index.ts` À LA RACINE de chaque fonction. Deux trous, tous
+ * deux trouvés en épinglant :
  *
- * Le bon geste, quand on touche une de ces fonctions : l'épingler DANS LE MÊME
- * déploiement, et la retirer de `NON_EPINGLEES` dans le même commit.
+ *   — **sept fonctions importent la même librairie par `https://esm.sh/`**, et
+ *     npm publie AUSSI 2.115.0 avec la même dépendance manquante : elles
+ *     étaient exposées à l'identique ;
+ *   — `ritual_dispatcher/lib/supabase.ts` est un fichier IMBRIQUÉ, invisible à
+ *     un balayage qui ne regarde que la racine.
+ *
+ * Le compte réel n'était donc pas vingt-deux mais **vingt-huit**. Une garde qui
+ * ne cherche qu'une forme d'un défaut mesure la forme, pas le défaut.
+ *
+ * ===========================================================================
+ * CE QU'ELLE EXIGE MAINTENANT : ZÉRO
+ * ===========================================================================
+ *
+ * Les vingt-huit sont épinglées dans le dépôt. La garde n'a donc plus de liste
+ * à figer — elle refuse tout import de plage, quelle que soit sa forme.
+ *
+ * **ÉPINGLER LA SOURCE SUFFIT, ET C'EST LE POINT.** Les artefacts déjà déployés
+ * sont bundlés : ils tournent, la publication en amont ne les touche pas. Le
+ * pin agit au PROCHAIN déploiement — c'est là qu'il fallait qu'il soit, et
+ * c'est là qu'il est. Redéployer vingt-huit fonctions aujourd'hui ne changerait
+ * aucun comportement et demanderait vingt-huit transcriptions intégrales, donc
+ * vingt-huit occasions d'erreur silencieuse.
  *
  * ===========================================================================
  * POURQUOI 2.114.0 ET PAS « LA DERNIÈRE »
@@ -60,6 +61,11 @@
  * est précisément ce qui a cassé. Une version écrite est une version qu'on a
  * choisie ; une plage est une version que quelqu'un d'autre choisit pour nous,
  * plus tard, sans nous le dire.
+ *
+ * Deux fichiers portaient déjà `2.45.0` par `esm.sh` — `resend_webhook` et
+ * `ritual_dispatcher/lib/supabase.ts`. Ils ne sont pas alignés sur 2.114.0 : ils
+ * se résolvent, ils tournent, et changer la version d'une librairie sous une
+ * fonction en production est un geste qui se décide, pas un rangement.
  */
 
 import { readFileSync, readdirSync, statSync } from 'fs';
@@ -68,112 +74,94 @@ import { join } from 'path';
 const RACINE = join(__dirname, '..', '..');
 const FONCTIONS = join(RACINE, 'supabase', 'functions');
 
-/** La version épinglée retenue le 03/09/2026 : la dernière qui se résout. */
+/** La version retenue le 03/09/2026 : la dernière qui se résout. */
 const VERSION_RETENUE = '2.114.0';
 
 /**
- * Les fonctions qui importent encore la PLAGE `@2`, au 03/09/2026.
+ * TOUS les `.ts` sous `supabase/functions/`, y compris imbriqués.
  *
- * Vingt-et-une, mesurées et non recopiées. Chacune sortira de cette liste le
- * jour de son prochain déploiement — pas avant, parce qu'un déploiement se
- * décide.
+ * La récursion n'est pas un raffinement : `ritual_dispatcher/lib/supabase.ts`
+ * portait un import non épinglé qu'un balayage de surface ne voyait pas.
  */
-const NON_EPINGLEES: readonly string[] = [
-  'admin-review-inscription',
-  'coach-ai-draft',
-  'coach-ai-validate',
-  'compute-session-insights',
-  'cron-analyze-pending-sessions',
-  'detect-circuit-corners',
-  'eligibility-reminders',
-  'feedback-request',
-  'generate-debrief-ai',
-  'generate-invoice',
-  'newsletter-push',
-  'notify-admin-lead',
-  'notify-coach-consent-received',
-  'notify-pilot-coach-assigned',
-  'pair-app',
-  'send-application-ack',
-  'send-booking-confirmation',
-  'send-contact-ack',
-  'send-document-status',
-  'send-payment-confirmed',
-  'validate-inscription',
-];
-
-/** Les `index.ts` de chaque fonction edge, indexés par slug. */
-function sourcesParFonction(): Map<string, string> {
-  const m = new Map<string, string>();
-  for (const e of readdirSync(FONCTIONS)) {
-    const dossier = join(FONCTIONS, e);
-    if (!statSync(dossier).isDirectory()) continue;
-    const entree = join(dossier, 'index.ts');
-    try {
-      m.set(e, readFileSync(entree, 'utf8'));
-    } catch {
-      // Une fonction sans `index.ts` à la racine (sous-dossier, autre nom) :
-      // elle n'entre pas dans cette mesure, et son absence se voit ici.
+function fichiersTs(): string[] {
+  const trouves: string[] = [];
+  const parcourir = (d: string): void => {
+    for (const e of readdirSync(d)) {
+      const p = join(d, e);
+      if (statSync(p).isDirectory()) parcourir(p);
+      else if (e.endsWith('.ts')) trouves.push(p);
     }
-  }
-  return m;
+  };
+  parcourir(FONCTIONS);
+  return trouves;
 }
 
-/** Vrai si la source importe la PLAGE `@2` plutôt qu'une version écrite. */
-function importePlage(src: string): boolean {
-  return /jsr:@supabase\/supabase-js@2['"]/.test(src);
+/**
+ * Les imports de plage d'une source, TOUTES FORMES CONFONDUES.
+ *
+ * Les lignes de commentaire sont écartées : ce fichier-ci et l'en-tête de v3
+ * citent la plage pour expliquer l'incident, et une garde qui échouerait sur
+ * son propre récit serait absurde.
+ */
+function importsDePlage(src: string): string[] {
+  return src
+    .split('\n')
+    .filter((l) => !/^\s*(\/\/|\*|\/\*)/.test(l))
+    .filter((l) => /(jsr:|esm\.sh\/)@supabase\/supabase-js@2['"]/.test(l))
+    .map((l) => l.trim());
 }
 
 describe('les imports des fonctions edge', () => {
-  const par = sourcesParFonction();
+  const fichiers = fichiersTs();
 
   it('la garde a de quoi mesurer', () => {
-    expect(par.size).toBeGreaterThan(20);
+    expect(fichiers.length).toBeGreaterThan(25);
+    // Et elle voit bien les fichiers imbriqués — celui qui lui avait échappé.
+    const imbrique = fichiers.some((f) => f.replace(/\\/g, '/').includes('/lib/'));
+    expect(imbrique).toBe(true);
   });
 
   /**
-   * LE CLIQUET. Une fonction qui importe la plage et qui ne figure PAS dans la
-   * liste est nouvelle — donc écrite après l'incident, donc sans excuse.
+   * ZÉRO PLAGE. Ni `jsr:`, ni `esm.sh/`, ni à la racine, ni imbriqué.
    */
-  it('aucune fonction NEUVE n’importe la plage `@2`', () => {
-    const connues = new Set(NON_EPINGLEES);
-    const surprises = [...par.entries()]
-      .filter(([slug, src]) => importePlage(src) && !connues.has(slug))
-      .map(([slug]) => slug)
+  it('aucun import de plage `@2`, quelle que soit sa forme', () => {
+    const fautifs = fichiers
+      .flatMap((f) =>
+        importsDePlage(readFileSync(f, 'utf8')).map(
+          (l) => `${f.replace(RACINE, '').replace(/\\/g, '/')} — ${l}`
+        )
+      )
       .sort();
-    expect(surprises).toEqual([]);
+    expect(fautifs).toEqual([]);
   });
 
   /**
-   * ET IL SERRE DANS L'AUTRE SENS. Une entrée de la liste qui ne porte plus la
-   * plage a été épinglée : il faut la retirer d'ici, sinon la liste devient un
-   * inventaire périmé — le défaut que ce dépôt a déjà payé une fois.
+   * LE CONTRE-TEST. Sans lui, un balayage qui ne trouve rien ne prouve rien :
+   * il pourrait chercher au mauvais endroit, ou avec un motif qui ne matche
+   * jamais. On vérifie que la détection MARCHE, sur une ligne fabriquée.
    */
-  it('aucune entrée périmée dans la liste', () => {
-    const perimees = NON_EPINGLEES.filter((slug) => {
-      const src = par.get(slug);
-      return src !== undefined && !importePlage(src);
-    });
-    expect(perimees).toEqual([]);
+  it('le contre-test : la détection reconnaît bien une plage', () => {
+    expect(
+      importsDePlage("import { createClient } from 'jsr:@supabase/supabase-js@2';")
+    ).toHaveLength(1);
+    expect(
+      importsDePlage("import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';")
+    ).toHaveLength(1);
+    // Et elle n'attrape PAS une version écrite, ni un commentaire.
+    expect(
+      importsDePlage("import { createClient } from 'jsr:@supabase/supabase-js@2.114.0';")
+    ).toEqual([]);
+    expect(importsDePlage("// jsr:@supabase/supabase-js@2 n'est pas une version")).toEqual([]);
   });
 
   /**
-   * LA FONCTION QUI A SERVI DE DÉMONSTRATION. Elle est épinglée, et sur la
-   * version qui se résout — pas sur une autre.
+   * LA FONCTION QUI A SERVI DE DÉMONSTRATION, et la raison écrite à côté.
+   * Une épingle sans son motif se fait « nettoyer » par la première personne
+   * qui la prend pour une négligence.
    */
-  it('compute-session-insights-v3 est épinglée, et sur la version retenue', () => {
-    const src = par.get('compute-session-insights-v3');
-    expect(src).toBeDefined();
-    expect(importePlage(src as string)).toBe(false);
+  it('compute-session-insights-v3 est épinglée, et porte la mesure', () => {
+    const src = readFileSync(join(FONCTIONS, 'compute-session-insights-v3', 'index.ts'), 'utf8');
     expect(src).toContain(`jsr:@supabase/supabase-js@${VERSION_RETENUE}`);
-  });
-
-  /**
-   * ET ELLE PORTE LA RAISON. Une épingle sans son motif se fait « nettoyer »
-   * par la première personne qui la prend pour une négligence.
-   */
-  it('l’épingle est accompagnée de la mesure qui la justifie', () => {
-    const src = par.get('compute-session-insights-v3') as string;
     expect(src).toMatch(/storage-js/);
     expect(src).toMatch(/2\.115\.0/);
   });

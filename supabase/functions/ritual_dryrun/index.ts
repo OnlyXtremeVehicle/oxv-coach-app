@@ -15,7 +15,7 @@
 //   (PAS --no-verify-jwt : on veut le JWT de l'admin, vérifié par Supabase)
 // =============================================================================
 
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.114.0';
 
 // Tentative d'import des handlers depuis ritual_dispatcher (déployé en parallèle).
 // Si l'import échoue (handlers absents), on bascule sur un envoi simplifié via Resend.

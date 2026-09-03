@@ -15,7 +15,7 @@
 // doctrinal en base (double rempart).
 
 import 'jsr:@supabase/functions-js/edge-runtime.d.ts';
-import { createClient } from 'jsr:@supabase/supabase-js@2';
+import { createClient } from 'jsr:@supabase/supabase-js@2.114.0';
 
 const FORBIDDEN_PATTERNS: { re: RegExp; label: string }[] = [
   { re: /\bfreinez\b/i, label: 'freinez' },

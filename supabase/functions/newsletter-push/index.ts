@@ -8,7 +8,7 @@
 // Idempotence : email_log (email_type='newsletter', metadata.article_id) — body.force=true pour re-diffuser.
 // =============================================================================
 
-import { createClient } from 'jsr:@supabase/supabase-js@2';
+import { createClient } from 'jsr:@supabase/supabase-js@2.114.0';
 
 const BREVO_API = 'https://api.brevo.com/v3';
 const SITE = 'https://www.oxvehicle.fr';

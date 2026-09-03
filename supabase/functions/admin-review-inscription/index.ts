@@ -19,7 +19,7 @@
 //              (présents d'office) + VALIDATE_INSCRIPTION_SECRET (à poser).
 // =============================================================================
 
-import { createClient } from 'jsr:@supabase/supabase-js@2';
+import { createClient } from 'jsr:@supabase/supabase-js@2.114.0';
 
 const cors = {
   'Access-Control-Allow-Origin': '*',

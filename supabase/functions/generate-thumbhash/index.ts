@@ -36,7 +36,7 @@
 // vidéo — hors de portée d'une fonction Edge. `media_type <> 'photo'` est donc
 // écarté explicitement, et compté à part pour que le rapport le dise.
 
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.114.0';
 import { decode as decodeJpeg } from 'https://esm.sh/jpeg-js@0.4.4';
 import { decode as decodePng } from 'https://esm.sh/fast-png@6.2.0';
 import { rgbaToThumbHash } from 'https://esm.sh/thumbhash@0.1.1';

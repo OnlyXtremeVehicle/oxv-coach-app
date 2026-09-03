@@ -14,7 +14,7 @@
 // (table app_pairing_redeem_attempts, service role). Aucun code ni token loggé.
 // =============================================================================
 
-import { createClient } from 'jsr:@supabase/supabase-js@2';
+import { createClient } from 'jsr:@supabase/supabase-js@2.114.0';
 
 const CORS = {
   'Access-Control-Allow-Origin': '*',

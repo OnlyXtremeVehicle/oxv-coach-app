@@ -133,6 +133,31 @@ export async function getAnalysisForSession(
   return mapRow(data as AnalysisRow);
 }
 
+/**
+ * LA VERSION QUE L'APPLICATION APPOSE SUR SON ANALYSE.
+ *
+ * Elle valait `'v1.0'` — un littéral qui ne désignait aucun moteur, n'avait
+ * jamais été incrémenté, et ne se distinguait de rien.
+ *
+ * CE QUE CELA PROVOQUAIT, mesuré le 03/09/2026. Le cron horaire
+ * `analyze-pending-sessions` reprend toute séance dont l'analyse ne porte PAS
+ * sa version courante — c'est son mécanisme de rattrapage, délibéré et gardé
+ * par `rattrapageParVersion.guard`. Une analyse estampée `'v1.0'` était donc
+ * **garantie** d'être reprise dans l'heure, et le cron réécrivait
+ * `margin_global` avec son propre calcul.
+ *
+ * Or l'analyse de l'application est la PLUS RICHE des deux : elle dispose des
+ * segments trackviz, que le cron refuse explicitement de calculer (« parser UBX
+ * serait lourd à porter Deno », dit son en-tête). La marge globale faisait donc
+ * l'aller-retour entre un calcul complet et un calcul dégradé, à chaque
+ * ouverture de bilan.
+ *
+ * La version dit maintenant QUI a calculé. Le cron la reconnaît et n'y touche
+ * pas : une séance analysée par l'application n'a rien à gagner à repasser par
+ * un moteur qui en sait moins.
+ */
+export const APP_ALGO_VERSION = 'app-v1.0';
+
 export async function upsertAnalysis(input: {
   telemetrySessionId: string;
   userId: string;
@@ -158,7 +183,7 @@ export async function upsertAnalysis(input: {
         margin_pilot: input.result.marginPilot,
         margin_breakdown: input.result.breakdown as unknown as Json,
         next_focus_corner_index: input.nextFocusCornerIndex ?? null,
-        algo_version: 'v1.0',
+        algo_version: APP_ALGO_VERSION,
         computed_at: new Date().toISOString(),
       },
       { onConflict: 'telemetry_session_id' }

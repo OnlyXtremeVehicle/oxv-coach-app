@@ -18,7 +18,7 @@
 // Secrets : EDGE_FUNCTIONS_INVOKE_SECRET, RESEND_API_KEY, ADMIN_NOTIFY_EMAIL (optionnel).
 // =============================================================================
 
-import { createClient } from 'jsr:@supabase/supabase-js@2';
+import { createClient } from 'jsr:@supabase/supabase-js@2.114.0';
 
 const RESEND_API_URL = 'https://api.resend.com/emails';
 const FROM = 'OXV <contact@oxvehicle.fr>';

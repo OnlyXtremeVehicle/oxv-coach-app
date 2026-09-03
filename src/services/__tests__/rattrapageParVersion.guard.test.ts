@@ -65,14 +65,48 @@ describe('le rattrapage par version', () => {
    * qui existe déjà.
    */
   it('la requête principale exclut sur la VERSION, pas sur l’existence', () => {
-    expect(CODE).toMatch(/app_session_analyses WHERE algo_version = '\$\{ALGO_VERSION\}'/);
+    expect(CODE).toMatch(
+      /app_session_analyses WHERE algo_version IN \('\$\{ALGO_VERSION\}', '\$\{APP_ALGO_VERSION\}'\)/
+    );
   });
 
   it('le repli applique le MÊME critère — sinon il referme le rattrapage', () => {
-    // Le repli lit `app_session_analyses` séparément : il doit filtrer sur la
-    // version, faute de quoi il rendrait toutes les lignes déjà analysées et
-    // exclurait Bouteville à nouveau.
-    expect(CODE).toMatch(/\.eq\('algo_version', ALGO_VERSION\)/);
+    // Le repli lit `app_session_analyses` séparément : il doit filtrer sur les
+    // MÊMES versions, faute de quoi il rendrait toutes les lignes déjà
+    // analysées et exclurait Bouteville à nouveau.
+    expect(CODE).toMatch(/\.in\('algo_version', \[ALGO_VERSION, APP_ALGO_VERSION\]\)/);
+  });
+
+  /**
+   * L'EXCLUSION AJOUTÉE LE 03/09/2026, et la mesure qui l'a rendue nécessaire.
+   *
+   * `upsertAnalysis` estampait `'v1.0'` — un littéral qui ne désignait aucun
+   * moteur et qui différait donc TOUJOURS de `cron-v3.0`. Une séance analysée
+   * par l'application redevenait éligible dans l'heure, et ce cron réécrivait
+   * `margin_global` avec son propre calcul.
+   *
+   * Or l'analyse de l'application est la plus riche : elle a les segments
+   * trackviz, que cette fonction refuse explicitement de calculer. Le cron
+   * dégradait donc, à chaque ouverture de bilan.
+   *
+   * Les deux constantes doivent RESTER DISTINCTES : si elles devenaient égales,
+   * l'exclusion cesserait de distinguer quoi que ce soit sans qu'aucun test ne
+   * le voie.
+   */
+  it('la version de l’application est nommée, et distincte de celle du cron', () => {
+    expect(CODE).toMatch(/const APP_ALGO_VERSION = 'app-v1\.0'/);
+    expect(CODE).toMatch(/const ALGO_VERSION = 'cron-v3\.0'/);
+  });
+
+  /**
+   * ET ELLE EST LA MÊME DES DEUX CÔTÉS. Une constante recopiée de travers
+   * rouvrirait l'aller-retour en silence — c'est le seul endroit du dépôt où
+   * les deux fichiers se rencontrent.
+   */
+  it('la constante du cron est celle que l’application écrit', () => {
+    const app = readFileSync(join(RACINE, 'src', 'services', 'analysesService.ts'), 'utf8');
+    expect(app).toMatch(/export const APP_ALGO_VERSION = 'app-v1\.0'/);
+    expect(app).toMatch(/algo_version: APP_ALGO_VERSION/);
   });
 
   it('les deux écritures posent la version courante', () => {

@@ -328,10 +328,23 @@ version mais une **plage**. Elle s'est mise à résoudre vers la version cassée
 d'elle-même, un dimanche après-midi. **22 fonctions sur 22 étaient dans ce cas ;
 aucune n'était épinglée.** Aucun correctif urgent n'aurait pu partir.
 
-`compute-session-insights-v3` est épinglée sur 2.114.0 depuis le 03/09 —
-version 13 déployée, ce qui prouve le diagnostic. **Il en reste vingt et une.**
-`importsEdgeEpingles.guard` fige la liste et interdit qu'elle grandisse ; le bon
-geste est d'épingler chacune au moment de son prochain déploiement.
+**Le compte n'était pas vingt-deux mais VINGT-HUIT**, et c'est ma première garde
+qui l'a manqué : elle ne cherchait que la forme `jsr:` et ne lisait que les
+`index.ts` à la racine. Sept fonctions importent la même librairie par
+`https://esm.sh/`, et npm publie AUSSI 2.115.0 avec la même dépendance
+manquante — elles étaient exposées à l'identique. Et
+`ritual_dispatcher/lib/supabase.ts` est imbriqué, donc invisible à un balayage
+de surface. *Une garde qui ne cherche qu'une forme d'un défaut mesure la forme,
+pas le défaut.*
+
+**Les vingt-huit sont épinglées sur 2.114.0 dans le dépôt.**
+`importsEdgeEpingles.guard` exige désormais **zéro** plage, quelle que soit sa
+forme, fichiers imbriqués compris, avec son contre-test.
+
+**Épingler la source SUFFIT.** Les artefacts déployés sont bundlés : ils
+tournent, la publication en amont ne les touche pas. Le pin agit au PROCHAIN
+déploiement — c'est là qu'il fallait qu'il soit. Seule `compute-session-insights-v3`
+a été redéployée (version 13), parce qu'elle portait aussi un correctif.
 
 ---
 

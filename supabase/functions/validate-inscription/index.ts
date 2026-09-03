@@ -20,7 +20,7 @@
 // AUTH : serveur-à-serveur par secret partagé (x-oxv-admin-secret).
 // =============================================================================
 
-import { createClient } from 'jsr:@supabase/supabase-js@2';
+import { createClient } from 'jsr:@supabase/supabase-js@2.114.0';
 import {
   renderApproval,
   renderRejection,

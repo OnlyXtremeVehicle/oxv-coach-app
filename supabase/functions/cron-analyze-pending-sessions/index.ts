@@ -23,7 +23,7 @@
 // Mais on vérifie un secret header X-Cron-Token pour bloquer le public.
 
 import 'jsr:@supabase/functions-js/edge-runtime.d.ts';
-import { createClient } from 'jsr:@supabase/supabase-js@2';
+import { createClient } from 'jsr:@supabase/supabase-js@2.114.0';
 
 // `consistency` s'appelait `regularity` jusqu'au 13/08/2026.
 //
@@ -68,6 +68,24 @@ import { createClient } from 'jsr:@supabase/supabase-js@2';
  * l'historique doit être repris.
  */
 const ALGO_VERSION = 'cron-v3.0';
+
+// LA VERSION QUE L'APPLICATION APPOSE, ET QUE CE CRON NE DOIT PAS REPRENDRE.
+//
+// `upsertAnalysis` (src/services/analysesService.ts) ecrit `app-v1.0` sur les
+// seances qu'elle analyse. Son calcul est PLUS RICHE que celui d'ici : elle
+// dispose des segments trackviz, que cette fonction refuse de calculer — voir
+// l'en-tete, « parser UBX serait lourd a porter Deno ».
+//
+// Sans cette exclusion, mesure du 03/09/2026 : une seance analysee par
+// l'application redevenait eligible dans l'heure, et ce cron reecrivait
+// `margin_global` avec son propre calcul, puis re-tamponnait `cron-v3.0`. La
+// marge faisait l'aller-retour a chaque ouverture de bilan.
+//
+// CONSEQUENCE ASSUMEE : une seance analysee par l'application ne sera plus
+// jamais reprise ici, meme quand ALGO_VERSION sera incremente. C'est voulu —
+// on ne rattrape pas un calcul complet par un calcul degrade. Son rattrapage a
+// elle est la reouverture du bilan.
+const APP_ALGO_VERSION = 'app-v1.0';
 
 const MAX_SESSIONS_PER_RUN = 50;
 const CONSISTENCY_WEIGHT = 0.6;
@@ -230,7 +248,7 @@ Deno.serve(async (req: Request) => {
       .not(
         'id',
         'in',
-        `(SELECT telemetry_session_id FROM app_session_analyses WHERE algo_version = '${ALGO_VERSION}')`
+        `(SELECT telemetry_session_id FROM app_session_analyses WHERE algo_version IN ('${ALGO_VERSION}', '${APP_ALGO_VERSION}'))`
       )
       .limit(MAX_SESSIONS_PER_RUN);
 
@@ -253,7 +271,7 @@ Deno.serve(async (req: Request) => {
         // qui ignorerait `algo_version` refermerait le rattrapage par la porte
         // de derrière — et seulement quand la sous-requête échoue, donc
         // rarement, donc invisiblement.
-        .eq('algo_version', ALGO_VERSION);
+        .in('algo_version', [ALGO_VERSION, APP_ALGO_VERSION]);
       const analyzedIds = new Set(
         (existingAnalyses ?? []).map((r: { telemetry_session_id: string }) => r.telemetry_session_id)
       );

@@ -11,7 +11,7 @@
 // d'émettre une facture sans numéro d'immatriculation, C. com. R123-237).
 // =============================================================================
 
-import { createClient } from 'jsr:@supabase/supabase-js@2';
+import { createClient } from 'jsr:@supabase/supabase-js@2.114.0';
 import { PDFDocument, StandardFonts, rgb } from 'npm:pdf-lib@1.17.1';
 
 const RESEND_API_URL = 'https://api.resend.com/emails';

@@ -10,7 +10,7 @@
 // sécurité (verify_jwt + opt-in user vérifié).
 
 import 'jsr:@supabase/functions-js/edge-runtime.d.ts';
-import { createClient } from 'jsr:@supabase/supabase-js@2';
+import { createClient } from 'jsr:@supabase/supabase-js@2.114.0';
 
 const EXPO_PUSH_URL = 'https://exp.host/--/api/v2/push/send';
 

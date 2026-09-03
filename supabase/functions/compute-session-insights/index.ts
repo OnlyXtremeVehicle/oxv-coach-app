@@ -38,7 +38,7 @@
 // Le miroir testable de la logique de calcul est src/services/sessionInsightsEngine.ts.
 
 import 'jsr:@supabase/functions-js/edge-runtime.d.ts';
-import { createClient } from 'jsr:@supabase/supabase-js@2';
+import { createClient } from 'jsr:@supabase/supabase-js@2.114.0';
 
 const ENGINE_VERSION = 'mirror-insights-v1';
 const G = 9.81;

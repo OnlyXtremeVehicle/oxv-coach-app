@@ -7,7 +7,7 @@
 // AUTH : x-oxv-invoke-secret. Idempotent via demandes_inscription.ack_sent_at.
 // =============================================================================
 
-import { createClient } from 'jsr:@supabase/supabase-js@2';
+import { createClient } from 'jsr:@supabase/supabase-js@2.114.0';
 
 const RESEND_API_URL = 'https://api.resend.com/emails';
 const FROM = 'OXV <contact@oxvehicle.fr>';
