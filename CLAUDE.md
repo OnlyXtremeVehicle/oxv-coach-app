@@ -153,7 +153,7 @@ contenu client, sous aucun nom.
 | R4 | L'assistant ne conseille jamais | `aiSafetyFilter`, étendu | en place |
 | R5 | Toute requête de trajectoire trie sur `elapsed_ms`, jamais `created_at` | `triElapsedMs` | **en place** (03/09) |
 | R6 | Tout écran de donnée monte les cinq états et nomme le champ attendu | `cinqEtats` | **à écrire** |
-| R7 | Aucun mur public ne porte de classement ni de donnée de plateau | `murSansClassement`, `plateauNonPublic` | **à écrire** |
+| R7 | Aucun mur public ne porte de classement ni de donnée de plateau | mesuré le 03/09, voir ci-dessous | **partiellement tenu** |
 | R8 | Aucune phrase sur une feuille de données | `check-doctrine`, 2ᵉ passe | script en place, 2ᵉ passe à écrire |
 
 **La colonne d'état a été ajoutée le 30/08, à l'installation du brief, et c'est
@@ -359,6 +359,50 @@ forme, fichiers imbriqués compris, avec son contre-test.
 tournent, la publication en amont ne les touche pas. Le pin agit au PROCHAIN
 déploiement — c'est là qu'il fallait qu'il soit. Seule `compute-session-insights-v3`
 a été redéployée (version 13), parce qu'elle portait aussi un correctif.
+
+---
+
+### R7 — les murs publics, mesurés le 03/09/2026
+
+**Ils respectent la doctrine. Ce n'est pas une supposition.** Six surfaces sont
+lisibles par `anon` ; voici ce qu'elles exposent et ce qu'elles contiennent :
+
+| Surface | Colonnes | Lignes |
+|---|---|---|
+| `qdi_public` | `display_name, nominative, margin_global, margin_zone, computed_at, sessions_count` | 1 |
+| `plateau_members_public` | `first_name, last_initial, city` | **0** |
+| `sessions_public` | 22 colonnes de calendrier, aucune personnelle | 0 |
+| `testimonials_public` | `display_name, rating, comment, session_date` | 0 |
+| `crews_public` | `name, validated_members, created_at` | 0 |
+| `app_progression_shares` | table, **RLS active, 5 politiques** | — |
+
+**Aucun chrono nulle part.** `qdi_public` porte une marge, pas un temps au tour.
+
+**Le nom est conditionné au consentement, et la fonction le prouve.**
+`qdi_public_rows` masque en `'Pilote OXV'` sauf `community_visibility =
+'nominative'`, écarte les comptes `private` et les suspendus.
+`plateau_members_public_rows` ne rend un prénom que sous la même condition.
+L'unique ligne de `qdi_public` est **non nominative**.
+
+**Ce qui n'est PAS garanti par un test, et il faut le dire :** tout ce qui
+précède est une mesure du 03/09, pas un cliquet. Une garde qui l'éprouverait
+devrait interroger la base — donc dépendre des secrets `TEST_SUPABASE_*` qui
+manquent, comme les 85 tests RLS. **R7 est tenue, elle n'est pas gardée.**
+
+**Ce qui EST gardé, côté application :** le lien de partage révocable, par
+quatre jeux d'assertions — liste blanche des métriques, provenance du jeton,
+expiration obligatoire, et depuis le 03/09 le fait que `createShare` filtre
+LUI-MÊME plutôt que de faire confiance à son appelant. Ce dernier point
+manquait : les deux écrans qui créent un lien ne se comportent pas pareil —
+`club/galerie.tsx` assainit, `(pro)/partage.tsx` passe sa valeur brute — et les
+trois gardes seraient restées vertes si la frontière avait cessé de filtrer.
+
+**Une question ouverte, que je ne tranche pas :** `SHAREABLE_METRICS` propose
+`best_lap`, « Meilleur tour » — un CHRONO, sur un lien public. L'interdit du
+brief dit « les murs publics n'affichent ni chrono », mais son paragraphe parle
+de classement ENTRE PILOTES. Un lien révocable où un pilote montre son propre
+chrono à qui il choisit n'est peut-être pas un mur public au sens visé. **La
+lecture appartient au fondateur, pas à une garde.**
 
 ---
 

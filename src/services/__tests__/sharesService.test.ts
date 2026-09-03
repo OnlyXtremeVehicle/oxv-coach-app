@@ -1,3 +1,6 @@
+import { readFileSync } from 'fs';
+import { join } from 'path';
+
 import { SHAREABLE_METRICS, sanitizeIncludedMetrics, shareUrlFor } from '../sharesService';
 
 // Le service importe le client Supabase (throw sans env) ; on le mocke.
@@ -53,5 +56,45 @@ describe('shareUrlFor', () => {
   it('ne produit jamais de double slash', () => {
     const url = shareUrlFor('jeton');
     expect(url.slice('https://'.length)).not.toContain('//');
+  });
+});
+
+/**
+ * LA LISTE BLANCHE S'APPLIQUE À LA FRONTIÈRE, PAS CHEZ L'APPELANT.
+ *
+ * Mesuré le 03/09/2026, et c'est ce qui a motivé ce bloc : les deux écrans qui
+ * créent un lien ne se comportent PAS pareil.
+ *
+ *   `app/(app2)/club/galerie.tsx:220`   passe `sanitizeIncludedMetrics(...)`
+ *   `app/(pro)/partage.tsx:96`          passe `[...metrics]`, brut
+ *
+ * Le second n'expose rien aujourd'hui : ses cases à cocher itèrent
+ * `SHAREABLE_METRICS`, donc son ensemble ne peut contenir que des clés valides,
+ * et `createShare` filtre de toute façon. Deux couches, aucune faille.
+ *
+ * Mais les trois gardes de partage — liste blanche, provenance du jeton,
+ * expiration — resteraient VERTES si `createShare` cessait de filtrer et se
+ * mettait à faire confiance à `opts.includedMetrics`. Le filtre serait alors
+ * porté par un seul appelant sur deux, et rien ne le dirait.
+ *
+ * Ce test-ci tient ce point précis, et lui seul.
+ */
+describe('createShare filtre lui-même, sans faire confiance à son appelant', () => {
+  const SOURCE = readFileSync(join(__dirname, '..', 'sharesService.ts'), 'utf8');
+
+  it('l’insertion passe par la liste blanche, jamais par la valeur reçue', () => {
+    expect(SOURCE).toMatch(/included_metrics:\s*sanitizeIncludedMetrics\(/);
+    // Et surtout : jamais la valeur brute de l'appelant.
+    expect(SOURCE).not.toMatch(/included_metrics:\s*opts\.includedMetrics/);
+  });
+
+  /**
+   * LE CONTRE-TEST. Sans lui, les deux assertions ci-dessus passeraient aussi
+   * sur un fichier où la ligne aurait simplement disparu.
+   */
+  it('la garde sait reconnaître un contournement', () => {
+    const fautif = `included_metrics: opts.includedMetrics ?? [],`;
+    expect(/included_metrics:\s*sanitizeIncludedMetrics\(/.test(fautif)).toBe(false);
+    expect(/included_metrics:\s*opts\.includedMetrics/.test(fautif)).toBe(true);
   });
 });
