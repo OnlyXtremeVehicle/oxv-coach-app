@@ -149,7 +149,7 @@ contenu client, sous aucun nom.
 |---|---|---|---|
 | R1 | Tout écran a **deux** entrées. Exceptions listées, justifiées, datées | `deuxEntrees` | **à écrire** |
 | R2 | Aucun orphelin **neuf**, et aucune entrée périmée dans la liste connue | `modulesOrphelins` | en place |
-| R3 | Les deux univers visuels ne se mélangent pas ; seule la couche 2 traverse | `frontiereUnivers` | **à écrire** |
+| R3 | Les deux univers visuels ne se mélangent pas ; seule la couche 2 traverse | `frontiereUnivers` | **mesurée le 03/09 : cinq franchissements, non gardée** |
 | R4 | L'assistant ne conseille jamais | `aiSafetyFilter`, étendu | en place |
 | R5 | Toute requête de trajectoire trie sur `elapsed_ms`, jamais `created_at` | `triElapsedMs` | **en place** (03/09) |
 | R6 | Tout écran de donnée monte les cinq états et nomme le champ attendu | `cinqEtats` | **en place** (03/09) |
@@ -159,10 +159,17 @@ contenu client, sous aucun nom.
 **La colonne d'état a été ajoutée le 30/08, à l'installation du brief, et c'est
 une correction de spécification — la règle du dossier l'exige.** Le tableau
 d'origine nommait huit gardes comme si elles existaient ; **six n'existent sous
-aucun nom**, vérifié par recherche sur `src/` et `app/`. Deux fichiers cités
-ailleurs dans ce brief sont dans le même cas : `src/lib/surfacesRestitution.ts`
-(le manifeste des deux familles de surfaces) et `src/services/liveHealthGate.ts`
-— ce dernier est *invoqué* par deux modules de `features/biometrie` sans exister.
+aucun nom**, vérifié par recherche sur `src/` et `app/`.
+
+**Ce paragraphe nommait AUSSI deux fichiers comme inexistants. Les deux
+existent — remesuré le 03/09/2026 :**
+
+- `src/lib/surfacesRestitution.ts`, **5 588 octets, écrit le 01/09**. Il porte
+  le manifeste des deux familles de surfaces, et `cinqEtats.guard` l'importe.
+- `src/services/liveHealthGate.ts` — le chemin était faux, pas le fichier. Il
+  vit sous **`src/services/v2/liveHealthGate.ts`**, 6 929 octets, daté du
+  17/08, donc antérieur au brief. « Invoqué sans exister » décrivait une
+  recherche au mauvais endroit.
 
 C'est exactement la « spécification fausse qu'on suit » contre laquelle ce
 document met en garde : une règle qui s'appuie sur une garde absente n'arrête
@@ -359,6 +366,62 @@ forme, fichiers imbriqués compris, avec son contre-test.
 tournent, la publication en amont ne les touche pas. Le pin agit au PROCHAIN
 déploiement — c'est là qu'il fallait qu'il soit. Seule `compute-session-insights-v3`
 a été redéployée (version 13), parce qu'elle portait aussi un correctif.
+
+---
+
+### R3 — mesurée le 03/09/2026, et la moitié de ce que j'en disais était faux
+
+La règle a **deux volets**, écrits dans `docs/specs/E_Systeme.md:25` : « aucun
+import de `src/ui/v2` hors `(app2)` sauf la couche 2, aucun kit v1 dans
+`(app2)` ». Mesurés séparément, ils ne rendent pas le même verdict.
+
+**VOLET 1 — VIOLÉ. Cinq franchissements, exactement.** Balayage complet des
+33 lignes d'import de `src/ui/v2` hors `(app2)`, consommateurs remontés :
+
+| Fichier | Ce qu'il prend | Atteint par |
+|---|---|---|
+| `app/(admin)/incidents.tsx:58` | `colors, SectionHeader, space, StateView, typo` | direct |
+| `app/(admin)/securite.tsx:47` | `colors, PressScale, radius, space, typo` | direct |
+| `app/(admin)/sessions-media.tsx:26` | `Photo` | direct |
+| `src/components/SecondFacteurRequis.tsx:27` | `colors, PressScale, radius, space, typo` | `(admin)/_layout:86` |
+| `src/components/MediaGrid.tsx:16` | `Photo` | `(pro)/media.tsx:15` |
+
+**Aucun écran `(coach)` n'en fait partie.** Et le volet 2 est tenu, direct et
+transitif : les deux seuls modules de `src/` qui importent un kit v1 —
+`ProfilIndisponible` et `StateWrapper` — ne sont montés par aucun écran `(app2)`.
+
+**VOLET 2, ET LA CORRECTION QUE JE ME DOIS.** J'ai écrit que « huit écrans
+pilotes importent `fontSize` du thème coach ». **C'est faux, et la mesure le
+retourne :**
+
+- `src/theme/v2.ts` porte **zéro import** — c'est une fondation, pas un
+  univers. 180 fichiers en dépendent.
+- **Le kit pilote lui-même en dépend, à sa racine** : `src/ui/v2/tokens.ts:20`
+  importe `dataColors` de `../../theme/v2`, et `ProvenanceTag.tsx:38` importe
+  `theme`. Sous ma lecture, R3 serait violée à la racine du kit pilote, et les
+  huit écrans seraient le plus petit des trous.
+- `src/ui/v2/tokens.ts` ne porte **aucune échelle de taille** : `typo` y
+  désigne des noms de fontes, pas des nombres.
+- Et une garde VERTE prescrit exactement cet import : `echelleTypo.guard`
+  balaie `app/` comme `src/`, et son message d'échec dit « Employez `fontSize`
+  de src/theme/v2.ts ».
+
+Les huit imports sont donc **conformes**. Deux univers reposent sur une
+fondation commune ; ce n'est pas un mélange.
+
+**LA COUCHE 2 N'EXISTE PAS SOUS SON NOM.** `E_Systeme.md:25` désigne
+`src/ui/data/` — le dossier n'existe pas. Les composants qu'il énumère vivent à
+plat dans `src/ui/`. La spécification est périmée sur le CHEMIN ; le principe,
+lui, tient.
+
+**POURQUOI LA GARDE N'EST PAS ÉCRITE.** Elle serait ROUGE sur cinq fichiers, et
+le dossier interdit d'écrire une garde rouge : « on ne la contourne pas, on ne
+la commente pas, on ne l'ajoute pas à une liste d'exclusions ». Le lot est
+identifié et chiffré — `PressableScale` (`@/components/motion`) est l'équivalent
+v1 de `PressScale`, déjà employé par `(admin)/points-carte.tsx`, et les six
+sites d'appel ne passent aucun style. Restent deux arbitrages : `StateView` vers
+`StateWrapper`, et `Photo`, qui lit le ThumbHash qu'aucun autre composant ne
+lit.
 
 ---
 

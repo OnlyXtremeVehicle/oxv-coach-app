@@ -34,16 +34,31 @@
  * défaut de ce dépôt : celle qui ne casse rien.
  *
  * ===========================================================================
- * POURQUOI LES ÉCRANS COACH ET ADMIN N'EMPLOIENT PAS `StateView`
+ * POURQUOI CETTE GARDE NE VÉRIFIE PAS QUE `StateView` EST MONTÉ
  * ===========================================================================
  *
- * `StateView` vit dans `src/ui/v2` — l'univers PILOTE. R3 interdit de mélanger
- * les deux univers visuels. Les écrans `(coach)` et `(admin)` portent donc
- * leurs états avec leurs propres jetons, et c'est CONFORME, pas négligent.
+ * `StateView` vit dans `src/ui/v2` — l'univers PILOTE. Les écrans de données
+ * `(coach)` et `(admin)` portent leurs états avec leurs propres jetons, et
+ * vérifier un composant précis reviendrait à garder une implémentation plutôt
+ * qu'une règle. Cette garde vérifie que les trois états sont TRAITÉS, quelle
+ * que soit la forme.
  *
- * Cette garde ne vérifie donc pas « `StateView` est monté » — elle vérifierait
- * une implémentation. Elle vérifie que les trois états sont TRAITÉS, quelle que
- * soit la forme.
+ * ---------------------------------------------------------------------------
+ * CORRECTION DU 03/09/2026 — CETTE SECTION AFFIRMAIT PLUS QUE LE VRAI
+ * ---------------------------------------------------------------------------
+ *
+ * Elle disait : « les écrans `(coach)` et `(admin)` portent leurs états avec
+ * leurs propres jetons, et c'est CONFORME, pas négligent ». **Trop large.**
+ *
+ * Vrai des écrans de données déclarés — `(admin)/analyse-session/[id].tsx`
+ * emploie `@/theme/v2`, et aucun écran `(coach)` n'importe le kit pilote.
+ * FAUX de la console admin en général : `app/(admin)/incidents.tsx:58` importe
+ * `StateView` et l'emploie trois fois (l. 122, 126, 134).
+ *
+ * Ce n'est donc pas « conforme » : c'est un franchissement de R3, mesuré, l'un
+ * des cinq recensés le 03/09. R3 n'est pas gardée — voir le brief. Une phrase
+ * qui déclare conforme ce qui ne l'est pas est pire qu'un silence : elle ferme
+ * la question.
  *
  * ===========================================================================
  * CE QU'ELLE NE COUVRE PAS
