@@ -219,13 +219,27 @@ et 12,2 km/h. Elle valide la chaîne ; elle ne calibre pas un seuil de piste.
   été branchée le 01/09, et la dernière séance date du 12/08. Le chemin le moins
   cher pour l'exécuter existe déjà — le bouton « Segments » de
   `app/(admin)/analyse-session/[id].tsx`, sans run à rouler ni bilan à ouvrir.
-  **Avertissement avant de l'appuyer** : `upsertAnalysis` estampe
-  `algo_version = 'v1.0'`, ce qui remet la séance dans la file du cron horaire
-  `analyze-pending-sessions` (job 4, actif), lequel réécrit `margin_global` avec
-  son propre calcul et re-tamponne `cron-v3.0`. La marge globale ferait donc
-  l'aller-retour. Réserve honnête : `net._http_response` est purgée, on ne peut
-  plus mesurer si la fonction edge accepte l'appel — les seules réponses qu'on
-  ait pu corréler, sur le job voisin, étaient des 401.
+  **L'aller-retour de la marge est réparé depuis le 03/09.** `upsertAnalysis`
+  estampait `algo_version = 'v1.0'`, un littéral qui ne désignait aucun moteur
+  et différait donc TOUJOURS de celui du cron : la séance revenait dans la file
+  dans l'heure, et le cron réécrivait `margin_global` avec son calcul dégradé —
+  il n'a pas les segments trackviz, son en-tête le dit. La version dit
+  maintenant qui a calculé (`app-v1.0`), le cron l'exclut, et
+  `cron-analyze-pending-sessions` est déployée en version 24.
+
+  **Les deux crons ont été MESURÉS le 03/09, en rejouant leur propre requête :**
+
+  | Job | Cible | Réponse |
+  |---|---|---|
+  | 4 · `analyze-pending-sessions` | `cron-analyze-pending-sessions` | **200**, `processed: 0` |
+  | 5 · `compute-insights-hourly` | `compute-session-insights` | **401** `UNAUTHORIZED_NO_AUTH_HEADER` |
+
+  Le job 4 fonctionne : il s'authentifie par `X-Cron-Token` sur une fonction en
+  `verify_jwt = false`. Le job 5 ne peut pas : sa cible est en
+  `verify_jwt = true` et il n'envoie aucun en-tête `Authorization`. **Il est
+  inerte depuis toujours, et pas pour une raison passagère.** Le réparer suppose
+  d'ouvrir une porte à jeton sur la fonction visée — un changement du modèle
+  d'authentification, à décider, pas à glisser.
 - `cycle_steps` et `coach_annotations` : **zéro ligne**. Les fiches P36 et
   P46–P51 resteront écartées.
 - **Haute Saintonge** ne se referme pas : 17,1 m entre son dernier point et
