@@ -14,7 +14,22 @@
 // verify_jwt = true.
 
 import 'jsr:@supabase/functions-js/edge-runtime.d.ts';
-import { createClient } from 'jsr:@supabase/supabase-js@2';
+// IMPORT EPINGLE — le 02/09/2026, apres un echec de deploiement mesure.
+//
+// `jsr:@supabase/supabase-js@2` n'est PAS une version, c'est une plage. Le
+// 03/09/2026 a 16 h 18 UTC, JSR a publie 2.115.0, qui declare une dependance
+// npm sur `@supabase/storage-js@2.115.0` — JAMAIS PUBLIEE (npm s'arrete a
+// 2.114.0 en stable, 2.115.0 n'existe qu'en canary).
+//
+// Consequence, constatee : le bundler refuse la fonction avec
+// « Could not find npm package '@supabase/storage-js' matching '2.115.0' ».
+// Le deploiement de 16 h 21 est passe, celui de 16 h 34 a echoue — le meme
+// code, la meme fonction. Rien de notre cote n'avait change.
+//
+// 2.114.0 est la derniere version qui se resout. On l'ecrit, et desormais une
+// publication en amont ne peut plus rendre cette fonction indeployable un jour
+// ou l'on aurait besoin de la corriger vite.
+import { createClient } from 'jsr:@supabase/supabase-js@2.114.0';
 
 const ENGINE_VERSION = 'mirror-insights-v3';
 const MODULES_ENGINE = 'rb-1';
@@ -24,14 +39,37 @@ const COAST_LONG_G = 0.10;   // |G_long| sous ce seuil = ni accélération ni fr
 const COAST_COMB_G = 0.15;   // ET force totale faible = vraie roue libre
 const FRAME_CAP = 8000;      // borne de sécurité sur le nombre de frames lues
 
+// L'ABSENCE N'EST PAS UN ZERO — corrige ici le 02/09/2026, huit mois apres
+// que v1 ait recu la meme correction.
+//
+// v1 avait ete corrigee le 14/08 et son en-tete dit pourquoi : elle ecrivait
+// `0` pour chaque grandeur non mesuree, et l'ecran rendait « Freinage sur 0 m
+// avant la corde ». La garde de l'ecran testait `Number.isFinite`, vrai sur
+// zero, donc les deux moities devaient etre corrigees ensemble.
+//
+// LA MOITIE ECRAN A ETE FAITE : `AnatomieViz.tsx` teste `!= null` depuis le
+// 14/08. LA MOITIE PRODUCTEUR NE L'A JAMAIS ETE ICI. v3 ecrivait toujours des
+// zeros — et depuis le retrait de l'appel a v1 du chemin nominal (02/09), v3
+// est le SEUL producteur. Le defaut redevenait donc effectif, sur l'ecran
+// pilote, par un chemin que personne n'avait rejoue.
+//
+// `distanceBetweenSpeeds` rend desormais `null` plutot que `0`, et les quatre
+// champs d'anatomie suivent. Meme contrat que v1, a la ligne pres.
 function distanceBetweenSpeeds(vFromKmh, vToKmh, gAbs) {
-  if (!gAbs || gAbs <= 0) return 0;
+  if (gAbs === null || !gAbs || gAbs <= 0) return null;
+  if (vFromKmh === null || vToKmh === null) return null;
   const vFrom = vFromKmh / 3.6, vTo = vToKmh / 3.6;
   return Math.round(Math.abs(vFrom * vFrom - vTo * vTo) / (2 * gAbs * G));
 }
 function num(v, dflt = 0) {
   const n = typeof v === 'number' ? v : Number(v);
   return Number.isFinite(n) ? n : dflt;
+}
+/** `num` qui rend `null` plutot qu'un zero de remplissage. Repris de v1. */
+function numOrNull(v) {
+  if (v === null || v === undefined || v === '') return null;
+  const n = typeof v === 'number' ? v : Number(v);
+  return Number.isFinite(n) ? n : null;
 }
 function deriveCondition(w) {
   if (!w) return 'unknown';
@@ -194,12 +232,26 @@ Deno.serve(async (req) => {
       .eq('telemetry_session_id', sessionId)
       .order('segment_index', { ascending: true });
 
+    // Les quatre grandeurs rendent `null` quand la mesure manque, jamais `0` :
+    // voir l'en-tete de `distanceBetweenSpeeds` ci-dessus.
     const anatomy = (segRows ?? []).map((s) => ({
       corner_index: num(s.segment_index),
-      apex_speed_kmh: s.apex_speed_kmh != null ? Number(num(s.apex_speed_kmh).toFixed(1)) : 0,
-      brake_dist_m: distanceBetweenSpeeds(num(s.entry_speed_kmh), num(s.min_speed_kmh), num(s.max_g_braking)),
-      accel_dist_m: distanceBetweenSpeeds(num(s.exit_speed_kmh), num(s.min_speed_kmh), num(s.max_g_accel)),
-      g_lat_apex: Number(num(s.max_g_lateral).toFixed(2)),
+      apex_speed_kmh: numOrNull(s.apex_speed_kmh) !== null
+        ? Number(num(s.apex_speed_kmh).toFixed(1))
+        : null,
+      brake_dist_m: distanceBetweenSpeeds(
+        numOrNull(s.entry_speed_kmh),
+        numOrNull(s.min_speed_kmh),
+        numOrNull(s.max_g_braking)
+      ),
+      accel_dist_m: distanceBetweenSpeeds(
+        numOrNull(s.exit_speed_kmh),
+        numOrNull(s.min_speed_kmh),
+        numOrNull(s.max_g_accel)
+      ),
+      g_lat_apex: numOrNull(s.max_g_lateral) !== null
+        ? Number(num(s.max_g_lateral).toFixed(2))
+        : null,
     }));
 
     // 2) Tours + classification.

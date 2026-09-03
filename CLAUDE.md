@@ -306,6 +306,32 @@ et celle-ci n'a pas tenu deux jours.**
 
 ---
 
+### Les fonctions edge sont indéployables depuis le 03/09 — mesuré
+
+Deux déploiements de `compute-session-insights-v3`, à treize minutes
+d'intervalle, sur un code dont un seul bloc avait changé :
+
+    16 h 21   version 12   ACTIVE
+    16 h 34   REFUSÉ — « Could not find npm package '@supabase/storage-js'
+                          matching '2.115.0' »
+
+Rien n'avait changé de notre côté. **JSR a publié `@supabase/supabase-js`
+2.115.0 le 03/09 à 16 h 18 UTC**, et cette version déclare une dépendance npm
+sur `@supabase/storage-js@2.115.0` — jamais publiée : npm s'arrête à 2.114.0 en
+stable, 2.115.0 n'existe qu'en `canary.0`.
+
+Les fonctions importaient `jsr:@supabase/supabase-js@2`, qui n'est pas une
+version mais une **plage**. Elle s'est mise à résoudre vers la version cassée
+d'elle-même, un dimanche après-midi. **22 fonctions sur 22 étaient dans ce cas ;
+aucune n'était épinglée.** Aucun correctif urgent n'aurait pu partir.
+
+`compute-session-insights-v3` est épinglée sur 2.114.0 depuis le 02/09 —
+version 13 déployée, ce qui prouve le diagnostic. **Il en reste vingt et une.**
+`importsEdgeEpingles.guard` fige la liste et interdit qu'elle grandisse ; le bon
+geste est d'épingler chacune au moment de son prochain déploiement.
+
+---
+
 ## Ce qui existe déjà et qu'il ne faut pas réécrire
 
 | Besoin | Ce qui le porte |
