@@ -152,7 +152,7 @@ contenu client, sous aucun nom.
 | R3 | Les deux univers visuels ne se mélangent pas ; seule la couche 2 traverse | `frontiereUnivers` | **à écrire** |
 | R4 | L'assistant ne conseille jamais | `aiSafetyFilter`, étendu | en place |
 | R5 | Toute requête de trajectoire trie sur `elapsed_ms`, jamais `created_at` | `triElapsedMs` | **en place** (03/09) |
-| R6 | Tout écran de donnée monte les cinq états et nomme le champ attendu | `cinqEtats` | **à écrire** |
+| R6 | Tout écran de donnée monte les cinq états et nomme le champ attendu | `cinqEtats` | **en place** (03/09) |
 | R7 | Aucun mur public ne porte de classement ni de donnée de plateau | mesuré le 03/09, voir ci-dessous | **partiellement tenu** |
 | R8 | Aucune phrase sur une feuille de données | `check-doctrine`, 2ᵉ passe | script en place, 2ᵉ passe à écrire |
 
@@ -359,6 +359,39 @@ forme, fichiers imbriqués compris, avec son contre-test.
 tournent, la publication en amont ne les touche pas. Le pin agit au PROCHAIN
 déploiement — c'est là qu'il fallait qu'il soit. Seule `compute-session-insights-v3`
 a été redéployée (version 13), parce qu'elle portait aussi un correctif.
+
+---
+
+### R6 — le cinquième état n'est pas où on le cherche, mesuré le 03/09/2026
+
+**Les onze écrans de données portent leurs trois états** — chargement, vide,
+erreur — et le quatrième est le contenu. Mesuré un par un, aucun manque.
+
+**Le cinquième, `offline`, est GLOBAL.** `app/_layout.tsx` monte `OfflineBanner`
+au-dessus de tout et appelle `initNetInfo`, qui pose
+`setOfflineBannerVisible(!online)` à chaque changement de réseau.
+
+J'ai d'abord mesuré « aucune des quatorze feuilles ne monte l'état offline », et
+c'était **vrai à la lettre et trompeur** : `StateView state="offline"` ne figure
+que dans `dev-galerie.tsx`, la galerie de composants. La couverture est ailleurs,
+et elle vaut mieux ainsi — un seul bandeau partout plutôt que quatorze variantes
+à tenir d'accord.
+
+**Ce que la garde tient, et qui est le vrai risque :** l'état hors-ligne repose
+sur TROIS maillons dans trois fichiers — le bandeau monté, l'écoute
+initialisée, le drapeau posé. En retirer un l'éteint sans que rien ne le dise.
+Falsifié : démonter le bandeau et renommer le drapeau fait tomber deux
+assertions.
+
+**Pourquoi les écrans coach et admin n'emploient pas `StateView` :** il vit dans
+`src/ui/v2`, l'univers pilote, et R3 interdit de mélanger les deux. Ils portent
+leurs états avec leurs propres jetons — c'est conforme, pas négligent. La garde
+vérifie donc que les états sont TRAITÉS, pas qu'un composant précis est monté.
+
+**Hors périmètre, et dit :** `SaisonSections`, `PetitsMultiples` et
+`NiveauxRestitution` sont des sections montées dans un écran qui porte déjà les
+états — la dernière reçoit `seance={data.etatSeance}`, déjà chargée par son
+parent. Leur demander leurs propres états dupliquerait ceux du parent.
 
 ---
 
