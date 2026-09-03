@@ -6,14 +6,20 @@
  * CE N'EST PAS UNE PRÉCAUTION, C'EST UN INCIDENT MESURÉ
  * ===========================================================================
  *
- * Le 02/09/2026, deux déploiements de `compute-session-insights-v3`, à treize
- * minutes d'intervalle, sur un code dont seul un bloc avait changé :
+ * Deux déploiements de `compute-session-insights-v3`, sur un code dont seul un
+ * bloc avait changé, et la chronologie exacte compte — je l'avais d'abord
+ * écrite fausse, « treize minutes d'intervalle », avant de la mesurer :
  *
- *     16 h 21   version 12   ACTIVE
- *     16 h 34   REFUSÉ — « Could not find npm package '@supabase/storage-js'
- *                            matching '2.115.0' »
+ *     02/09  21 h 14 UTC   version 12   ACTIVE
+ *     03/09  16 h 18 UTC   JSR publie @supabase/supabase-js 2.115.0
+ *     03/09  ~16 h 20 UTC  REFUSÉ — « Could not find npm package
+ *                            '@supabase/storage-js' matching '2.115.0' »
+ *     03/09  16 h 24 UTC   version 13   ACTIVE, une fois épinglée
  *
- * Rien n'avait changé de notre côté. Ce qui avait changé est en amont :
+ * Les deux déploiements sont séparés de dix-neuf heures, pas de treize minutes.
+ * Ce qui compte est ailleurs : **la publication en amont date de six minutes
+ * avant l'échec.** On est passé au travers d'une fenêtre qui venait de se
+ * fermer, et rien de notre côté n'avait bougé.
  *
  *   — JSR a publié `@supabase/supabase-js` **2.115.0 le 03/09/2026 à
  *     16 h 18 UTC** (lu dans `jsr.io/@supabase/supabase-js/meta.json`) ;
@@ -62,11 +68,11 @@ import { join } from 'path';
 const RACINE = join(__dirname, '..', '..');
 const FONCTIONS = join(RACINE, 'supabase', 'functions');
 
-/** La version épinglée retenue le 02/09/2026 : la dernière qui se résout. */
+/** La version épinglée retenue le 03/09/2026 : la dernière qui se résout. */
 const VERSION_RETENUE = '2.114.0';
 
 /**
- * Les fonctions qui importent encore la PLAGE `@2`, au 02/09/2026.
+ * Les fonctions qui importent encore la PLAGE `@2`, au 03/09/2026.
  *
  * Vingt-et-une, mesurées et non recopiées. Chacune sortira de cette liste le
  * jour de son prochain déploiement — pas avant, parce qu'un déploiement se

@@ -24,7 +24,8 @@
  * RELANCE (écriture) : ne réécrit rien côté client. Délègue aux edge functions
  * serveur (service_role), qui sont la SEULE voie autorisée à recalculer pour le
  * compte d'un autre pilote :
- *   - compute-session-insights  : recalcule les lectures (session_insights).
+ *   - compute-session-insights-v3 : recalcule les lectures (session_insights).
+ *     v1 a été abandonnée ici le 03/09/2026 — voir `relaunchInsights`.
  *   - generate-debrief-ai       : régénère le débrief (garde-fou doctrinal côté
  *                                 edge ; peut refuser si opt-out IA du pilote).
  *   - cron-analyze-pending-sessions : relance le calcul des marges en attente.
@@ -120,9 +121,31 @@ export interface RelaunchResult {
   message: string;
 }
 
-/** Recalcule les lectures (session_insights) côté serveur pour cette session. */
+/**
+ * Recalcule les lectures (`session_insights`) côté serveur pour cette séance.
+ *
+ * CE BOUTON DÉGRADAIT CE QU'IL PRÉTENDAIT RECALCULER — corrigé le 03/09/2026.
+ *
+ * Il appelait `compute-session-insights` (v1), SEULE. Or `session_insights`
+ * porte `UNIQUE (telemetry_session_id)` et les deux moteurs font `delete` puis
+ * `insert` sur cette clé : sur une séance calculée par v3, ce bouton effaçait
+ * les dix colonnes que v3 seule écrit et les remplaçait par une ligne de douze.
+ * L'écran annonçait « Lectures recalculées ».
+ *
+ * POURQUOI CE N'ÉTAIT PAS CORRIGÉ HIER, ET POURQUOI ÇA L'EST AUJOURD'HUI.
+ *
+ * Tant que v3 écrivait `ideal_lap` sous la seule forme imbriquée, v1 était le
+ * dernier producteur d'un `ideal_lap` À PLAT — la seule forme que
+ * `chronosLisibles` accepte. Repointer ce bouton aurait donc fermé « Potentiel
+ * démontré », et ce choix appartenait au fondateur.
+ *
+ * Depuis la version 13 de v3 (décision du 03/09), v3 écrit la forme à plat EN
+ * PLUS de l'imbriquée. Elle domine donc v1 sur toutes les colonnes ET sur la
+ * forme lue. La raison de garder v1 ici s'est évaporée avec ce déploiement :
+ * ce n'est plus un arbitrage, c'est un bouton qui détruit sans rien rendre.
+ */
 export async function relaunchInsights(sessionId: string): Promise<RelaunchResult> {
-  const { error } = await supabase.functions.invoke('compute-session-insights', {
+  const { error } = await supabase.functions.invoke('compute-session-insights-v3', {
     body: { sessionId },
   });
   if (error) {

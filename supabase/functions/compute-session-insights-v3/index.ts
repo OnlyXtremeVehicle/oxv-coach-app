@@ -14,7 +14,11 @@
 // verify_jwt = true.
 
 import 'jsr:@supabase/functions-js/edge-runtime.d.ts';
-// IMPORT EPINGLE — le 02/09/2026, apres un echec de deploiement mesure.
+// IMPORT EPINGLE — le 03/09/2026, apres un echec de deploiement mesure.
+//
+// (Ce commentaire porte une date corrigee : la premiere redaction disait 02/09,
+// et les deux deploiements etaient donnes a treize minutes d'intervalle. Mesure :
+// version 12 le 02/09 a 21 h 14 UTC, version 13 le 03/09 a 16 h 24 UTC.)
 //
 // `jsr:@supabase/supabase-js@2` n'est PAS une version, c'est une plage. Le
 // 03/09/2026 a 16 h 18 UTC, JSR a publie 2.115.0, qui declare une dependance
@@ -23,8 +27,8 @@ import 'jsr:@supabase/functions-js/edge-runtime.d.ts';
 //
 // Consequence, constatee : le bundler refuse la fonction avec
 // « Could not find npm package '@supabase/storage-js' matching '2.115.0' ».
-// Le deploiement de 16 h 21 est passe, celui de 16 h 34 a echoue — le meme
-// code, la meme fonction. Rien de notre cote n'avait change.
+// L'echec est tombe SIX MINUTES apres la publication en amont. Le meme code,
+// la meme fonction, et rien de notre cote n'avait change.
 //
 // 2.114.0 est la derniere version qui se resout. On l'ecrit, et desormais une
 // publication en amont ne peut plus rendre cette fonction indeployable un jour
@@ -39,8 +43,13 @@ const COAST_LONG_G = 0.10;   // |G_long| sous ce seuil = ni accélération ni fr
 const COAST_COMB_G = 0.15;   // ET force totale faible = vraie roue libre
 const FRAME_CAP = 8000;      // borne de sécurité sur le nombre de frames lues
 
-// L'ABSENCE N'EST PAS UN ZERO — corrige ici le 02/09/2026, huit mois apres
-// que v1 ait recu la meme correction.
+// L'ABSENCE N'EST PAS UN ZERO — corrige ici le 03/09/2026, TROIS SEMAINES apres
+// que v1 ait recu la meme correction le 14/08.
+//
+// (Deux corrections a ce commentaire, faites apres coup : il datait le geste du
+// 02/09 et annoncait « huit mois » d'ecart. Les deux etaient faux. La copie
+// DEPLOYEE en version 13 porte encore la formulation precedente : on ne
+// redeploie pas une fonction pour un commentaire, comme pour v1.)
 //
 // v1 avait ete corrigee le 14/08 et son en-tete dit pourquoi : elle ecrivait
 // `0` pour chaque grandeur non mesuree, et l'ecran rendait « Freinage sur 0 m

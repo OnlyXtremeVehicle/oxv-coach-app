@@ -40,7 +40,7 @@
  * structurelle.
  *
  * ===========================================================================
- * L'EXCLUSION EST LEVÉE — décision du fondateur, v3 version 12
+ * L'EXCLUSION EST LEVÉE — décision du fondateur, v3 version 13
  * ===========================================================================
  *
  * v3 écrit désormais la forme À PLAT **en plus** de l'imbriquée, alimentée par
@@ -51,9 +51,25 @@
  * le choix jour-vs-record que `disponibilite.ts` réserve au fondateur reste
  * entier. On a levé une exclusion, pas tranché une préférence.
  *
- * CE QUI RESTE OUVERT : le bouton « Recalculer les lectures » de la console
- * admin appelle toujours v1 SEULE, et dégrade donc une séance calculée par v3 —
- * dix colonnes remplacées par douze. Un test ci-dessous le fige.
+ * ===========================================================================
+ * ET LA DÉCISION QUI RESTAIT S'EST ÉVAPORÉE — 03/09/2026
+ * ===========================================================================
+ *
+ * Ce fichier a porté, pendant quelques heures, une phrase devenue fausse :
+ * « repointer le bouton admin sur v3 fermerait la dernière route vers un
+ * `ideal_lap` À PLAT ». C'était vrai tant que v3 n'écrivait que l'imbriquée.
+ * Depuis la version 13, v3 domine v1 sur TOUTES les colonnes ET sur la forme
+ * lue — il n'y a plus rien à arbitrer.
+ *
+ * `relaunchInsights` appelle donc v3. Le bouton « Recalculer les lectures » ne
+ * détruit plus dix colonnes en annonçant un succès.
+ *
+ * CONSÉQUENCE À NE PAS LAISSER DORMIR : plus AUCUN code de `src/` ni de `app/`
+ * n'invoque `compute-session-insights`. La fonction reste déployée (version 11,
+ * ACTIVE) et reste le producteur historique des lignes qui portent
+ * `mirror-insights-v1` — c'est pourquoi `insightsMoteurReel.test.ts` continue
+ * d'exiger que ce moteur soit reconnu réel. Mais plus rien ne la déclenche
+ * depuis l'application, et le cron horaire qui la vise ne rend que des 401.
  *
  * ===========================================================================
  * CE QUE CETTE GARDE FAIT, ET CE QU'ELLE NE FAIT PAS
@@ -136,11 +152,8 @@ describe('une seule ligne d’insights par séance', () => {
    * CONTRE-TEST OBLIGATOIRE ci-dessous : sans lui, un balayage qui ne trouve
    * rien ne prouve rien — il pourrait chercher au mauvais endroit.
    */
-  it('aucun code de src/ ou app/ n’invoque plus le slug v1 sur le chemin nominal', () => {
-    expect(invocateurs('compute-session-insights')).toEqual([
-      // Le bouton de la console d'administration, et lui seul. Voir ci-dessous.
-      '/src/services/adminSessionDiagnosticService.ts',
-    ]);
+  it('plus AUCUN code de src/ ou app/ n’invoque le slug v1', () => {
+    expect(invocateurs('compute-session-insights')).toEqual([]);
   });
 
   it('le contre-test : le slug v3, lui, se trouve bien', () => {
@@ -151,27 +164,22 @@ describe('une seule ligne d’insights par séance', () => {
   });
 
   /**
-   * LE BOUTON QUI DÉGRADE, NOMMÉ ET NON CORRIGÉ.
+   * LE BOUTON QUI DÉGRADAIT, CORRIGÉ.
    *
-   * `relaunchInsights` — « Recalculer les lectures », console admin — appelle v1
-   * SEULE. Sur une séance déjà calculée par v3, elle efface les dix colonnes que
-   * v3 seule écrit et les remplace par une ligne de douze.
+   * « Recalculer les lectures » appelait v1 SEULE : sur une séance calculée par
+   * v3, il effaçait les dix colonnes que v3 seule écrit et les remplaçait par
+   * une ligne de douze, en annonçant un succès.
    *
-   * Ce n'est PAS corrigé ici, et c'est délibéré : repointer ce bouton sur v3
-   * fermerait la dernière route vers un `ideal_lap` À PLAT, donc vers
-   * « Potentiel démontré ». Le choix jour-vs-record appartient au fondateur, et
-   * `disponibilite.ts` le réserve nommément.
-   *
-   * Ce test ne juge pas : il FIGE l'état, pour qu'on ne le découvre pas une
-   * seconde fois. Le jour où la décision tombe, il échoue et rappelle pourquoi.
+   * Il n'était pas corrigé tant que v1 restait le dernier producteur d'un
+   * `ideal_lap` à plat. La version 13 de v3 a retiré cette raison.
    */
-  it('le bouton admin appelle v1 seule, et cela reste une question ouverte', () => {
+  it('le bouton admin appelle v3, et plus v1', () => {
     const admin = readFileSync(
       join(RACINE, 'src', 'services', 'adminSessionDiagnosticService.ts'),
       'utf8'
     );
-    expect(admin).toMatch(/invoke\('compute-session-insights'/);
-    expect(admin).not.toMatch(/invoke\('compute-session-insights-v3'/);
+    expect(admin).toMatch(/invoke\('compute-session-insights-v3'/);
+    expect(admin).not.toMatch(/invoke\('compute-session-insights',/);
   });
 
   /**

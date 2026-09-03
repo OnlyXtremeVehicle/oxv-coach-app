@@ -308,14 +308,17 @@ et celle-ci n'a pas tenu deux jours.**
 
 ### Les fonctions edge sont indéployables depuis le 03/09 — mesuré
 
-Deux déploiements de `compute-session-insights-v3`, à treize minutes
-d'intervalle, sur un code dont un seul bloc avait changé :
+Deux déploiements de `compute-session-insights-v3`, sur un code dont un seul
+bloc avait changé :
 
-    16 h 21   version 12   ACTIVE
-    16 h 34   REFUSÉ — « Could not find npm package '@supabase/storage-js'
-                          matching '2.115.0' »
+    02/09  21 h 14 UTC   version 12   ACTIVE
+    03/09  16 h 18 UTC   JSR publie @supabase/supabase-js 2.115.0
+    03/09  ~16 h 20 UTC  REFUSÉ — « Could not find npm package
+                           '@supabase/storage-js' matching '2.115.0' »
+    03/09  16 h 24 UTC   version 13   ACTIVE, une fois épinglée
 
-Rien n'avait changé de notre côté. **JSR a publié `@supabase/supabase-js`
+**L'échec est tombé six minutes après la publication en amont**, et rien de
+notre côté n'avait bougé. **JSR a publié `@supabase/supabase-js`
 2.115.0 le 03/09 à 16 h 18 UTC**, et cette version déclare une dépendance npm
 sur `@supabase/storage-js@2.115.0` — jamais publiée : npm s'arrête à 2.114.0 en
 stable, 2.115.0 n'existe qu'en `canary.0`.
@@ -325,7 +328,7 @@ version mais une **plage**. Elle s'est mise à résoudre vers la version cassée
 d'elle-même, un dimanche après-midi. **22 fonctions sur 22 étaient dans ce cas ;
 aucune n'était épinglée.** Aucun correctif urgent n'aurait pu partir.
 
-`compute-session-insights-v3` est épinglée sur 2.114.0 depuis le 02/09 —
+`compute-session-insights-v3` est épinglée sur 2.114.0 depuis le 03/09 —
 version 13 déployée, ce qui prouve le diagnostic. **Il en reste vingt et une.**
 `importsEdgeEpingles.guard` fige la liste et interdit qu'elle grandisse ; le bon
 geste est d'épingler chacune au moment de son prochain déploiement.
@@ -452,8 +455,22 @@ préférence, et le choix jour-vs-record reste entier.
 Deux choses restent, et elles sont nommées par `ecritureInsightsUnique.guard` :
 l'appel à v1 a été retiré du chemin nominal — son résultat y était effacé
 quatorze lignes plus loin, au prix de deux `COUNT` exacts sur 27 000 trames — et
-le bouton « Recalculer les lectures » de la console admin appelle **encore v1
-seule**, donc dégrade une séance calculée par v3. Le repointer reste à décider.
+le bouton « Recalculer les lectures » de la console admin appelait **encore v1
+seule**, donc dégradait une séance calculée par v3.
+
+**Ce dernier point s'est réglé tout seul le 03/09, et c'est instructif.** Il
+n'était pas corrigé parce que v1 était le dernier producteur d'un `ideal_lap` à
+plat — repointer le bouton aurait fermé « Potentiel démontré ». La version 13
+de v3 a retiré cette raison : v3 domine désormais v1 sur toutes les colonnes ET
+sur la forme lue. Le bouton appelle v3. **Une décision peut cesser d'en être
+une** parce qu'un autre geste a supprimé son enjeu — encore faut-il relire, sans
+quoi on garde un arbitrage dont la question a disparu.
+
+Conséquence à ne pas laisser dormir : plus aucun code n'invoque
+`compute-session-insights`. La fonction reste déployée (version 11) et reste le
+producteur historique des lignes `mirror-insights-v1`, mais rien ne la
+déclenche depuis l'application, et le cron horaire qui la vise ne rend que des
+401.
 
 ### Ce que la calibration a mesuré sur Bouteville — 30/08
 
