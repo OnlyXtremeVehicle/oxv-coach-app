@@ -521,11 +521,21 @@ secteurs officiels, l'ouverture du coach.
 | **Albi en base** | **Fait le 30/08.** Way OSM 95802415, anneau fermé de 137 points, 3 563 m mesurés pour 3 565 officiels. Ligne donnée en décimal puis confirmée en DMS — les deux à 40 cm l'une de l'autre, et à **0,6 m du tracé**. Cap 122,1°. `turns_count` laissé NUL : les sources publiques se contredisent (9 en configuration historique, 15 en actuelle), on ne tranche pas un chiffre officiel sur une source incertaine | 30/08 |
 | **Le Bugatti en base** | **Fait le 30/08, six jours avant la butée.** Relation OSM 2725877 (18 ways chaînés par leurs nœuds partagés), tracé recalé pour démarrer à la ligne. Ligne d'arrivée donnée par le fondateur : 47.949881 / 0.207545, **vérifiée à 0,31 m du tracé**, cap au franchissement 1,9° — plein nord, la ligne droite des stands. 4 185 m et 14 virages officiels ; la polyligne mesure 4 165 m et le détecteur y lit 9 virages, l'écart venant de la résolution OSM et du seuil de rayon à 100 m | 30/08 |
 
+| **Bouteville en base** | **Repris le 02/09.** Tracé refermé (141 points, 0,00 m, 5 906,1 m) et recalé au pied de la perpendiculaire sur le segment 44, à 4,37 m de la ligne — méthode d'Albi. Cap 336,7° contre 336,6° annoncés : sens du tour inchangé. Treize virages recalculés par `generateCircuit`, le module que la fonction edge importe. Provenance corrigée : **OpenStreetMap**, pas un relevé fondateur — trois nœuds, versions 1 de 2012 et 2019, jamais rééditées | 02/09 |
+| **Potentiel démontré** | **v3 écrit la forme À PLAT en plus de l'imbriquée**, alimentée par le potentiel du JOUR. Les cinq lectures s'ouvrent ensemble. `theoretical_record` reste écrit : on a levé une exclusion, pas tranché la préférence jour-vs-record | 03/09 |
+| **Météo du 19/07** | **Les 14 relevés restaurés.** Le vidage venait des travaux de sécurité du 19/07, côté site, pas d'un jugement sur la donnée. Et la sauvegarde **entre dans la purge** par une clé étrangère en cascade : chaque ligne porte une position et un `session_id`, donc une donnée personnelle — contrairement à ce que la migration du 01/08 affirmait | 03/09 |
+| **Affiliation coach** | **Un déclencheur en base**, pas du code client : `pending → active` dès que les deux consentements sont posés. Le modèle à deux côtés était déjà dans le schéma ; seule la transition manquait | 02/09 |
+| **Imports edge** | **Épinglés sur 2.114.0, les vingt-huit.** Épingler la SOURCE suffit — les artefacts déployés sont bundlés, le pin agit au prochain déploiement. On ne redéploie pas vingt-huit fonctions pour un changement sans effet à l'exécution | 03/09 |
+| **Marge et cron** | **L'application nomme sa version** (`app-v1.0`) et le cron l'exclut de sa file. Une séance analysée par l'application ne sera plus reprise par un moteur qui en sait moins — même quand la version du cron sera incrémentée | 03/09 |
+
 ## Décisions en attente, à ne pas contourner
 
 | Sujet | Ce qu'il bloque | Butée |
 |---|---|---|
 | **Geste de calibration au prévol** | Le redressement du signal, donc le filtre, donc les deux branches à zéro | 19/09 |
+| **Porte à jeton sur les insights** | Le cron 5 est inerte (401 mesuré) : sa cible est en `verify_jwt = true` et il n'envoie aucun `Authorization`. Le réparer change le modèle d'authentification d'une fonction qui écrit les lectures | — |
+| **Secrets `TEST_SUPABASE_*`** | 85 tests RLS jamais exécutés, et la fusion vers `main` : la CI échoue en dur sans eux | avant fusion |
+| **Chrono sur un lien public** | `SHAREABLE_METRICS` propose `best_lap`. L'interdit vise le classement ENTRE PILOTES ; un lien révocable sur ses propres données n'est peut-être pas un mur public au sens visé | — |
 
 ### Les deux moteurs d'insights s'excluent — mesuré le 02/09/2026
 
