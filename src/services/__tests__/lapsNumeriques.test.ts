@@ -38,7 +38,18 @@ jest.mock('@/lib/supabase', () => {
   return { supabase: { from: () => maillon } };
 });
 
-/** Une ligne `laps` telle que PostgREST la rend RÉELLEMENT : numeric = string. */
+/**
+ * Une ligne `laps` dont TOUS les numériques arrivent en chaîne.
+ *
+ * Ce commentaire affirmait que c'est ainsi que « PostgREST la rend RÉELLEMENT ».
+ * FAUX, remesuré le 01/09/2026 : `to_json` d'un `numeric` n'émet pas de
+ * guillemets, et les nombres arrivent non quotés. Voir
+ * `src/lib/numeriquesPostgrest.ts`.
+ *
+ * Le cas reste celui qu'il faut éprouver — c'est le plus hostile, et le mapping
+ * doit le tenir d'où qu'il vienne. Seule la justification était fausse, et un
+ * « RÉELLEMENT » dans un commentaire se recopie vite.
+ */
 function ligneBrute(n: number, secondes: string) {
   return {
     id: `lap-${n}`,

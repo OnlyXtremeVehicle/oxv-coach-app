@@ -145,13 +145,13 @@ contenu client, sous aucun nom.
 
 ## Les sept règles de structure
 
-| # | Règle | Garde | État au 30/08 |
+| # | Règle | Garde | État |
 |---|---|---|---|
 | R1 | Tout écran a **deux** entrées. Exceptions listées, justifiées, datées | `deuxEntrees` | **à écrire** |
 | R2 | Aucun orphelin **neuf**, et aucune entrée périmée dans la liste connue | `modulesOrphelins` | en place |
 | R3 | Les deux univers visuels ne se mélangent pas ; seule la couche 2 traverse | `frontiereUnivers` | **à écrire** |
 | R4 | L'assistant ne conseille jamais | `aiSafetyFilter`, étendu | en place |
-| R5 | Toute requête de trajectoire trie sur `elapsed_ms`, jamais `created_at` | `triElapsedMs` | **à écrire** |
+| R5 | Toute requête de trajectoire trie sur `elapsed_ms`, jamais `created_at` | `triElapsedMs` | **en place** (03/09) |
 | R6 | Tout écran de donnée monte les cinq états et nomme le champ attendu | `cinqEtats` | **à écrire** |
 | R7 | Aucun mur public ne porte de classement ni de donnée de plateau | `murSansClassement`, `plateauNonPublic` | **à écrire** |
 | R8 | Aucune phrase sur une feuille de données | `check-doctrine`, 2ᵉ passe | script en place, 2ᵉ passe à écrire |

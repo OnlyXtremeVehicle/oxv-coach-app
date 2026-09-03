@@ -58,7 +58,16 @@ describe('versTramesQualite', () => {
     expect(t.fixValid).toBeNull();
   });
 
-  it('accepte elapsed_ms en chaîne (PostgREST rend les numeric en string)', () => {
+  /**
+   * Le titre de ce test disait « PostgREST rend les numeric en string ».
+   * C'est faux — mesuré le 01/09/2026, les `numeric` arrivent NON QUOTÉS. Voir
+   * `src/lib/numeriquesPostgrest.ts`.
+   *
+   * Le test garde tout son sens : ces valeurs peuvent venir d'ailleurs qu'une
+   * réponse PostgREST — d'un stockage texte, d'un paramètre de navigation — et
+   * la fonction doit les tolérer. On corrige la raison, pas l'épreuve.
+   */
+  it('accepte elapsed_ms en chaîne, quelle qu’en soit la provenance', () => {
     const trames = versTramesQualite([
       ligne('0' as unknown as number, 36),
       ligne('1000' as unknown as number, 36),

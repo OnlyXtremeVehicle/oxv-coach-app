@@ -328,8 +328,21 @@ export async function tramesPourMarqueurs(
 
   if (error || !Array.isArray(data)) return [];
 
-  // PostgREST rend le NUMERIC en CHAINE : sans coercition, chaque comparaison
-  // serait lexicographique et le resolveur travaillerait sur du texte.
+  // COERCITION DEFENSIVE — et sa RAISON a ete corrigee le 03/09/2026.
+  //
+  // Ce commentaire disait : « PostgREST rend le NUMERIC en CHAINE ». C'est
+  // FAUX, remesure contre la production le 01/09 :
+  //
+  //     curl ".../rest/v1/vehicules_eligibles?select=masse_kg&limit=2"
+  //     -> [{"masse_kg":1035.0}, {"masse_kg":1550.0}]
+  //
+  // `to_json` d'un `numeric` n'emet pas de guillemets. Voir
+  // `src/lib/numeriquesPostgrest.ts`, qui porte la mesure complete.
+  //
+  // Le `Number(...)` RESTE, et ce n'est pas une precaution superstitieuse : ces
+  // valeurs peuvent aussi arriver d'un stockage texte ou d'un parametre de
+  // navigation, et la coercition ne coute rien. On garde le geste, on retire la
+  // raison fausse.
   return (data as Record<string, unknown>[]).map((r) => ({
     elapsedMs: Number(r.elapsed_ms),
     lat: r.latitude === null ? null : Number(r.latitude),
