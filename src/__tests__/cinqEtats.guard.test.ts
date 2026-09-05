@@ -52,13 +52,29 @@
  *
  * Vrai des écrans de données déclarés — `(admin)/analyse-session/[id].tsx`
  * emploie `@/theme/v2`, et aucun écran `(coach)` n'importe le kit pilote.
- * FAUX de la console admin en général : `app/(admin)/incidents.tsx:58` importe
- * `StateView` et l'emploie trois fois (l. 122, 126, 134).
+ * FAUX de la console admin en général : `app/(admin)/incidents.tsx:58` importait
+ * `StateView` et l'employait trois fois (l. 122, 126, 134).
  *
- * Ce n'est donc pas « conforme » : c'est un franchissement de R3, mesuré, l'un
- * des cinq recensés le 03/09. R3 n'est pas gardée — voir le brief. Une phrase
- * qui déclare conforme ce qui ne l'est pas est pire qu'un silence : elle ferme
- * la question.
+ * Ce n'était donc pas « conforme » : c'était un franchissement de R3, l'un des
+ * cinq recensés le 03/09. Une phrase qui déclare conforme ce qui ne l'est pas
+ * est pire qu'un silence : elle ferme la question.
+ *
+ * ---------------------------------------------------------------------------
+ * LEVÉ LE 05/09/2026 — et la phrase générale redevient vraie
+ * ---------------------------------------------------------------------------
+ *
+ * `incidents.tsx` emploie désormais `StateWrapper`, le composant d'états de la
+ * console, comme son voisin `(admin)/moderation.tsx`. Le franchissement est
+ * levé, et l'affirmation « les écrans `(coach)` et `(admin)` portent leurs états
+ * avec leurs propres jetons » redevient exacte — cette fois mesurée, pas
+ * supposée.
+ *
+ * **Ce qui n'a PAS été fait, et pourquoi.** `StateWrapper` porte un état
+ * `offline`, et l'occasion semblait bonne de donner à cet écran un hors-ligne
+ * local. Elle ne l'était pas : le texte de cet état annonce « voici votre
+ * dernière lecture enregistrée », or `incidents.tsx` ne garde aucun cache — il
+ * refait sa requête à chaque montage. L'y monter promettrait une donnée
+ * inexistante. Le hors-ligne reste global, comme cette garde le mesure.
  *
  * ===========================================================================
  * CE QU'ELLE NE COUVRE PAS

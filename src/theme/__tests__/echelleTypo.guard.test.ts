@@ -55,13 +55,20 @@ import { codeExecutable } from '@/test-utils/codeSeul';
 const RACINE = process.cwd();
 
 /**
- * Le compte au 17/08/2026. **Il ne se relève jamais.**
+ * Le compte au 17/08/2026 valait 1 162. **Il ne se relève jamais.**
  *
  * Quand une migration fait baisser le nombre réel, on descend cette borne dans
  * le même commit : une marge qu'on laisse traîner est une marge qu'on
  * reconsomme.
+ *
+ * 05/09/2026 — **1 155**, sept de moins. `app/(admin)/incidents.tsx` quittait le
+ * kit pilote pour celui de la console (franchissement R3) et a pris `fontSize`
+ * au passage : ses sept tailles écrites à la main sont devenues des crans. Le
+ * déplacement réel tient en un point — la seule qui bougeait était un 10 pt,
+ * une taille que l'échelle refuse délibérément de porter (voir plus haut), et
+ * un titre de 26 pt ramené au cran de la console.
  */
-const PLAFOND = 1162;
+const PLAFOND = 1155;
 
 function fichiers(dir: string, acc: string[] = []): string[] {
   for (const e of readdirSync(dir, { withFileTypes: true })) {

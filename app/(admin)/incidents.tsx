@@ -35,6 +35,37 @@
  * pilote : l'ouvrir ici demanderait une URL signée et une décision sur qui
  * peut regarder la photo d'un incident. Ce n'est pas un oubli, c'est une
  * question qui n'a pas été tranchée.
+ *
+ * ===========================================================================
+ * R3 — CET ÉCRAN PORTAIT LE KIT PILOTE. CORRIGÉ LE 05/09/2026.
+ * ===========================================================================
+ *
+ * Il importait `colors, SectionHeader, space, StateView, typo` de `@/ui/v2` —
+ * l'univers PILOTE — alors qu'il vit dans `(admin)`, la console. C'était l'un
+ * des cinq franchissements mesurés le 03/09, et le seul qui demandait un
+ * arbitrage : `StateView` (kit pilote) et `StateWrapper` (kit console) ne sont
+ * pas le même composant.
+ *
+ * **Décision du fondateur : le swap.** `StateWrapper` est ce qu'emploient les
+ * écrans voisins de la console, `(admin)/moderation.tsx` en tête — qui traite
+ * la file des signalements de modération, donc le même geste, à côté.
+ *
+ * DEUX CHOSES QUE LE SWAP NE DONNE PAS, ET QU'IL FAUT DIRE :
+ *
+ * 1. **Il n'ajoute PAS d'état hors-ligne local**, contrairement à ce que
+ *    j'avais avancé en posant la question. `StateWrapper` porte bien un état
+ *    `offline`, mais son texte annonce « voici votre dernière lecture
+ *    enregistrée » — or cet écran ne garde AUCUNE lecture en cache : il
+ *    refait sa requête à chaque montage. Monter cet état ici promettrait une
+ *    donnée qui n'existe pas. L'état hors-ligne reste porté par
+ *    `OfflineBanner`, globalement, comme le mesure `cinqEtats.guard`.
+ *
+ * 2. **`SectionLabel` ne porte pas de compteur** là où `SectionHeader` en
+ *    portait un. Il se pose à côté, exactement comme le fait déjà
+ *    `app/(coach)/assistant.tsx` — la console avait déjà répondu à ce besoin.
+ *
+ * Le titre passe de 26 pt à `fontSize.h2`, l'échelle de la console : rejoindre
+ * un univers, c'est en prendre les crans, pas y traîner ceux de l'autre.
  */
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -55,7 +86,11 @@ import {
   listFollowups,
   type IncidentRow,
 } from '@/services/v2/incidentService';
-import { colors, SectionHeader, space, StateView, typo } from '@/ui/v2';
+import { theme } from '@/theme/v2';
+import { SectionLabel } from '@/ui/SectionLabel';
+import { StateWrapper, type ScreenState } from '@/ui/StateWrapper';
+
+const { palette, spacing, radius, fonts, fontSize } = theme;
 
 type Etat = 'loading' | 'error' | 'ready';
 
@@ -108,8 +143,21 @@ export default function AdminIncidentsScreen() {
     [enCours]
   );
 
+  /**
+   * Les quatre états portés par l'écran. Le cinquième — hors-ligne — est
+   * global : voir l'en-tête.
+   */
+  const etatEcran: ScreenState =
+    etat === 'loading'
+      ? 'loading'
+      : etat === 'error'
+        ? 'error'
+        : incidents.length === 0
+          ? 'empty'
+          : 'nominal';
+
   return (
-    <View style={[s.root, { paddingTop: insets.top + space.md }]}>
+    <View style={[s.root, { paddingTop: insets.top + spacing.md }]}>
       <View style={s.head}>
         <Text style={s.eyebrow}>ADMINISTRATION</Text>
         <Text style={s.titre} accessibilityRole="header">
@@ -117,41 +165,60 @@ export default function AdminIncidentsScreen() {
         </Text>
       </View>
 
-      {etat === 'loading' ? (
-        <View style={s.pad}>
-          <StateView state="loading" shape="list" />
-        </View>
-      ) : etat === 'error' ? (
-        <View style={s.centered}>
-          <StateView
-            state="error"
-            errorMessage="Les signalements n'ont pas pu se charger."
-            onRetry={() => setCle((k) => k + 1)}
-          />
-        </View>
-      ) : incidents.length === 0 ? (
-        <View style={s.centered}>
-          <StateView state="empty" emptyMessage="Aucun signalement à ce jour." />
-        </View>
-      ) : (
-        <ScrollView
-          contentContainerStyle={{
-            paddingHorizontal: space.xl,
-            paddingBottom: insets.bottom + space.xxl,
-          }}
+      {/* Le squelette reste en haut, la carte d'état vide ou d'erreur se
+          centre : c'est le comportement d'avant, conservé tel quel. */}
+      <View
+        style={[
+          s.corps,
+          etatEcran === 'nominal' ? null : s.corpsPad,
+          etatEcran === 'empty' || etatEcran === 'error' ? s.corpsCentre : null,
+        ]}
+      >
+        <StateWrapper
+          state={etatEcran}
+          skeletonLines={4}
+          emptyMessage="Aucun signalement à ce jour."
+          errorCause="Les signalements n'ont pas pu se charger."
+          onRetry={() => setCle((k) => k + 1)}
         >
-          <SectionHeader eyebrow="À SUIVRE" count={incidents.length} />
-          {incidents.map((inc) => (
-            <CarteIncident
-              key={inc.id}
-              incident={inc}
-              suivis={suivis[inc.id] ?? []}
-              occupee={enCours === inc.id}
-              onPoser={(state) => poser(inc.id, state)}
-            />
-          ))}
-        </ScrollView>
-      )}
+          <ScrollView
+            contentContainerStyle={{
+              paddingHorizontal: spacing.xl,
+              paddingBottom: insets.bottom + spacing.xxl,
+            }}
+          >
+            <EnTeteSection label="À suivre" count={incidents.length} />
+            {incidents.map((inc) => (
+              <CarteIncident
+                key={inc.id}
+                incident={inc}
+                suivis={suivis[inc.id] ?? []}
+                occupee={enCours === inc.id}
+                onPoser={(state) => poser(inc.id, state)}
+              />
+            ))}
+          </ScrollView>
+        </StateWrapper>
+      </View>
+    </View>
+  );
+}
+
+/**
+ * En-tête de section avec compteur réel.
+ *
+ * `SectionLabel` — l'idiome de la console, employé par une vingtaine d'écrans —
+ * ne porte que le libellé. Le compteur se pose à côté, comme le fait déjà
+ * `app/(coach)/assistant.tsx` : le besoin avait sa réponse dans cet univers-ci,
+ * il n'y avait pas à emprunter celle de l'autre.
+ */
+function EnTeteSection({ label, count }: { label: string; count: number }) {
+  return (
+    <View style={s.section} accessibilityRole="header">
+      <SectionLabel>{label}</SectionLabel>
+      <View style={s.compteur}>
+        <Text style={s.compteurTexte}>{count}</Text>
+      </View>
     </View>
   );
 }
@@ -219,93 +286,117 @@ function CarteIncident({
 }
 
 const s = StyleSheet.create({
-  root: { flex: 1, backgroundColor: colors.bg.base },
-  head: { paddingHorizontal: space.xl, paddingBottom: space.md },
+  root: { flex: 1, backgroundColor: palette.night },
+  head: { paddingHorizontal: spacing.xl, paddingBottom: spacing.md },
   eyebrow: {
-    fontFamily: typo.mono,
-    fontSize: 11,
+    fontFamily: fonts.mono,
+    fontSize: fontSize.eyebrow,
     letterSpacing: 1.6,
-    color: colors.text.low,
+    color: palette.eyebrow,
   },
   titre: {
-    fontFamily: typo.display,
-    fontSize: 26,
-    color: colors.text.hi,
-    marginTop: space.xs,
+    fontFamily: fonts.display,
+    fontSize: fontSize.h2,
+    letterSpacing: 0.5,
+    color: palette.cream,
+    marginTop: spacing.xs,
   },
-  pad: { flex: 1, paddingHorizontal: space.xl },
-  centered: { flex: 1, justifyContent: 'center', paddingHorizontal: space.xl },
+  corps: { flex: 1 },
+  corpsPad: { paddingHorizontal: spacing.xl },
+  corpsCentre: { justifyContent: 'center' },
+
+  section: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginTop: spacing.sm,
+  },
+  compteur: {
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: palette.cardBorderProminent,
+    borderRadius: radius.pill,
+    minWidth: 24,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 2,
+    alignItems: 'center',
+  },
+  compteurTexte: {
+    fontFamily: fonts.mono,
+    fontSize: fontSize.small,
+    color: palette.creamMute,
+    fontVariant: ['tabular-nums'],
+  },
 
   carte: {
-    marginTop: space.md,
-    padding: space.lg,
+    marginTop: spacing.md,
+    padding: spacing.lg,
     borderWidth: 1,
-    borderColor: colors.border.card,
-    borderRadius: 12,
-    backgroundColor: colors.bg.card,
+    borderColor: palette.line,
+    borderRadius: radius.md,
+    backgroundColor: palette.card,
   },
   carteHaut: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    gap: space.md,
+    gap: spacing.md,
   },
   carteQuand: {
-    fontFamily: typo.mono,
-    fontSize: 11,
+    fontFamily: fonts.mono,
+    fontSize: fontSize.eyebrow,
     letterSpacing: 1.2,
-    color: colors.text.low,
+    color: palette.eyebrow,
   },
   carteEtat: {
-    fontFamily: typo.mono,
-    fontSize: 10,
+    fontFamily: fonts.mono,
+    fontSize: fontSize.eyebrow,
     letterSpacing: 1.4,
-    color: colors.text.mid,
+    color: palette.creamMute,
   },
   /** Un état que l'application ne sait pas nommer se dit sobrement, sans
       prétendre le comprendre. */
-  carteEtatInconnu: { color: colors.text.dim },
+  carteEtatInconnu: { color: palette.faint },
   recit: {
-    fontFamily: typo.body,
-    fontSize: 14,
+    fontFamily: fonts.body,
+    fontSize: fontSize.body,
     lineHeight: 21,
-    color: colors.text.hi,
-    marginTop: space.md,
+    color: palette.cream,
+    marginTop: spacing.md,
   },
   historique: {
-    marginTop: space.md,
-    paddingTop: space.md,
+    marginTop: spacing.md,
+    paddingTop: spacing.md,
     borderTopWidth: 1,
-    borderTopColor: colors.border.hairline,
+    borderTopColor: palette.separator,
     gap: 4,
   },
   acte: {
-    fontFamily: typo.body,
-    fontSize: 12,
+    fontFamily: fonts.body,
+    fontSize: fontSize.small,
     lineHeight: 18,
-    color: colors.text.low,
+    color: palette.eyebrow,
   },
   actes: {
     flexDirection: 'row',
-    gap: space.sm,
-    marginTop: space.lg,
+    gap: spacing.sm,
+    marginTop: spacing.lg,
   },
   acteBouton: {
-    paddingHorizontal: space.lg,
-    paddingVertical: space.sm,
-    borderRadius: 999,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.sm,
+    borderRadius: radius.pill,
     borderWidth: 1,
-    borderColor: colors.border.strong,
+    borderColor: palette.cardBorderProminent,
     // 44 pt de plancher pour une cible gantée : l'administrateur porte des
     // gants au bord de la piste.
     minHeight: 44,
     justifyContent: 'center',
   },
   acteLabel: {
-    fontFamily: typo.mono,
-    fontSize: 11,
+    fontFamily: fonts.mono,
+    fontSize: fontSize.eyebrow,
     letterSpacing: 1.2,
     textTransform: 'uppercase',
-    color: colors.text.hi,
+    color: palette.cream,
   },
 });
