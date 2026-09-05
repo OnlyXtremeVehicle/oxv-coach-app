@@ -154,7 +154,7 @@ contenu client, sous aucun nom.
 | R5 | Toute requête de trajectoire trie sur `elapsed_ms`, jamais `created_at` | `triElapsedMs` | **en place** (03/09) |
 | R6 | Tout écran de donnée monte les cinq états et nomme le champ attendu | `cinqEtats` | **en place** (03/09) |
 | R7 | Aucun mur public ne porte de classement ni de donnée de plateau | mesuré le 03/09, voir ci-dessous | **partiellement tenu** |
-| R8 | Aucune phrase sur une feuille de données | `check-doctrine`, 2ᵉ passe | script en place, 2ᵉ passe à écrire |
+| R8 | Aucune phrase sur une feuille de données | `check-doctrine`, 2ᵉ passe | **en place — la ligne « 2ᵉ passe à écrire » était périmée** (voir ci-dessous). Ce qui manque n'est pas la passe, ce sont les quatre règles d'ÉCRITURE d'un mot-clé |
 
 **La colonne d'état a été ajoutée le 30/08, à l'installation du brief, et c'est
 une correction de spécification — la règle du dossier l'exige.** Le tableau
@@ -461,6 +461,35 @@ La seconde entrée devra donc être **inconditionnelle**, et mener à un état v
 honnête — ce que R6 exige déjà. Le geste n'est pas bloqué, il est simplement
 plus étroit qu'il n'en avait l'air : ce n'est pas « où accrocher un lien
 contextuel », c'est « quel lien permanent ». La butée du 19/09 le rappellera.
+
+---
+
+### R8 — la 2ᵉ passe EXISTE. Ce qui manque est ailleurs, et c'est plus grand
+
+**« Script en place, 2ᵉ passe à écrire » était faux au 05/09.** La seconde passe
+vit dans `scripts/check-doctrine.ts:272`, `passeMotsCles()`, écrite au lot P4
+(commit `bff63bc`, « la règle des mots clés devient une garde »). Son fichier
+d'exceptions existe aussi — `scripts/restitutionSansPhrase.exceptions.ts`,
+la forme que `G_MotsCles.md:61` demande. **Chercher avant d'écrire vaut aussi
+pour ce tableau-ci.**
+
+Ce qu'elle fait, mesuré le 05/09 : **14 feuilles contrôlées, 81 phrases
+trouvées, dont 40 sur les deux écrans du Mans.** Elle est BLOQUANTE sur ces deux
+écrans et avertissante sur les douze autres, avec un plafond par écran — 33 pour
+`data/session/[id]`, 7 pour `bilan/[sessionId]`. **Les plafonds valent
+exactement le compte : aucune marge dormante**, le cliquet est serré.
+
+**LE VRAI MANQUE.** La règle des mots-clés a deux moitiés. La passe ci-dessus
+tient la première — *aucune PHRASE* (plus de trois mots ET un mot outil). La
+seconde — **les quatre règles d'ÉCRITURE d'un mot-clé** : majuscules, forme
+`SUJET · PRÉCISION`, jamais de verbe conjugué, aucun mot outil jamais — n'est
+appliquée à **aucune feuille de données**.
+
+Elle est pourtant IMPLÉMENTÉE : `src/lib/regleMotsCles.ts` porte
+`motifRefusMotCle`, et deux gardes l'emploient — sur le champ `court` du
+registre des présentations, et sur les libellés de service. **Jamais sur les
+étiquettes que les quatorze feuilles affichent réellement.** C'est le motif
+dominant du dépôt : écrit, testé, branché à côté de l'endroit qui en a besoin.
 
 ---
 
