@@ -81,6 +81,7 @@ import { resolveDaySessionId } from '@/features/rec/attendancePublicService';
 import { lienOuvrable } from '@/features/vous/profilLogic';
 import * as convoysService from '@/services/v2/convoysService';
 import {
+  Button,
   Chip,
   colors,
   EMPTY_CIRCUIT_PATH,
@@ -238,13 +239,41 @@ export default function TerritoireScreen() {
           onSelect={setSelected}
         />
       ) : tab === 'routes' ? (
-        <RoutesTab
-          phase={phase}
-          routes={routes}
-          bottomInset={tabBarSpace(insets.bottom)}
-          onRetry={load}
-          onSelect={setSelected}
-        />
+        <>
+          {/*
+            R1 — LA SECONDE ENTRÉE DE `club/routes`, ET ELLE EST HORS DE
+            `RoutesTab`, DÉLIBÉRÉMENT.
+
+            `RoutesTab` rend trois retours anticipés — chargement, erreur, vide.
+            Un lien posé à l'intérieur ne s'afficherait donc que dans le
+            quatrième cas, celui où des routes existent. Or `scenic_routes`
+            compte ZÉRO ligne en production, mesuré le 05/09 : ce lien-là ne se
+            serait jamais montré.
+
+            C'est exactement le défaut que l'en-tête d'`orphelinsApp2.guard`
+            raconte — trois écrans du Club atteignables « en théorie », par des
+            liens enfermés sous une condition de donnée jamais vraie. On ne le
+            refait pas.
+
+            Ce que cet onglet montre et que `club/routes` ne montre pas : les
+            routes certifiées des autres (`mergeRoutes`). La réciproque vit dans
+            `club/routes.tsx`.
+          */}
+          <View style={styles.vosRoutesRow}>
+            <Button
+              label="Vos routes enregistrées"
+              variant="ghost"
+              onPress={() => router.push('/(app2)/club/routes' as never)}
+            />
+          </View>
+          <RoutesTab
+            phase={phase}
+            routes={routes}
+            bottomInset={tabBarSpace(insets.bottom)}
+            onRetry={load}
+            onSelect={setSelected}
+          />
+        </>
       ) : (
         <CreerTab bottomInset={tabBarSpace(insets.bottom)} />
       )}
@@ -1217,6 +1246,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: space.xl,
     paddingBottom: space.md,
   },
+  /** L'entrée permanente vers `club/routes` — voir la note au rendu. */
+  vosRoutesRow: { paddingHorizontal: space.xl, paddingBottom: space.md },
 
   tabBody: {
     flex: 1,

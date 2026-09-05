@@ -252,10 +252,24 @@ const OUTIL_INTERNE: Famille = {
  * et ce défaut-là est déjà documenté : l'en-tête d'`orphelinsApp2.guard` dit
  * qu'« un lien enfermé sous une condition de donnée jamais vraie » satisfait la
  * garde sans rien ouvrir, « c'est précisément ce qui s'était produit ». La
- * seconde entrée devra être INCONDITIONNELLE, et mener à un état vide honnête.
+ * seconde entrée doit donc être INCONDITIONNELLE, et mener à un état vide
+ * honnête — ce que R6 exige déjà.
  *
- * La date est le **19 septembre** — la répétition de Bouteville, point de
- * non-retour du matériel. Passée, cette garde est rouge.
+ * **DEUX SONT SORTIES LE 05/09, dans le commit qui les a servies.**
+ * `club/routes` et `club/territoire` se donnent désormais réciproquement leur
+ * seconde entrée : la carte porte « Vos routes enregistrées », la liste porte
+ * « Ouvrir la carte ». Ce n'est pas un renvoi de complaisance — l'en-tête de
+ * `territoire.tsx` mesure la différence depuis le 14/08 : son onglet ROUTES
+ * fait `mergeRoutes(listMyRoutes, listCertifiedRoutes)`, quand `club/routes`
+ * ne montre que les vôtres. Deux contenus, deux écrans, un aller-retour.
+ *
+ * Le lien de la carte est posé HORS de `RoutesTab`, et c'est tout le point :
+ * ce composant rend trois retours anticipés — chargement, erreur, vide — et un
+ * lien placé dedans ne serait apparu que dans le quatrième cas, celui qui
+ * n'arrive jamais avec zéro ligne en base.
+ *
+ * **Restent huit tiroirs.** La date est le **19 septembre** — la répétition de
+ * Bouteville, point de non-retour du matériel. Passée, cette garde est rouge.
  */
 const TIROIR_PILOTE: Famille = {
   raison:
@@ -265,8 +279,6 @@ const TIROIR_PILOTE: Famille = {
     '/(app2)/club/ecurie',
     '/(app2)/club/galerie',
     '/(app2)/club/partenaires',
-    '/(app2)/club/routes',
-    '/(app2)/club/territoire',
     '/(app2)/data/carnet',
     '/(app2)/vous/documents',
     '/(app2)/vous/equipement',

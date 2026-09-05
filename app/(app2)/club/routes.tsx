@@ -137,6 +137,27 @@ export default function MesRoutesScreen() {
           count={routes.length > 0 ? routes.length : undefined}
         />
 
+        {/*
+          R1 — LA SECONDE ENTRÉE DU TERRITOIRE, ET ELLE EST INCONDITIONNELLE.
+
+          Ce lien ne dépend d'aucune donnée : il est rendu que la liste soit
+          pleine, vide, en cours ou en erreur. C'est délibéré, et c'est un
+          défaut déjà payé ici — l'en-tête d'`orphelinsApp2.guard` raconte que
+          les trois écrans du Club étaient atteignables « en théorie », par des
+          liens enfermés sous une condition de donnée jamais vraie. Mesuré le
+          05/09 : `scenic_routes` et `social_pings` sont VIDES en production.
+          Un lien conditionnel ne s'afficherait donc jamais.
+
+          La réciproque vit dans `club/territoire.tsx`, onglet ROUTES.
+        */}
+        <View style={styles.carteAction}>
+          <Button
+            label="Ouvrir la carte"
+            variant="ghost"
+            onPress={() => router.push('/(app2)/club/territoire' as never)}
+          />
+        </View>
+
         {status === 'loading' ? (
           <StateView state="loading" shape="list" />
         ) : status === 'error' ? (
@@ -313,6 +334,8 @@ const styles = StyleSheet.create({
     marginTop: space.sm,
   },
   videAction: { marginTop: space.lg, alignSelf: 'stretch' },
+  /** L'entrée permanente vers le territoire — voir la note au rendu. */
+  carteAction: { marginTop: space.md },
   pied: {
     fontFamily: typo.body,
     fontSize: 12,
