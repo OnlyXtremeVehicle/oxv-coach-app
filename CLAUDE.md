@@ -553,11 +553,29 @@ découpe `j / ai / compris`, et `ai` n'est pas dans la liste fermée des mots
 outils. **Signaler ce que la garde de référence ne voit pas apprendrait à douter
 d'une garde verte.**
 
-**Où elles sont** : 52 sur `data/session/[id]`, puis le coach (24), la console
-et la saison (25), le hub Data (16), le bilan (14). **Ce qu'elles sont** :
-35 étiquettes de valeur (« Vitesse d'entrée », « Confiance de mesure »),
-16 libellés de bouton, 14 sur-titres (« LES MESURES », « TOUR DE RÉFÉRENCE »),
-11 chips, 9 onglets (« Détail », « Tracé », « Rejouer »).
+**Où elles sont**, et les quatorze feuilles totalisent bien 124 :
+
+| Feuille | | Feuille | |
+|---|---|---|---|
+| `data/session/[id]` | **52** | `data/index` | 6 |
+| `(admin)/analyse-session/[id]` | 15 | `(coach)/comparer` | 6 |
+| `data/comparer` | 10 | `(coach)/priorites` | 5 |
+| `bilan/[sessionId]` | 9 | `SaisonSections` | 5 |
+| `(coach)/rapport` | 8 | `data/carnet` | 3 |
+| `signature` | 2 | `carte-souvenir` · `PetitsMultiples` · `NiveauxRestitution` | 1 chacune |
+
+**Ce qu'elles sont** — variantes repliées sur leur famille : 35 étiquettes de
+valeur (« Vitesse d'entrée », « Confiance de mesure »), 17 libellés de bouton,
+14 sur-titres (« LES MESURES », « TOUR DE RÉFÉRENCE »), 12 chips, 10 titres de
+section, 10 titres, 9 onglets (« Détail », « Tracé », « Rejouer »), 7 légendes,
+7 badges, 3 libellés d'axe.
+
+**CORRECTION DU 05/09, ET ELLE PORTE SUR CE PARAGRAPHE.** La première écriture
+de ces deux ventilations donnait « coach 24, console et saison 25, hub Data 16,
+bilan 14 » : c'étaient les comptes des trouvailles **confirmées**, mêlés au
+total des **retenues**. Deux mesures dans une même phrase font une somme qui ne
+veut rien dire. `verifier-releve-mots-cles.ts` ne ventile plus que le seul
+ensemble publié.
 
 **Une garde ne peut donc pas naître verte ici**, et la corriger n'est pas un
 renommage mécanique : la règle de taille dit déjà qu'« on ne peut pas seulement

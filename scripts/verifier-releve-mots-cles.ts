@@ -89,8 +89,18 @@ for (const t of trouvailles) {
   else nouvelles.push(t);
 }
 
+/**
+ * LE SEUL ENSEMBLE QU'ON PUBLIE : nouvelles ET ancrées.
+ *
+ * Ventiler les « nouvelles » d'un côté et les « confirmées » de l'autre dans la
+ * même phrase produit un total qui ne veut rien dire — c'est la faute que ce
+ * relevé a d'abord commise. Toutes les ventilations ci-dessous portent sur le
+ * MÊME ensemble, celui du chiffre annoncé.
+ */
+const RETENUES = nouvelles.filter(ancree);
+
 const parPosition = new Map<string, number>();
-for (const t of nouvelles) parPosition.set(t.position, (parPosition.get(t.position) ?? 0) + 1);
+for (const t of RETENUES) parPosition.set(t.position, (parPosition.get(t.position) ?? 0) + 1);
 
 console.log(`trouvailles confirmées par les agents : ${trouvailles.length}`);
 console.log(`  ancrées dans le fichier à ±3 lignes : ${ancrees}`);
@@ -100,9 +110,9 @@ console.log(`  motif DÉMENTI par le dépôt          : ${motifDiscorde}`);
 console.log('');
 console.log(`  déjà comptées par la 2ᵉ passe (estPhrase) : ${dejaPhrase}`);
 console.log(`  NOUVELLES, propres à la règle d'écriture  : ${nouvelles.length}`);
-console.log(`  dont ancrées dans le fichier              : ${nouvelles.filter(ancree).length}`);
+console.log(`  dont ancrées — LE CHIFFRE RETENU         : ${RETENUES.length}`);
 console.log('');
-console.log('nouvelles par position :');
+console.log('les retenues, par position :');
 for (const [p, n] of [...parPosition].sort((a, b) => b[1] - a[1])) console.log(`  ${p} : ${n}`);
 
 if (discordes.length > 0) {
@@ -117,9 +127,9 @@ if (nonAncrees.length > 0) {
 }
 
 console.log('');
-console.log('--- LES NOUVELLES, par fichier ---');
+console.log('--- LES RETENUES, par fichier ---');
 const parFichier = new Map<string, Trouvaille[]>();
-for (const t of nouvelles) parFichier.set(t.fichier, [...(parFichier.get(t.fichier) ?? []), t]);
+for (const t of RETENUES) parFichier.set(t.fichier, [...(parFichier.get(t.fichier) ?? []), t]);
 for (const [f, ts] of parFichier) {
   console.log(`\n${f} (${ts.length})`);
   for (const t of ts) console.log(`  ${t.ligne}  [${t.position}] « ${t.texte.slice(0, 70)} »`);
