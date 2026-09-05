@@ -62,6 +62,16 @@ Vous demandez à assouplir la règle pour les tiroirs qui n'ont naturellement qu
 
 **Pourquoi je ne cède pas sur la garde elle-même.** L'inventaire a mesuré 35 orphelins et 16 liens directs. Ils ne sont pas apparus par négligence : ils sont apparus un par un, chacun avec une bonne raison locale. Une liste d'exceptions datées se relit en trente secondes ; une règle assouplie ne se relit jamais.
 
+> **CORRECTION DU 05/09/2026 — les deux chiffres de ce paragraphe ne mesurent pas ce qu'il croit.**
+>
+> Les **35 orphelins sont des MODULES sans consommateur** (la liste de `modulesOrphelins` : `coachBusinessService`, `dataLabLogic`, `seasonStoryLogic`…), **pas des écrans sans entrée**. Les deux comptes ont été confondus.
+>
+> Remesuré sur les 144 écrans de `app/`, littéraux normalisés et commentaires retirés : **zéro écran sans entrée**, 97 à une seule, 47 à deux ou plus. Et la moitié de la règle est déjà gardée — `src/lib/__tests__/orphelinsApp2.guard.test.ts` interdit qu'un écran pilote ait zéro entrée depuis le jalon 5.
+>
+> Les 97 se rangent en quatre familles, dont trois sont des formes JUSTES et non des dettes : le moyeu de console (22 écrans `(admin)` pendus à `(admin)/index.tsx`), les entonnoirs (`rec/*`, `reserver/*`, les deux onboardings — une étape a un prédécesseur, c'est sa définition), et le détail atteint depuis sa liste. **La dette réelle tient en une douzaine de tiroirs pilotes** — `club/galerie`, `club/routes`, `club/territoire`, `club/partenaires`, `data/carnet`, `vous/profil`, `vous/documents`, `vous/equipement`, `vous/support` — c'est-à-dire exactement ce que D-3 vise et rien d'autre.
+>
+> Une liste d'exceptions de 97 lignes ne se relit pas en trente secondes : c'est le périmètre de la garde qu'il faut trancher, pas la règle qu'il faut assouplir.
+
 ---
 
 ## D-4 · Les sept gels

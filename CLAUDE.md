@@ -147,7 +147,7 @@ contenu client, sous aucun nom.
 
 | # | Règle | Garde | État |
 |---|---|---|---|
-| R1 | Tout écran a **deux** entrées. Exceptions listées, justifiées, datées | `deuxEntrees` | **à écrire** |
+| R1 | Tout écran a **deux** entrées. Exceptions listées, justifiées, datées | `deuxEntrees` | **mesurée le 05/09 : 0 orphelin, 97 écrans à une entrée.** La première entrée est déjà gardée (`orphelinsApp2`) ; le périmètre de la seconde attend une décision |
 | R2 | Aucun orphelin **neuf**, et aucune entrée périmée dans la liste connue | `modulesOrphelins` | en place |
 | R3 | Les deux univers visuels ne se mélangent pas ; seule la couche 2 traverse | `frontiereUnivers` | **en place** (05/09) — cinq franchissements levés |
 | R4 | L'assistant ne conseille jamais | `aiSafetyFilter`, étendu | en place |
@@ -366,6 +366,60 @@ forme, fichiers imbriqués compris, avec son contre-test.
 tournent, la publication en amont ne les touche pas. Le pin agit au PROCHAIN
 déploiement — c'est là qu'il fallait qu'il soit. Seule `compute-session-insights-v3`
 a été redéployée (version 13), parce qu'elle portait aussi un correctif.
+
+---
+
+### R1 — mesurée le 05/09/2026 : zéro orphelin, quatre-vingt-dix-sept écrans à une seule entrée
+
+**La moitié de cette règle est DÉJÀ GARDÉE, et le tableau ne le disait pas.**
+`src/lib/__tests__/orphelinsApp2.guard.test.ts` existe et exige qu'aucun écran
+de l'arbre pilote n'ait zéro entrée. Ce qui manque à R1 est la SECONDE entrée,
+pas la première.
+
+**Le compte, littéraux normalisés, commentaires retirés** — chemins avec et sans
+groupe, `${id}` et `[id]` ramenés au même motif :
+
+| | Écrans | 0 entrée | 1 entrée | 2 et plus |
+|---|---|---|---|---|
+| **Tout l'arbre** | **144** | **0** | **97** | **47** |
+| `(app2)` pilote | 48 | 0 | 30 | 18 |
+| `(admin)` console | 34 | 0 | 26 | 8 |
+| `(coach)` | 35 | 0 | 21 | 14 |
+| `(partner)` · `(pro)` · `(onboarding)` · `(auth)` | 27 | 0 | 20 | 7 |
+
+**Zéro orphelin sur cent quarante-quatre.** C'est un résultat, pas une évidence :
+le jalon 5 en comptait trois pour le seul Club.
+
+**ET LA PRÉMISSE DE LA SPÉCIFICATION EST FAUSSE.** `D_Navigation.md:63` écrit :
+« L'inventaire a mesuré 35 orphelins et 16 liens directs ». Les **35 orphelins
+sont des MODULES sans consommateur** — la liste de `modulesOrphelins`,
+`coachBusinessService`, `dataLabLogic`… — **pas des écrans sans entrée**. Les
+deux comptes ont été confondus, et la règle s'appuie donc sur un chiffre qui ne
+la concerne pas.
+
+**Les quatre-vingt-dix-sept ne sont pas une seule dette, mais quatre familles**,
+et trois d'entre elles sont des formes JUSTES :
+
+1. **Le moyeu de console.** Vingt-deux écrans `(admin)` pendent de
+   `(admin)/index.tsx`, et de lui seul. Leur donner une seconde entrée voudrait
+   dire inter-lier la console — personne ne l'a demandé, et ce serait du bruit.
+2. **Les entonnoirs.** `(onboarding)`, `(coach-onboarding)`, les six écrans
+   `rec/*` pilotés par `captureStepLogic`, les trois de `reserver/*`. **Une
+   étape a un prédécesseur, c'est sa définition.** Deux entrées y seraient un
+   défaut, pas une qualité.
+3. **Le détail depuis sa liste.** `coachs/[id]` ← `coachs`, `support/[id]` ←
+   `support`, `utilisateurs/[id]`, `evenements/nouveau`. Structurel.
+4. **Les tiroirs du pilote — la seule vraie dette.** `club/galerie`,
+   `club/routes`, `club/territoire`, `club/partenaires`, `club/ecurie`,
+   `data/carnet`, `vous/profil`, `vous/documents`, `vous/equipement`,
+   `vous/support`. **Une douzaine d'écrans**, et c'est exactement ce que D-3
+   vise : « Les tiroirs sous chaque porte. Chacun a deux entrées. »
+
+**Pourquoi la garde n'est pas écrite dans la foulée.** Elle serait rouge sur
+quatre-vingt-dix-sept écrans. La rendre verte suppose de trancher son PÉRIMÈTRE
+— tout l'arbre, ou les seuls tiroirs pilotes que la spécification vise — et cela
+change le fichier d'exceptions du simple au décuple. **C'est une décision de
+navigation, donc du fondateur, et je ne la prends pas en écrivant un fichier.**
 
 ---
 
