@@ -33,7 +33,7 @@ Trois endroits à consulter avant toute écriture :
    ce que vous alliez écrire y figure, il ne reste qu'à le brancher.
 2. **`src/features/presentations/registrePresentations.ts`** — les 65 fiches, et
    `compositionLogic.ts` qui décide de ce qui s'ouvre.
-3. **La liste des migrations et des fonctions edge** — 34 fonctions actives.
+3. **La liste des migrations et des fonctions edge** — **36 fonctions actives**, remesuré le 05/09 (le dossier en annonçait 34).
 
 **Ne nommez jamais un défaut sans citer sa garde.** Si vous ne trouvez pas la
 garde, cherchez encore avant d'affirmer qu'elle manque.
@@ -247,6 +247,34 @@ et 12,2 km/h. Elle valide la chaîne ; elle ne calibre pas un seuil de piste.
   inerte depuis toujours, et pas pour une raison passagère.** Le réparer suppose
   d'ouvrir une porte à jeton sur la fonction visée — un changement du modèle
   d'authentification, à décider, pas à glisser.
+
+  **REMESURÉ LE 05/09, ET TROIS CHOSES S'AJOUTENT.**
+
+  **1. La surface de contrôle MENT, et c'est le plus important.**
+  `cron.job_run_details` donne `succeeded` pour le job 5 — six fois en six
+  heures, la dernière à 15 h 30. pg_cron dit vrai à sa façon : il a bien mis la
+  requête en file. **L'échec ne se lit que dans `net._http_response`**, où les
+  six mêmes appels rendent `401 UNAUTHORIZED_NO_AUTH_HEADER`. Qui vérifierait
+  l'état des crons par la table des exécutions conclurait que tout va bien.
+  Aucun écran de la console ne lit ces tables — vérifié — donc personne n'est
+  trompé aujourd'hui ; mais la prochaine personne à regarder le sera.
+
+  **2. Le job 5 envoie DÉJÀ le jeton.** Sa commande porte le même
+  `X-Cron-Token` que le job 4, tiré du même secret de coffre. L'intention était
+  donc identique ; seul manque `verify_jwt = false` sur la cible. La décision
+  n'est pas « faut-il un modèle à jeton », elle est « ouvre-t-on cette porte-là ».
+
+  **3. Et la cible est le moteur RETIRÉ.** Le job 5 vise
+  `compute-session-insights` — v1 — dont plus aucun code n'est appelant depuis
+  le 03/09, et que v3 domine sur toutes les colonnes ET sur la forme lue. **Le
+  réparer tel quel ferait écrire douze colonnes là où v3 en écrit vingt-deux**,
+  sur des séances déjà calculées : ce ne serait pas une remise en service, ce
+  serait une dégradation horaire. Le repointer vers v3 ne suffit pas non plus —
+  `compute-session-insights-v3` est **aussi** en `verify_jwt = true`.
+
+  La question à trancher n'est donc pas celle qui était écrite. Elle est :
+  **ce travail horaire doit-il exister ?** Le job 4 traite déjà la file des
+  séances en attente, et il rend 200.
 - `cycle_steps` et `coach_annotations` : **zéro ligne**. Les fiches P36 et
   P46–P51 resteront écartées.
 - **Haute Saintonge** ne se referme pas : 17,1 m entre son dernier point et
@@ -365,7 +393,9 @@ forme, fichiers imbriqués compris, avec son contre-test.
 **Épingler la source SUFFIT.** Les artefacts déployés sont bundlés : ils
 tournent, la publication en amont ne les touche pas. Le pin agit au PROCHAIN
 déploiement — c'est là qu'il fallait qu'il soit. Seule `compute-session-insights-v3`
-a été redéployée (version 13), parce qu'elle portait aussi un correctif.
+a été redéployée, parce qu'elle portait aussi un correctif. **Remesuré le
+05/09 : la production est en version 14**, pas 13 — le compte de cette
+section datait d'un déploiement de plus.
 
 ---
 
@@ -490,6 +520,49 @@ Elle est pourtant IMPLÉMENTÉE : `src/lib/regleMotsCles.ts` porte
 registre des présentations, et sur les libellés de service. **Jamais sur les
 étiquettes que les quatorze feuilles affichent réellement.** C'est le motif
 dominant du dépôt : écrit, testé, branché à côté de l'endroit qui en a besoin.
+
+**L'ÉCART EST MESURÉ : CENT VINGT-QUATRE ÉTIQUETTES.**
+
+Un relevé naïf ne vaut rien ici — il rend 505 refus sur 556 chaînes, dont
+l'essentiel est du bruit : fragments SQL, chemins SVG, morceaux de code coupés
+par une apostrophe, et surtout les libellés d'accessibilité, qui doivent
+**rester de la prose** puisqu'un lecteur d'écran les dit à voix haute.
+
+La mesure retenue a donc été faite feuille par feuille puis **réfutée** — chaque
+trouvaille éprouvée par un second lecteur chargé de la démolir — puis
+**remesurée par le dépôt lui-même** (`scripts/verifier-releve-mots-cles.ts`) :
+
+| | |
+|---|---|
+| Trouvailles remontées | 162 |
+| Survivantes à la réfutation | 161 |
+| Motif confirmé en rejouant `motifRefusMotCle` | **161 sur 161** |
+| Retrouvées à la ligne annoncée (± 3) | 157 |
+| Déjà comptées par la 2ᵉ passe (`estPhrase`) | 34 |
+| **NOUVELLES, ancrées, propres aux règles d'écriture** | **124** |
+
+Le taux de réfutation est faible — une seule — et il fallait le vérifier plutôt
+que s'en réjouir : **zéro désaccord entre les lecteurs et l'implémentation du
+dépôt** sur l'application des règles. Ce qui restait de jugement, « est-ce
+affiché en position de mot-clé », est exactement ce que les quatre non-ancrées
+révèlent : des textes reformulés par le lecteur, écartés du compte.
+
+L'unique réfutation mérite d'être citée : « J'AI COMPRIS », que le lecteur a
+refusé de signaler parce que `motifRefusMotCle` la juge conforme — l'apostrophe
+découpe `j / ai / compris`, et `ai` n'est pas dans la liste fermée des mots
+outils. **Signaler ce que la garde de référence ne voit pas apprendrait à douter
+d'une garde verte.**
+
+**Où elles sont** : 52 sur `data/session/[id]`, puis le coach (24), la console
+et la saison (25), le hub Data (16), le bilan (14). **Ce qu'elles sont** :
+35 étiquettes de valeur (« Vitesse d'entrée », « Confiance de mesure »),
+16 libellés de bouton, 14 sur-titres (« LES MESURES », « TOUR DE RÉFÉRENCE »),
+11 chips, 9 onglets (« Détail », « Tracé », « Rejouer »).
+
+**Une garde ne peut donc pas naître verte ici**, et la corriger n'est pas un
+renommage mécanique : la règle de taille dit déjà qu'« on ne peut pas seulement
+grossir, il faut couper ». Cent vingt-quatre étiquettes à réécrire en mots-clés
+est un travail ÉDITORIAL, pas une correction de défaut.
 
 ---
 
