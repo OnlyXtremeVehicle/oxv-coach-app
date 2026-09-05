@@ -34,9 +34,9 @@
  *
  * C'est le point que le tableau des sept règles ne disait pas : « 97 écrans à
  * une entrée » n'est pas « 97 défauts ». Une étape d'entonnoir à deux entrées
- * serait un DÉFAUT, pas une qualité. La dette réelle tient en **dix tiroirs
+ * serait un DÉFAUT, pas une qualité. La dette réelle tenait en **dix tiroirs
  * pilotes**, et c'est exactement ce que D-3 vise : « les tiroirs sous chaque
- * porte ».
+ * porte ». Trois ont été servis le 05/09 ; il en reste **sept**.
  *
  * ===========================================================================
  * CE QUE CE FICHIER NE FAIT PAS
@@ -47,7 +47,7 @@
  * échouer la garde AUSSI — une exception périmée est une entrée morte, et c'est
  * la leçon que la liste des orphelins a déjà payée une fois.
  *
- * Et le 19 septembre, si les dix tiroirs n'ont pas bougé, la garde passe au
+ * Et le 19 septembre, si les sept tiroirs restants n'ont pas bougé, la garde passe au
  * rouge. **Ce n'est pas un accident, c'est le mécanisme** : « une exception sans
  * date n'est pas une exception, c'est un abandon » (D-3).
  */
@@ -268,7 +268,22 @@ const OUTIL_INTERNE: Famille = {
  * lien placé dedans ne serait apparu que dans le quatrième cas, celui qui
  * n'arrive jamais avec zéro ligne en base.
  *
- * **Restent huit tiroirs.** La date est le **19 septembre** — la répétition de
+ * **UNE TROISIÈME EST SORTIE, ET SON PLACEMENT EST LE SUJET.** `club/galerie`
+ * s'atteint depuis le PIED DE PAGE du bilan, à côté d'« Ouvrir dans Data » —
+ * et surtout PAS depuis la section SOUVENIRS, qui semblait sa place naturelle.
+ * Cette section ne se rend que si `showSouvenirs` est vrai : au moins une
+ * photo, ou la vidéo activée. Avec `session_media` à zéro ligne, un lien posé
+ * là ne se serait jamais affiché. Le pied de page, lui, est rendu dans tous les
+ * cas, et l'état vide de la galerie nomme ce qui manque.
+ *
+ * **`club/partenaires` RESTE, ET C'EST DIT PLUTÔT QUE COMBLÉ.** Aucun écran ne
+ * porte aujourd'hui de rapport mesuré avec les offres partenaires : ni le Pass,
+ * ni l'écurie, ni le territoire n'en parlent — vérifié. Lui fabriquer une
+ * entrée depuis un écran sans lien avec lui donnerait une seconde porte pour
+ * satisfaire une garde, ce que D-3 interdit explicitement. Il attend un rapport
+ * réel, ou la butée.
+ *
+ * **Restent sept tiroirs.** La date est le **19 septembre** — la répétition de
  * Bouteville, point de non-retour du matériel. Passée, cette garde est rouge.
  */
 const TIROIR_PILOTE: Famille = {
@@ -277,7 +292,6 @@ const TIROIR_PILOTE: Famille = {
   jusquau: '2026-09-19',
   routes: [
     '/(app2)/club/ecurie',
-    '/(app2)/club/galerie',
     '/(app2)/club/partenaires',
     '/(app2)/data/carnet',
     '/(app2)/vous/documents',

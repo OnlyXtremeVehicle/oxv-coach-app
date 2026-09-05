@@ -824,10 +824,39 @@ export default function BilanScreen() {
             <View style={styles.footerRow}>
               <ListRow
                 label="Ouvrir dans Data"
-                divider={false}
                 // Lot L6 — dette levée : la séance elle-même, plus la porte Data.
                 onPress={() => router.navigate(`/(app2)/data/session/${sessionId}` as never)}
                 accessibilityLabel="Ouvrir cette séance dans Data"
+              />
+              {/*
+                R1 — LA SECONDE ENTRÉE DE `club/galerie`, ET ELLE EST ICI PLUTÔT
+                QUE DANS LA SECTION SOUVENIRS.
+
+                La section SOUVENIRS ne se rend que si `showSouvenirs` est vrai —
+                au moins une photo, ou la vidéo activée. Or `session_media`
+                compte ZÉRO ligne en production, mesuré le 05/09 : un lien posé
+                là ne se serait jamais affiché, et la galerie serait restée
+                atteignable par le seul index du Club.
+
+                C'est le défaut que l'en-tête d'`orphelinsApp2.guard` raconte —
+                un lien enfermé sous une condition de donnée jamais vraie
+                satisfait la garde sans rien ouvrir. Le pied de page, lui, est
+                rendu dans tous les cas.
+
+                L'état vide de la galerie nomme ce qui manque : mener à une
+                pièce vide honnête vaut mieux qu'une porte qui n'existe pas.
+
+                LA CASSE DÉTONNE, ET C'EST VOULU. « GALERIE » est un mot-clé
+                valide au sens de `motifRefusMotCle` ; « Ouvrir dans Data », sa
+                voisine, porte le mot outil « dans » et fait partie des 124
+                étiquettes que le relevé du 05/09 a comptées. On ne rajoute pas
+                une 125ᵉ pour faire joli à côté d'une dette.
+              */}
+              <ListRow
+                label="GALERIE"
+                divider={false}
+                onPress={() => router.navigate('/(app2)/club/galerie' as never)}
+                accessibilityLabel="Ouvrir la galerie de toutes vos photos"
               />
             </View>
           </View>
