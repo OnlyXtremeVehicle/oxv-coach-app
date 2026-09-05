@@ -154,7 +154,7 @@ contenu client, sous aucun nom.
 | R5 | Toute requête de trajectoire trie sur `elapsed_ms`, jamais `created_at` | `triElapsedMs` | **en place** (03/09) |
 | R6 | Tout écran de donnée monte les cinq états et nomme le champ attendu | `cinqEtats` | **en place** (03/09) |
 | R7 | Aucun mur public ne porte de classement ni de donnée de plateau | mesuré le 03/09, voir ci-dessous | **partiellement tenu** |
-| R8 | Aucune phrase sur une feuille de données | `check-doctrine`, 2ᵉ passe | **en place — la ligne « 2ᵉ passe à écrire » était périmée** (voir ci-dessous). Ce qui manque n'est pas la passe, ce sont les quatre règles d'ÉCRITURE d'un mot-clé |
+| R8 | Aucune phrase sur une feuille de données | `check-doctrine`, 2ᵉ et **3ᵉ** passes | **en place** — la 2ᵉ passe existait depuis P4 (la ligne « à écrire » était périmée) ; la **3ᵉ**, les quatre règles d'ÉCRITURE, est posée le 05/09 en cliquet |
 
 **La colonne d'état a été ajoutée le 30/08, à l'installation du brief, et c'est
 une correction de spécification — la règle du dossier l'exige.** Le tableau
@@ -581,6 +581,37 @@ ensemble publié.
 renommage mécanique : la règle de taille dit déjà qu'« on ne peut pas seulement
 grossir, il faut couper ». Cent vingt-quatre étiquettes à réécrire en mots-clés
 est un travail ÉDITORIAL, pas une correction de défaut.
+
+### La 3ᵉ passe existe depuis le 05/09 — un CLIQUET, décision du fondateur
+
+`passeEcritureMotsCles()` applique `motifRefusMotCle` aux étiquettes des
+quatorze feuilles. Elle refuse toute étiquette NOUVELLE hors règle, et invite à
+baisser le plafond dès qu'il maigrit — même mécanique que `PLAFOND_PHRASES` et
+`echelleTypo`. Un interdit serait rouge le premier jour et désarmé le second.
+
+**DEUX CHIFFRES, ET IL NE FAUT PAS LES CONFONDRE.**
+
+| | Mesure | Compte |
+|---|---|---|
+| **124** | adjugée : chaque chaîne jugée « affichée en position de mot-clé », puis réfutée, puis remesurée par le dépôt | ce que la dette VAUT |
+| **160 sur 209** | lexicale : props de libellé, clés d'objet de libellé, nœuds de texte JSX — aucun jugement | ce que le cliquet FIGE |
+
+La seconde est plus large parce qu'elle ne juge rien : c'est la condition pour
+qu'un cliquet soit reproductible. La première dit la vérité éditoriale.
+
+**L'EXTRACTEUR A ÉTÉ CORRIGÉ PAR SA PROPRE FALSIFICATION.** Sa première écriture
+ne lisait que la syntaxe JSX `label="…"` — l'injection d'une étiquette fautive
+n'a pas mordu. Les tables d'onglets se déclarent en objets
+(`{ key: 'trace', label: 'Tracé' }`), et toute cette famille échappait au
+cliquet pendant qu'un relevé adverse la comptait. Corrigé, le compte passe de
+141 à 160.
+
+**ET LA RÈGLE DU DÉPÔT PORTAIT UN FAUX POSITIF.** `VERBES_CONJUGUES` matchait
+`-ions` et `-ons`, donc **CONDITIONS**, SESSIONS, OPTIONS, POSITIONS — des noms,
+pas des verbes. `data/session/[id].tsx:976` porte
+`<SectionHeader eyebrow="CONDITIONS" />`, un mot-clé conforme, refusé pour
+« verbe conjugué ». Seul `-ez` reste : c'est l'impératif que la doctrine
+proscrit, et une interface qui vouvoie n'écrit jamais « comparons ».
 
 ---
 

@@ -111,9 +111,31 @@ export type MotifRefus = 'mot outil' | 'minuscules' | 'trop de mots' | 'verbe co
  * est volontairement COURTE : elle attrape les cas réels du dépôt sans
  * prétendre conjuguer le français. Un faux négatif ici est préférable à une
  * garde qui refuse « FREINAGE » parce qu'elle croit y voir un verbe.
+ *
+ * ===========================================================================
+ * `ons`, `iez` ET `ions` SONT SORTIS LE 05/09/2026 — ILS ACCUSAIENT DES NOMS
+ * ===========================================================================
+ *
+ * La terminaison `-ions` ne distingue pas « comparions » de **CONDITIONS**, et
+ * `-ons` ne distingue pas « comparons » de « blasons ». Le premier relevé des
+ * étiquettes des feuilles de données l'a montré sur un cas réel :
+ * `data/session/[id].tsx:976` porte `<SectionHeader eyebrow="CONDITIONS" />`,
+ * un mot-clé parfaitement conforme, refusé pour « verbe conjugué ».
+ *
+ * Le domaine est plein de pluriels en `-ions` et `-ons` — conditions, sessions,
+ * options, positions, mentions — et vide de première personne du pluriel : une
+ * interface qui vouvoie n'écrit jamais « comparons ». Ces trois terminaisons
+ * produisaient donc des faux positifs et aucun vrai.
+ *
+ * `-ez` RESTE, et c'est la seule qui compte : c'est la forme de l'impératif que
+ * la doctrine proscrit — « touchez », « glissez », « regardez ». Le prix est un
+ * risque théorique sur « nez » ou « assez », qu'aucune étiquette du dépôt ne
+ * porte.
+ *
+ * Vérifié avant de couper : aucun test ni aucune garde ne dépendait du verdict
+ * « verbe conjugué ».
  */
-const VERBES_CONJUGUES =
-  /^(?:.*(?:ez|ons|iez|ions)|(?:est|sont|sera|était|ont|avez|voyez|regardez))$/i;
+const VERBES_CONJUGUES = /^(?:.*ez|(?:est|sont|sera|était|ont|avez|voyez|regardez))$/i;
 
 /**
  * Un fragment respecte-t-il les quatre règles d'écriture ?

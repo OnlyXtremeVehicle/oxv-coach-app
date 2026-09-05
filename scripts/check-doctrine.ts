@@ -34,8 +34,12 @@ import * as path from 'path';
 //   3. Jugements gratuits (« bravo », « parfait » : on n'évalue pas
 //      l'humain, on lui montre les chiffres)
 import { FORBIDDEN_PATTERNS, type Portee } from './doctrineRegles';
-import { PLAFOND_PHRASES, estExcepte } from './restitutionSansPhrase.exceptions';
-import { estPhrase } from '../src/lib/regleMotsCles';
+import {
+  PLAFOND_ETIQUETTES,
+  PLAFOND_PHRASES,
+  estExcepte,
+} from './restitutionSansPhrase.exceptions';
+import { estPhrase, motifRefusMotCle } from '../src/lib/regleMotsCles';
 import {
   FEUILLES_DE_DONNEES,
   estFeuilleDeDonnees,
@@ -315,6 +319,113 @@ Règle des mots-clés : ${feuilles.length} feuilles de données contrôlées, ` 
   return depassements;
 }
 
+/**
+ * ===========================================================================
+ * TROISIÈME PASSE — LES QUATRE RÈGLES D'ÉCRITURE D'UN MOT-CLÉ (règle G-0)
+ * ===========================================================================
+ *
+ * La deuxième passe interdit une FORME : la phrase. Celle-ci contrôle l'autre
+ * moitié de la règle, celle que le dossier énumère et que rien n'appliquait :
+ * majuscules, forme `SUJET · PRÉCISION`, jamais de verbe conjugué, et **aucun
+ * mot outil, jamais** — plus strict que la définition de la phrase, parce que
+ * les mots-clés se composent.
+ *
+ * `motifRefusMotCle` porte ces quatre règles depuis le 01/09/2026. Deux gardes
+ * l'employaient — sur le champ `court` du registre et sur les libellés de
+ * service — et **aucune sur les étiquettes que les feuilles affichent**.
+ *
+ * Elle est un CLIQUET, décision du fondateur du 05/09 : 146 étiquettes sur 194
+ * sont refusées, un interdit serait rouge le premier jour.
+ */
+const PROPS_ETIQUETTE = [
+  'eyebrow',
+  'label',
+  'title',
+  'value',
+  'sublabel',
+  'caption',
+  'legend',
+  'unit',
+  'placeholder',
+];
+
+/** Prose lue à voix haute, ou état déjà tenu par la 2ᵉ passe. */
+const PROPS_ECARTEES = /^(accessibility|empty|error|testID|hint)/;
+
+/**
+ * Les positions d'étiquette d'une ligne — props de libellé, CLÉS D'OBJET de
+ * libellé, et texte JSX.
+ *
+ * LES CLÉS D'OBJET ONT ÉTÉ AJOUTÉES APRÈS UNE FALSIFICATION QUI N'A PAS MORDU.
+ * La première écriture ne lisait que la syntaxe JSX `label="…"`. Or les tables
+ * d'onglets se déclarent en objets — `{ key: 'trace', label: 'Tracé' }`,
+ * `data/session/[id].tsx:211` — et toute une famille d'étiquettes échappait
+ * donc au cliquet, pendant qu'un relevé adverse les comptait bien.
+ */
+function etiquettesDe(ligne: string): string[] {
+  const out: string[] = [];
+  for (const m of ligne.matchAll(/(\w+)\s*[=:]\s*\{?\s*(['"`])((?:\\.|(?!\2)[^\\])*)\2/g)) {
+    const prop = m[1];
+    if (PROPS_ECARTEES.test(prop)) continue;
+    if (!PROPS_ETIQUETTE.includes(prop)) continue;
+    if (m[3].trim().length > 0) out.push(m[3]);
+  }
+  // `(?<!=)` écarte la flèche d'une lambda : sans elle, `=> (a) <= b` se lisait
+  // comme un nœud de texte, et le relevé accusait une ligne de calcul.
+  for (const m of ligne.matchAll(/(?<!=)>([^<>{}]{2,})</g)) {
+    const t = m[1].trim();
+    if (t.length > 0) out.push(t);
+  }
+  return out;
+}
+
+function passeEcritureMotsCles(): number {
+  const parEcran = new Map<string, number>();
+  let vues = 0;
+
+  for (const rel of FEUILLES_DE_DONNEES) {
+    const abs = path.join(process.cwd(), rel);
+    if (!fs.existsSync(abs)) continue;
+    const lignes = fs.readFileSync(abs, 'utf-8').split(String.fromCharCode(10));
+    const etat: EtatBloc = { dedans: false };
+    for (const brute of lignes) {
+      const line = horsCommentaireBloc(brute, etat);
+      if (line.trim() === '') continue;
+      if (IGNORE_LINE_PATTERNS.some((p) => p.test(line))) continue;
+      if (/^\s*import\s|require\(/.test(line)) continue;
+      if (estExcepte(rel, line)) continue;
+      for (const e of etiquettesDe(line)) {
+        vues += 1;
+        if (motifRefusMotCle(e) !== null) parEcran.set(rel, (parEcran.get(rel) ?? 0) + 1);
+      }
+    }
+  }
+
+  const total = [...parEcran.values()].reduce((s, n) => s + n, 0);
+  console.log(
+    `${String.fromCharCode(10)}Règles d'écriture : ${vues} étiquettes contrôlées, ${total} hors règle.`
+  );
+
+  let depassements = 0;
+  for (const [ecran, n] of [...parEcran].sort((a, b) => b[1] - a[1])) {
+    // Le compte est imprimé pour CHAQUE écran, pas seulement pour ceux qui
+    // dérivent : un plafond se relit contre une mesure, et une mesure qu'on ne
+    // voit pas se recopie de travers.
+    console.log(`    ${ecran} : ${n}`);
+    const plafond = PLAFOND_ETIQUETTES[ecran];
+    if (plafond === undefined) {
+      console.error(`  ÉCRAN SANS PLAFOND — ${ecran} : ${n} étiquettes hors règle.`);
+      depassements += n;
+    } else if (n > plafond) {
+      console.error(`  ÉTIQUETTE NOUVELLE — ${ecran} : ${n} pour un plafond de ${plafond}.`);
+      depassements += n - plafond;
+    } else if (n < plafond) {
+      console.log(`  Le plafond de ${ecran} peut descendre de ${plafond} à ${n}.`);
+    }
+  }
+  return depassements;
+}
+
 function main(): void {
   // `src/` EST scanné, désormais. Le scan ne regardait que `app/` : les
   // 125 composants et écrans partagés de `src/` — montés dans les vrais écrans —
@@ -342,17 +453,28 @@ function main(): void {
   }
 
   const phrasesBloquantes = passeMotsCles();
+  const etiquettesNouvelles = passeEcritureMotsCles();
 
-  if (allViolations.length === 0 && phrasesBloquantes === 0) {
-    console.log('OK — aucun verbe interdit, aucune phrase sur une feuille de données.');
+  if (allViolations.length === 0 && phrasesBloquantes === 0 && etiquettesNouvelles === 0) {
+    console.log(
+      'OK — aucun verbe interdit, aucune phrase sur une feuille de données, aucune étiquette hors règle en plus.'
+    );
     process.exit(0);
   }
 
   if (allViolations.length === 0) {
-    console.error(
-      `
+    if (phrasesBloquantes > 0) {
+      console.error(
+        `
 KO — ${phrasesBloquantes} phrase(s) NOUVELLE(S) sur un écran du Mans, au-delà du plafond.`
-    );
+      );
+    }
+    if (etiquettesNouvelles > 0) {
+      console.error(
+        `
+KO — ${etiquettesNouvelles} étiquette(s) NOUVELLE(S) hors des quatre règles d'écriture.`
+      );
+    }
     process.exit(1);
   }
 

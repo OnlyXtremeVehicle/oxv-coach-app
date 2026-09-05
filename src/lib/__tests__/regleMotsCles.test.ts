@@ -89,6 +89,25 @@ describe('estMotCle — ce qu’on écrit, plus strict que ce qu’on refuse', (
   });
 
   /**
+   * LE VERBE CONJUGUÉ — ET LES PLURIELS QU'IL ACCUSAIT À TORT.
+   *
+   * Jusqu'au 05/09/2026 le motif portait `ons|iez|ions`, qui ne distinguent pas
+   * « comparions » de **CONDITIONS**. Le premier relevé des étiquettes l'a
+   * trouvé sur un cas réel : `<SectionHeader eyebrow="CONDITIONS" />`, un
+   * mot-clé conforme, refusé pour « verbe conjugué ».
+   *
+   * Ce test fige les deux côtés : l'impératif reste refusé, les pluriels du
+   * domaine passent.
+   */
+  it('l’impératif est refusé, les pluriels en -ions et -ons ne le sont pas', () => {
+    expect(motifRefusMotCle('TOUCHEZ')).toBe('verbe conjugué');
+    expect(motifRefusMotCle('REGARDEZ')).toBe('verbe conjugué');
+    for (const nom of ['CONDITIONS', 'SESSIONS', 'OPTIONS', 'POSITIONS', 'MENTIONS']) {
+      expect({ nom, refus: motifRefusMotCle(nom) }).toEqual({ nom, refus: null });
+    }
+  });
+
+  /**
    * LA COMPOSITION EST SÛRE PAR CONSTRUCTION. On le vérifie plutôt que de le
    * supposer : les deux préfixes composés du lot P4, croisés avec les libellés,
    * ne doivent jamais produire une phrase.
