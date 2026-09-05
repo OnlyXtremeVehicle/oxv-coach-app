@@ -275,6 +275,45 @@ et 12,2 km/h. Elle valide la chaîne ; elle ne calibre pas un seuil de piste.
   La question à trancher n'est donc pas celle qui était écrite. Elle est :
   **ce travail horaire doit-il exister ?** Le job 4 traite déjà la file des
   séances en attente, et il rend 200.
+
+  **TRANCHÉ ET FAIT LE 05/09 — et le mécanisme retenu n'ouvre aucune porte.**
+
+  La décision était « repointer vers v3 et ouvrir la porte à jeton ». En
+  l'implémentant, un troisième fait s'est ajouté : **l'application appelle v3
+  avec un JWT d'utilisateur**. Passer v3 en `verify_jwt = false` aurait donc
+  cassé `analyzeSessionService` et le bouton admin, sauf à écrire une DOUBLE
+  authentification à la main sur la fonction qui écrit les lectures. Et le
+  coffre ne porte pas de clé de service, donc la voie « le cron envoie un JWT de
+  service » supposait d'en stocker une — une posture, pas une plomberie.
+
+  **Le balayage vit donc dans `cron-analyze-pending-sessions`**, qui EST déjà la
+  porte du cron : `verify_jwt = false`, contrôle de jeton, clé de service dans
+  son environnement. Son mode `insights` balaye les séances SEGMENTÉES sans
+  lecture v3 et appelle v3 par `functions.invoke`, donc en appelant autorisé.
+  **v3 garde `verify_jwt = true` et son code n'est pas touché.**
+
+  Vérifié de bout en bout, par pg_cron lui-même sur la commande réelle :
+
+  | Appel | Réponse |
+  |---|---|
+  | sans jeton | **401** `unauthorized` |
+  | mauvais jeton | **401** `unauthorized` |
+  | jeton, `{"mode":"insights"}` | **200** `segmentees: 0, processed: 0` |
+
+  Zéro séance traitée est le BON résultat : `app_segment_analyses` est vide, et
+  le balayage reprend le critère de l'application — sans segment, pas de lecture.
+
+  **UN DÉFAUT ARMÉ, TROUVÉ EN CHEMIN.** Le contrôle de jeton de cette fonction
+  était **fail-open** : `if (expectedToken)`, donc sans secret configuré elle
+  s'ouvrait au public — sur une fonction qui écrit avec la clé de service, et
+  dont l'en-tête affirmait sans condition « on vérifie un secret pour bloquer le
+  public ». Mesuré avant de corriger : elle rendait bien 401, le secret est
+  posé. Le défaut n'était pas ouvert, il était **armé**. Fail-closed depuis la
+  version 25.
+
+  **Et le numéro du travail a changé** : `unschedule` puis `schedule` crée une
+  nouvelle ligne. « compute-insights-hourly » porte désormais le `jobid` **14**,
+  plus le 5. Tout document qui le nomme par son numéro est périmé.
 - `cycle_steps` et `coach_annotations` : **zéro ligne**. Les fiches P36 et
   P46–P51 resteront écartées.
 - **Haute Saintonge** ne se referme pas : 17,1 m entre son dernier point et
@@ -882,6 +921,7 @@ secteurs officiels, l'ouverture du coach.
 | **Affiliation coach** | **Un déclencheur en base**, pas du code client : `pending → active` dès que les deux consentements sont posés. Le modèle à deux côtés était déjà dans le schéma ; seule la transition manquait | 02/09 |
 | **Imports edge** | **Épinglés sur 2.114.0, les vingt-huit.** Épingler la SOURCE suffit — les artefacts déployés sont bundlés, le pin agit au prochain déploiement. On ne redéploie pas vingt-huit fonctions pour un changement sans effet à l'exécution | 03/09 |
 | **Marge et cron** | **L'application nomme sa version** (`app-v1.0`) et le cron l'exclut de sa file. Une séance analysée par l'application ne sera plus reprise par un moteur qui en sait moins — même quand la version du cron sera incrémentée | 03/09 |
+| **Balayage horaire des lectures** | **Le job horaire vise `cron-analyze-pending-sessions` en mode `insights`**, qui appelle v3 avec la clé de service. Aucune porte publique nouvelle : v3 garde `verify_jwt = true`. La décision « ouvrir une porte à jeton sur v3 » supposait une double authentification écrite à la main — l'application appelle v3 avec un JWT d'utilisateur | 05/09 |
 | **Frontière R3** | **Les cinq franchissements levés, `frontiereUnivers` écrite et falsifiée.** Elle remonte le graphe d'imports depuis chaque route : ce qui décide n'est pas où le fichier vit, c'est quel écran l'atteint | 05/09 |
 | **Périmètre R1** | **Tout l'arbre, familles justifiées.** 97 exceptions en six familles ; cinq sont des formes justes, la sixième — dix tiroirs pilotes — est la seule dette, datée au **19/09** | 05/09 |
 | **Tiroirs du Club** | **Une seconde entrée pour les quatre.** Mesure faite en cherchant où l'accrocher : `session_media`, `scenic_routes` et `social_pings` sont VIDES, donc le lien devra être **inconditionnel** — un lien sous condition de donnée jamais vraie est le défaut déjà nommé par `orphelinsApp2.guard` | 05/09 |
@@ -892,7 +932,6 @@ secteurs officiels, l'ouverture du coach.
 | Sujet | Ce qu'il bloque | Butée |
 |---|---|---|
 | **Geste de calibration au prévol** | Le redressement du signal, donc le filtre, donc les deux branches à zéro | 19/09 |
-| **Porte à jeton sur les insights** | Le cron 5 est inerte (401 mesuré) : sa cible est en `verify_jwt = true` et il n'envoie aucun `Authorization`. Le réparer change le modèle d'authentification d'une fonction qui écrit les lectures | — |
 | **Secrets `TEST_SUPABASE_*`** | 85 tests RLS jamais exécutés, et la fusion vers `main` : la CI échoue en dur sans eux | avant fusion |
 | **Chrono sur un lien public** | `SHAREABLE_METRICS` propose `best_lap`. L'interdit vise le classement ENTRE PILOTES ; un lien révocable sur ses propres données n'est peut-être pas un mur public au sens visé | — |
 

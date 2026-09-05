@@ -1,0 +1,17 @@
+-- Le travail de vérification a rendu ce qu'on attendait, deux fois :
+--
+--   200 {"ok":true,"mode":"insights","engine":"mirror-insights-v3",
+--        "segmentees":0,"deja_lues":0,"processed":0,"successful":0,"failed":0}
+--
+-- Zéro séance traitée est le BON résultat : `app_segment_analyses` est vide, et
+-- le balayage reprend le critère de l'application — sans segment, pas de
+-- lecture. La chaîne est vérifiée de bout en bout : cron → jeton → mode
+-- insights → v3.
+--
+-- Il portait exactement la commande du job horaire : ce qui a été vérifié est
+-- donc le chemin réel, pas une imitation. Sa seule différence était sa
+-- fréquence, à la minute.
+--
+-- Un travail de vérification qui reste est un travail qui tourne pour rien,
+-- toutes les minutes. Il est retiré dans le même geste que sa lecture.
+select cron.unschedule('verif-balayage-insights');
