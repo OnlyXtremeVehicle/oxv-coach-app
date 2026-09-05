@@ -24,7 +24,25 @@ import { router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { eleverSession, listerFacteurs, type FacteurInscrit } from '@/services/mfaService';
-import { colors, PressScale, radius, space, typo } from '@/ui/v2';
+// R3 — CET ÉCRAN EST DE L'UNIVERS CONSOLE, PAS DE L'UNIVERS PILOTE.
+//
+// Il importait `colors, PressScale, radius, space, typo` de `@/ui/v2`, le kit
+// PILOTE, alors qu'il n'est monté que par `app/(admin)/_layout.tsx:86`. C'était
+// l'un des cinq franchissements de R3 mesurés le 03/09/2026, et le plus
+// insidieux des deux transitifs : le franchissement ne se voyait pas depuis
+// l'écran, seulement depuis ce fichier.
+//
+// `PressableScale` est l'équivalent v1 de `PressScale` — même échelle, même
+// traitement du mouvement réduit — et il est déjà employé par
+// `app/(admin)/points-carte.tsx`. Les deux sites d'appel ci-dessous ne passaient
+// aucun style, donc la substitution est directe.
+//
+// L'écran CHANGE d'apparence, et c'est l'intention : il portait les couleurs du
+// pilote (`#14151A`) et prend celles de la console (`#0B0B0D`).
+import { PressableScale } from '@/components/motion';
+import { theme } from '@/theme/v2';
+
+const { palette, spacing, radius, fonts } = theme;
 
 export function SecondFacteurRequis() {
   const insets = useSafeAreaInsets();
@@ -58,7 +76,7 @@ export function SecondFacteurRequis() {
   }, [occupe, facteur, code]);
 
   return (
-    <View style={[styles.root, { paddingTop: insets.top + space.xxl }]}>
+    <View style={[styles.root, { paddingTop: insets.top + spacing.xxl }]}>
       <Text style={styles.eyebrow}>ESPACE ADMINISTRATEUR</Text>
       <Text style={styles.titre} accessibilityRole="header">
         SECOND FACTEUR
@@ -74,18 +92,18 @@ export function SecondFacteurRequis() {
         value={code}
         onChangeText={setCode}
         placeholder="123456"
-        placeholderTextColor={colors.text.low}
+        placeholderTextColor={palette.eyebrow}
         keyboardType="number-pad"
         maxLength={6}
         autoFocus
         accessibilityLabel="Code à six chiffres"
       />
 
-      <PressScale onPress={valider} accessibilityLabel="Valider le code">
+      <PressableScale onPress={valider} accessibilityLabel="Valider le code">
         <View style={styles.bouton}>
           <Text style={styles.boutonTexte}>{occupe ? 'Vérification…' : 'Valider'}</Text>
         </View>
-      </PressScale>
+      </PressableScale>
 
       {erreur ? (
         <Text style={styles.erreur} accessibilityLiveRegion="polite">
@@ -96,70 +114,70 @@ export function SecondFacteurRequis() {
       {/* La sortie existe TOUJOURS. Un écran de sécurité sans porte de sortie
           se contourne par la force — on redémarre l'application — et il aura
           juste fait perdre du temps à quelqu'un qui voulait travailler. */}
-      <PressScale
+      <PressableScale
         onPress={() => router.replace('/(app2)' as never)}
         accessibilityLabel="Revenir à l’espace pilote"
       >
         <Text style={styles.sortie}>Revenir à l’espace pilote</Text>
-      </PressScale>
+      </PressableScale>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: colors.bg.base, paddingHorizontal: space.xl },
+  root: { flex: 1, backgroundColor: palette.night, paddingHorizontal: spacing.xl },
   eyebrow: {
-    fontFamily: typo.mono,
+    fontFamily: fonts.mono,
     fontSize: 10,
     letterSpacing: 1.8,
     textTransform: 'uppercase',
-    color: colors.text.low,
+    color: palette.eyebrow,
   },
   titre: {
-    fontFamily: typo.bodySemi,
+    fontFamily: fonts.bodySemi,
     fontSize: 26,
     letterSpacing: 1,
-    color: colors.text.hi,
-    marginTop: space.xs,
-    marginBottom: space.lg,
+    color: palette.cream,
+    marginTop: spacing.xs,
+    marginBottom: spacing.lg,
   },
   corps: {
-    fontFamily: typo.body,
+    fontFamily: fonts.body,
     fontSize: 15,
     lineHeight: 23,
-    color: colors.text.hi,
-    marginBottom: space.xl,
+    color: palette.cream,
+    marginBottom: spacing.xl,
   },
   champ: {
-    fontFamily: typo.mono,
+    fontFamily: fonts.mono,
     fontSize: 22,
     letterSpacing: 5,
-    color: colors.text.hi,
+    color: palette.cream,
     borderWidth: StyleSheet.hairlineWidth,
-    borderColor: colors.border.strong,
+    borderColor: palette.cardBorderProminent,
     borderRadius: radius.pill,
-    paddingVertical: space.md,
+    paddingVertical: spacing.md,
     textAlign: 'center',
-    marginBottom: space.md,
+    marginBottom: spacing.md,
   },
   bouton: {
     borderWidth: StyleSheet.hairlineWidth,
-    borderColor: colors.border.strong,
+    borderColor: palette.cardBorderProminent,
     borderRadius: radius.pill,
-    paddingVertical: space.md,
+    paddingVertical: spacing.md,
     alignItems: 'center',
   },
-  boutonTexte: { fontFamily: typo.bodyMedium, fontSize: 15, color: colors.text.hi },
+  boutonTexte: { fontFamily: fonts.bodyMedium, fontSize: 15, color: palette.cream },
   erreur: {
-    fontFamily: typo.body,
+    fontFamily: fonts.body,
     fontSize: 14,
-    color: colors.text.mid,
-    marginTop: space.md,
+    color: palette.creamMute,
+    marginTop: spacing.md,
   },
   sortie: {
-    fontFamily: typo.bodyMedium,
+    fontFamily: fonts.bodyMedium,
     fontSize: 15,
-    color: colors.text.mid,
-    marginTop: space.xl,
+    color: palette.creamMute,
+    marginTop: spacing.xl,
   },
 });

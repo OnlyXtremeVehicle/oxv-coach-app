@@ -44,7 +44,22 @@ import {
   type EnrolementCommence,
   type FacteurInscrit,
 } from '@/services/mfaService';
-import { colors, PressScale, radius, space, typo } from '@/ui/v2';
+// R3 — CET ÉCRAN EST DE LA CONSOLE, ET PORTAIT LE KIT PILOTE.
+//
+// Il importait `colors, PressScale, radius, space, typo` de `@/ui/v2` : l'un des
+// cinq franchissements de R3 mesurés le 03/09/2026, et l'un des trois directs.
+//
+// `PressableScale` est l'équivalent v1 de `PressScale`, déjà employé par
+// `app/(admin)/points-carte.tsx` — même groupe de routes. Les quatre sites
+// d'appel ci-dessous ne passaient aucun style : la substitution est directe.
+//
+// L'écran CHANGE d'apparence, et c'est l'intention. Il peignait `#14151A`, le
+// fond du pilote ; il prend `#0B0B0D`, celui de la console, comme ses trente-
+// deux voisins.
+import { PressableScale } from '@/components/motion';
+import { theme } from '@/theme/v2';
+
+const { palette, spacing, radius, fonts } = theme;
 
 type Phase = 'chargement' | 'aucun' | 'enrolement' | 'inscrit';
 
@@ -115,9 +130,9 @@ export default function SecuriteScreen() {
     <ScrollView
       style={styles.root}
       contentContainerStyle={{
-        paddingTop: insets.top + space.xl,
-        paddingHorizontal: space.xl,
-        paddingBottom: insets.bottom + space.xxl,
+        paddingTop: insets.top + spacing.xl,
+        paddingHorizontal: spacing.xl,
+        paddingBottom: insets.bottom + spacing.xxl,
       }}
     >
       <Text style={styles.eyebrow}>COMPTE ADMINISTRATEUR</Text>
@@ -137,13 +152,13 @@ export default function SecuriteScreen() {
             Il vous faut une application d’authentification — Google Authenticator, Aegis,
             1Password, ou celle de votre gestionnaire de mots de passe.
           </Text>
-          <PressScale onPress={demarrer} accessibilityLabel="Ajouter un second facteur">
+          <PressableScale onPress={demarrer} accessibilityLabel="Ajouter un second facteur">
             <View style={styles.bouton}>
               <Text style={styles.boutonTexte}>
                 {occupe ? 'Préparation…' : 'Ajouter un second facteur'}
               </Text>
             </View>
-          </PressScale>
+          </PressableScale>
         </View>
       ) : null}
 
@@ -171,17 +186,17 @@ export default function SecuriteScreen() {
             value={code}
             onChangeText={setCode}
             placeholder="123456"
-            placeholderTextColor={colors.text.low}
+            placeholderTextColor={palette.eyebrow}
             keyboardType="number-pad"
             maxLength={6}
             accessibilityLabel="Code à six chiffres"
           />
 
-          <PressScale onPress={confirmer} accessibilityLabel="Confirmer le second facteur">
+          <PressableScale onPress={confirmer} accessibilityLabel="Confirmer le second facteur">
             <View style={styles.bouton}>
               <Text style={styles.boutonTexte}>{occupe ? 'Vérification…' : 'Confirmer'}</Text>
             </View>
-          </PressScale>
+          </PressableScale>
 
           <Text style={styles.note}>
             Tant que ce pas n’est pas franchi, le facteur ne protège rien.
@@ -202,12 +217,12 @@ export default function SecuriteScreen() {
             .map((f) => (
               <View key={f.id} style={styles.ligne}>
                 <Text style={styles.corps}>{f.nom}</Text>
-                <PressScale
+                <PressableScale
                   onPress={() => void retirer(f.id)}
                   accessibilityLabel={`Retirer ${f.nom}`}
                 >
                   <Text style={styles.retirer}>Retirer</Text>
-                </PressScale>
+                </PressableScale>
               </View>
             ))}
           {/* Un facteur qu'on ne peut pas retirer est un compte perdu avec son
@@ -226,96 +241,96 @@ export default function SecuriteScreen() {
         </Text>
       ) : null}
 
-      <PressScale onPress={() => router.back()} accessibilityLabel="Retour">
+      <PressableScale onPress={() => router.back()} accessibilityLabel="Retour">
         <Text style={styles.retour}>Retour</Text>
-      </PressScale>
+      </PressableScale>
     </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: colors.bg.base },
+  root: { flex: 1, backgroundColor: palette.night },
   eyebrow: {
-    fontFamily: typo.mono,
+    fontFamily: fonts.mono,
     fontSize: 10,
     letterSpacing: 1.8,
     textTransform: 'uppercase',
-    color: colors.text.low,
+    color: palette.eyebrow,
   },
   titre: {
-    fontFamily: typo.bodySemi,
+    fontFamily: fonts.bodySemi,
     fontSize: 26,
     letterSpacing: 1,
-    color: colors.text.hi,
-    marginTop: space.xs,
-    marginBottom: space.xl,
+    color: palette.cream,
+    marginTop: spacing.xs,
+    marginBottom: spacing.xl,
   },
-  bloc: { marginBottom: space.xl },
+  bloc: { marginBottom: spacing.xl },
   corps: {
-    fontFamily: typo.body,
+    fontFamily: fonts.body,
     fontSize: 15,
     lineHeight: 23,
-    color: colors.text.hi,
-    marginBottom: space.md,
+    color: palette.cream,
+    marginBottom: spacing.md,
   },
   note: {
-    fontFamily: typo.body,
+    fontFamily: fonts.body,
     fontSize: 13,
     lineHeight: 20,
-    color: colors.text.mid,
-    marginBottom: space.md,
+    color: palette.creamMute,
+    marginBottom: spacing.md,
   },
   qr: {
     alignSelf: 'center',
     backgroundColor: '#FFFFFF',
-    padding: space.md,
-    borderRadius: radius.card,
-    marginBottom: space.md,
+    padding: spacing.md,
+    borderRadius: radius.xl,
+    marginBottom: spacing.md,
   },
   secret: {
-    fontFamily: typo.mono,
+    fontFamily: fonts.mono,
     fontSize: 14,
     letterSpacing: 1.4,
-    color: colors.text.hi,
-    marginBottom: space.lg,
+    color: palette.cream,
+    marginBottom: spacing.lg,
   },
   champ: {
-    fontFamily: typo.mono,
+    fontFamily: fonts.mono,
     fontSize: 20,
     letterSpacing: 4,
-    color: colors.text.hi,
+    color: palette.cream,
     borderWidth: StyleSheet.hairlineWidth,
-    borderColor: colors.border.strong,
+    borderColor: palette.cardBorderProminent,
     borderRadius: radius.pill,
-    paddingVertical: space.md,
+    paddingVertical: spacing.md,
     textAlign: 'center',
-    marginBottom: space.md,
+    marginBottom: spacing.md,
   },
   bouton: {
     borderWidth: StyleSheet.hairlineWidth,
-    borderColor: colors.border.strong,
+    borderColor: palette.cardBorderProminent,
     borderRadius: radius.pill,
-    paddingVertical: space.md,
+    paddingVertical: spacing.md,
     alignItems: 'center',
   },
-  boutonTexte: { fontFamily: typo.bodyMedium, fontSize: 15, color: colors.text.hi },
+  boutonTexte: { fontFamily: fonts.bodyMedium, fontSize: 15, color: palette.cream },
   ligne: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: space.sm,
+    marginBottom: spacing.sm,
   },
-  retirer: { fontFamily: typo.bodyMedium, fontSize: 14, color: colors.text.mid },
+  retirer: { fontFamily: fonts.bodyMedium, fontSize: 14, color: palette.creamMute },
   erreur: {
-    fontFamily: typo.body,
+    fontFamily: fonts.body,
     fontSize: 14,
-    color: colors.text.mid,
-    marginBottom: space.lg,
+    color: palette.creamMute,
+    marginBottom: spacing.lg,
   },
   retour: {
-    fontFamily: typo.bodyMedium,
+    fontFamily: fonts.bodyMedium,
     fontSize: 15,
-    color: colors.text.mid,
-    marginTop: space.lg,
+    color: palette.creamMute,
+    marginTop: spacing.lg,
   },
 });
