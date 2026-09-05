@@ -25,12 +25,12 @@ import Animated, { runOnJS, useAnimatedScrollHandler } from 'react-native-reanim
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { useAuthStore } from '@/store/useAuthStore';
+import { Photo } from '@/components/media';
 import {
   colors,
   CondensingHeaderBar,
   ListRow,
   OxvIcon,
-  Photo,
   PressScale,
   PullToRefreshDial,
   radius,

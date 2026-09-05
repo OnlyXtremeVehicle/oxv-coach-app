@@ -32,12 +32,12 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Path } from 'react-native-svg';
 
 import { useAuthStore } from '@/store/useAuthStore';
+import { Photo } from '@/components/media';
 import {
   Chip,
   colors,
   haptic,
   OxvIcon,
-  Photo,
   PressScale,
   radius,
   SectionHeader,

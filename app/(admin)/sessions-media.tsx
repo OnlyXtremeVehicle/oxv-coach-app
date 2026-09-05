@@ -23,7 +23,7 @@ import { ActivityIndicator, Alert, Pressable, ScrollView, Text, View } from 'rea
 import { router } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
 
-import { Photo } from '@/ui/v2/media/Photo';
+import { Photo } from '@/components/media';
 import * as FileSystem from 'expo-file-system/legacy';
 import { Buffer } from 'buffer';
 

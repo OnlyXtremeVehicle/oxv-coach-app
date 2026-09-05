@@ -13,7 +13,7 @@ import { Dimensions, Linking, Modal, Pressable, Text, View } from 'react-native'
 
 import type { SessionMediaItem } from '@/services/sessionMediaService';
 import { theme } from '@/theme/v2';
-import { Photo } from '@/ui/v2/media/Photo';
+import { Photo } from '@/components/media';
 
 const SCREEN_WIDTH = Dimensions.get('window').width;
 const GRID_GUTTER = 8;

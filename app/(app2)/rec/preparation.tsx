@@ -77,6 +77,7 @@ import { getMyCrew, type MyCrew } from '@/services/v2/referralService';
 import * as convoysService from '@/services/v2/convoysService';
 import { useAuthStore } from '@/store/useAuthStore';
 import { getPendingIntention } from '@/services/intentionsService';
+import { Photo } from '@/components/media';
 import {
   Button,
   CondensingHeaderBar,
@@ -90,7 +91,6 @@ import {
   ListRow,
   motionTokens,
   OxvIcon,
-  Photo,
   PressScale,
   SectionHeader,
   space,

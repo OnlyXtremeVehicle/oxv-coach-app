@@ -37,13 +37,13 @@ import {
   type MyCoachAssignment,
 } from '@/services/pilotConsentService';
 import { formatInvoiceAmount, type MyCoachInvoice } from '@/services/pilotCoachBillingService';
+import { Photo } from '@/components/media';
 import {
   Chip,
   colors,
   HeroPhoto,
   haptic,
   OxvIcon,
-  Photo,
   PressScale,
   radius,
   ReportLink,

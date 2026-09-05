@@ -35,7 +35,8 @@ import { StateView } from '@/ui/v2/StateView';
 import { TraceCircuit } from '@/ui/v2/TraceCircuit';
 import { haptic, type HapticKind } from '@/ui/v2/haptics';
 import { OXV_ICON_NAMES, OxvIcon } from '@/ui/v2/icons';
-import { HeroPhoto, Photo, TITANE_BLURHASH } from '@/ui/v2/media';
+import { Photo, TITANE_BLURHASH } from '@/components/media';
+import { HeroPhoto } from '@/ui/v2/media';
 import {
   CondensingHeaderBar,
   GlowStroke,

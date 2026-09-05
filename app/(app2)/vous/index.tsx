@@ -30,13 +30,13 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { SpaceSwitcher } from '@/components/SpaceSwitcher';
 import { useAuthStore } from '@/store/useAuthStore';
+import { Photo } from '@/components/media';
 import {
   colors,
   CondensingHeaderBar,
   HeroPhoto,
   ListRow,
   OxvIcon,
-  Photo,
   PressScale,
   radius,
   RollingCounter,

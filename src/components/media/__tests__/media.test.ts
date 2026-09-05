@@ -2,7 +2,7 @@
  * Tests du système d'images V2 — logique pure uniquement (pas de rendu).
  */
 
-import { photoRecyclingKey, TITANE_BLURHASH } from '@/ui/v2/media/blurhash';
+import { photoRecyclingKey, TITANE_BLURHASH } from '@/components/media/blurhash';
 import {
   PARALLAX_BLEED,
   PARALLAX_FACTOR,
@@ -12,7 +12,7 @@ import {
   scrimGradientColors,
   scrimHeight,
   toTransparent,
-} from '@/ui/v2/media/mediaMath';
+} from '@/components/media/mediaMath';
 import { colors } from '@/ui/v2/tokens';
 
 // Alphabet base83 de woltapp/blurhash.

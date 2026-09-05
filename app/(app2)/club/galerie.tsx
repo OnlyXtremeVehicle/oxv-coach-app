@@ -42,13 +42,13 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { captureRef } from 'react-native-view-shot';
 import * as Sharing from 'expo-sharing';
 
+import { Photo } from '@/components/media';
 import {
   Button,
   Chip,
   Dial,
   HeritageBand,
   ListRow,
-  Photo,
   PressScale,
   SectionHeader,
   StateView,

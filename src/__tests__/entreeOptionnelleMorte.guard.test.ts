@@ -151,7 +151,7 @@ const INVENTAIRE = [
   '/src/telemetry/courbeDelta.ts::ancreRepere(ecartMin?)',
   '/src/types/domain.ts::marginZoneOf(thresholds?)',
   '/src/types/expo-print-shim.d.ts::printToFileAsync(PrintToFileOptions.margins?)',
-  '/src/ui/v2/media/blurhash.ts::photoRecyclingKey(id?)',
+  '/src/components/media/blurhash.ts::photoRecyclingKey(id?)',
   '/src/ui/v2/motion/motionMath.ts::pullAngle(sweep?)',
   '/src/ui/v2/motion/useCondensingHeader.tsx::useCondensingHeader(CondensingHeaderOptions.band?)',
   '/src/ui/v2/motion/useCondensingHeader.tsx::useCondensingHeader(CondensingHeaderOptions.threshold?)',

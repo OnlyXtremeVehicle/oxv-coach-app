@@ -23,11 +23,16 @@ import React from 'react';
 import { StyleSheet, View } from 'react-native';
 import Animated, { useAnimatedStyle, type SharedValue } from 'react-native-reanimated';
 
+import {
+  PARALLAX_BLEED,
+  parallaxTranslateY,
+  Photo,
+  scrimGradientColors,
+  scrimHeight,
+} from '@/components/media';
 import { useReduceMotion } from '@/ui/v2/motion';
 
 import { colors, radius, space } from '../tokens';
-import { PARALLAX_BLEED, parallaxTranslateY, scrimGradientColors, scrimHeight } from './mediaMath';
-import { Photo } from './Photo';
 
 export interface HeroPhotoProps {
   uri?: string;

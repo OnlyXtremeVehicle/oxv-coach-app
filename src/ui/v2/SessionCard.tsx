@@ -12,8 +12,9 @@
 
 import { StyleSheet, Text, View, type StyleProp, type ViewStyle } from 'react-native';
 
+import { Photo } from '@/components/media';
+
 import { OxvIcon } from './icons';
-import { Photo } from './media';
 import { PressScale, useHeroMorphSource } from './motion';
 import { colors, radius, space, type as typo } from './tokens';
 import { msToLapLabel } from './uiLogic';

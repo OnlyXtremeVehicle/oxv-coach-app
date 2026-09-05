@@ -86,10 +86,10 @@ import {
   vehicleName,
   vehicleSpecsLine,
 } from '@/features/vous/garageLogic';
+import { Photo } from '@/components/media';
 import {
   HeroPhoto,
   ListRow,
-  Photo,
   PressScale,
   SectionHeader,
   Sheet,

@@ -63,11 +63,11 @@ import {
   memberSince,
   pickCoverUri,
 } from '@/features/vous/profilLogic';
+import { Photo } from '@/components/media';
 import {
   Chip,
   HeroPhoto,
   ListRow,
-  Photo,
   PressScale,
   SectionHeader,
   StateView,

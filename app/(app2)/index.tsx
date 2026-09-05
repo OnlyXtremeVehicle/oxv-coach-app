@@ -48,6 +48,7 @@ import { trackEvent } from '@/services/analyticsService';
 import { decidePaddockAction } from '@/services/paddockHeroLogic';
 import { useAppStateStore } from '@/store/useAppStateStore';
 import { useAuthStore } from '@/store/useAuthStore';
+import { Photo } from '@/components/media';
 import {
   ChronoHero,
   colors,
@@ -59,7 +60,6 @@ import {
   motionTokens,
   msToLapLabel,
   OxvIcon,
-  Photo,
   PressScale,
   PullToRefreshDial,
   QDI_BRANCH_LABELS,

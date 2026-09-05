@@ -41,13 +41,13 @@ import Animated, {
 import Svg, { Path as SvgPath } from 'react-native-svg';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { Photo } from '@/components/media';
 import {
   BiometryStrip,
   ChronoHero,
   CondensingHeaderBar,
   HeroPhoto,
   ListRow,
-  Photo,
   PillarBar,
   PressScale,
   SectionHeader,
