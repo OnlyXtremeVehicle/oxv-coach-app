@@ -149,7 +149,7 @@ contenu client, sous aucun nom.
 |---|---|---|---|
 | R1 | Tout écran a **deux** entrées. Exceptions listées, justifiées, datées | `deuxEntrees` | **à écrire** |
 | R2 | Aucun orphelin **neuf**, et aucune entrée périmée dans la liste connue | `modulesOrphelins` | en place |
-| R3 | Les deux univers visuels ne se mélangent pas ; seule la couche 2 traverse | `frontiereUnivers` | **mesurée le 03/09 : cinq franchissements, non gardée** |
+| R3 | Les deux univers visuels ne se mélangent pas ; seule la couche 2 traverse | `frontiereUnivers` | **en place** (05/09) — cinq franchissements levés |
 | R4 | L'assistant ne conseille jamais | `aiSafetyFilter`, étendu | en place |
 | R5 | Toute requête de trajectoire trie sur `elapsed_ms`, jamais `created_at` | `triElapsedMs` | **en place** (03/09) |
 | R6 | Tout écran de donnée monte les cinq états et nomme le champ attendu | `cinqEtats` | **en place** (03/09) |
@@ -371,12 +371,16 @@ a été redéployée (version 13), parce qu'elle portait aussi un correctif.
 
 ### R3 — mesurée le 03/09/2026, et la moitié de ce que j'en disais était faux
 
+*Les cinq franchissements de ce tableau ont été levés le 05/09 et la garde est
+écrite — voir la section suivante. Ce diagnostic est conservé parce qu'il dit
+CE QUI ÉTAIT VRAI et ce que j'en avais dit de faux.*
+
 La règle a **deux volets**, écrits dans `docs/specs/E_Systeme.md:25` : « aucun
 import de `src/ui/v2` hors `(app2)` sauf la couche 2, aucun kit v1 dans
 `(app2)` ». Mesurés séparément, ils ne rendent pas le même verdict.
 
-**VOLET 1 — VIOLÉ. Cinq franchissements, exactement.** Balayage complet des
-33 lignes d'import de `src/ui/v2` hors `(app2)`, consommateurs remontés :
+**VOLET 1 — VIOLÉ AU 03/09. Cinq franchissements, exactement.** Balayage complet
+des 33 lignes d'import de `src/ui/v2` hors `(app2)`, consommateurs remontés :
 
 | Fichier | Ce qu'il prend | Atteint par |
 |---|---|---|
@@ -410,18 +414,59 @@ Les huit imports sont donc **conformes**. Deux univers reposent sur une
 fondation commune ; ce n'est pas un mélange.
 
 **LA COUCHE 2 N'EXISTE PAS SOUS SON NOM.** `E_Systeme.md:25` désigne
-`src/ui/data/` — le dossier n'existe pas. Les composants qu'il énumère vivent à
-plat dans `src/ui/`. La spécification est périmée sur le CHEMIN ; le principe,
-lui, tient.
+`src/ui/data/` — le dossier n'existe pas. Et il faut corriger ici une phrase que
+j'ai écrite juste après, elle aussi fausse : « les composants qu'il énumère
+vivent à plat dans `src/ui/` ». **Mesuré :** `grep -rn "from '@/ui/[A-Z]"
+"app/(app2)/"` ne rend RIEN. Aucun écran pilote ne prend un composant de
+`src/ui/` à plat — ce n'est donc pas la couche 2 rangée ailleurs, c'est le kit
+CONSOLE. Il existe même deux `Fact.tsx` divergents, 46 et 84 lignes.
 
-**POURQUOI LA GARDE N'EST PAS ÉCRITE.** Elle serait ROUGE sur cinq fichiers, et
-le dossier interdit d'écrire une garde rouge : « on ne la contourne pas, on ne
-la commente pas, on ne l'ajoute pas à une liste d'exclusions ». Le lot est
-identifié et chiffré — `PressableScale` (`@/components/motion`) est l'équivalent
-v1 de `PressScale`, déjà employé par `(admin)/points-carte.tsx`, et les six
-sites d'appel ne passent aucun style. Restent deux arbitrages : `StateView` vers
-`StateWrapper`, et `Photo`, qui lit le ThumbHash qu'aucun autre composant ne
-lit.
+Conséquence à ne pas contourner : créer `src/ui/data/` n'est **pas un
+déménagement**, c'est l'unification de deux kits divergents, un arbitrage visuel
+par composant. La spécification est périmée sur le CHEMIN ; le principe tient ;
+le lot est plus gros qu'il n'en a l'air.
+
+---
+
+### R3 — LES CINQ FRANCHISSEMENTS SONT LEVÉS, ET LA GARDE EST ÉCRITE (05/09)
+
+**`frontiereUnivers.guard` existe, et elle naît verte.** Elle ne pouvait pas
+s'écrire tant qu'elle aurait été rouge — le dossier l'interdit. Les cinq
+franchissements ont donc été levés d'abord, en trois gestes :
+
+| Franchissement | Ce qui a été fait |
+|---|---|
+| `(admin)/securite.tsx` · `SecondFacteurRequis` | Jetons vers `theme/v2`, `PressScale` → `PressableScale` |
+| `(admin)/incidents.tsx` | `StateView` → `StateWrapper`, `SectionHeader` → `SectionLabel` + compteur |
+| `(admin)/sessions-media.tsx` · `MediaGrid` | `Photo` sorti du kit pilote |
+
+**Le troisième geste a créé la première pièce réelle de la couche 2.** Écrire un
+second `Photo` côté console aurait aggravé la maladie des deux `Fact`. La mesure
+a tranché : `Photo` **ne porte aucun jeton visuel** — soixante lignes autour
+d'`expo-image`. Il n'appartenait à aucun univers, il était rangé dans l'un des
+deux. `Photo`, `blurhash` et `mediaMath` vivent maintenant dans
+**`src/components/media/`** ; `HeroPhoto` reste au kit pilote, lui qui importe
+`colors, radius, space`. **La couche 2 se construit d'un besoin mesuré, pas
+d'une déclaration** — et une pièce correctement placée est invisible à la garde,
+puisqu'elle ne prend rien à aucun kit.
+
+**LA GARDE NE PEUT PAS ÊTRE LEXICALE, et c'est tout son intérêt.** Vingt-deux
+lignes de `src/` importent encore le kit pilote — `StripMap`, `BandeTours`,
+`SaisonSections`… Un balayage de surface les déclarerait fautives ; elles ne le
+sont pas, puisque seules des routes `(app2)` les atteignent. La garde construit
+donc le graphe d'imports de `app/` et `src/` et remonte, depuis chaque route,
+tout ce qu'elle touche transitivement. **Ce qui décide n'est pas où le fichier
+vit, c'est quel écran l'atteint** — c'est ainsi que `SecondFacteurRequis`, que
+nul écran n'importe, avait été pris par `(admin)/_layout.tsx:86`.
+
+**Falsifiée avant d'être crue :** réintroduire l'import pilote dans
+`SecondFacteurRequis` fait tomber le volet 1 en nommant le layout coupable, et
+un `StateWrapper` dans un écran `(app2)` fait tomber le volet 2.
+
+Un résidu, nommé plutôt que tu : `TITANE_BLURHASH` reste encodé depuis les fonds
+du kit pilote. Deux fonds sombres et froids, quelques valeurs de luminance
+d'écart, vus 220 ms. Si cela devait compter un jour, la correction est une prop
+de repli — pas un second blurhash.
 
 ---
 
@@ -517,6 +562,7 @@ lecture appartient au fondateur, pas à une garde.**
 | Garde des moteurs de démo | `MOTEURS_INSIGHTS_REELS` + `insightsMesures` |
 | Santé de la liaison | `onCaptureLinkStatus`, `getCaptureLinkStatus` |
 | Récupération OSM | `fetchOsmWay` dans `circuitGenerator.ts` |
+| Image partagée par les deux univers | `src/components/media/` (`Photo`, ThumbHash, blurhash titane) |
 
 ---
 
@@ -590,6 +636,8 @@ secteurs officiels, l'ouverture du coach.
 | **Affiliation coach** | **Un déclencheur en base**, pas du code client : `pending → active` dès que les deux consentements sont posés. Le modèle à deux côtés était déjà dans le schéma ; seule la transition manquait | 02/09 |
 | **Imports edge** | **Épinglés sur 2.114.0, les vingt-huit.** Épingler la SOURCE suffit — les artefacts déployés sont bundlés, le pin agit au prochain déploiement. On ne redéploie pas vingt-huit fonctions pour un changement sans effet à l'exécution | 03/09 |
 | **Marge et cron** | **L'application nomme sa version** (`app-v1.0`) et le cron l'exclut de sa file. Une séance analysée par l'application ne sera plus reprise par un moteur qui en sait moins — même quand la version du cron sera incrémentée | 03/09 |
+| **Frontière R3** | **Les cinq franchissements levés, `frontiereUnivers` écrite et falsifiée.** Elle remonte le graphe d'imports depuis chaque route : ce qui décide n'est pas où le fichier vit, c'est quel écran l'atteint | 05/09 |
+| **Couche 2** | **Elle se construit, elle ne se déclare pas.** `src/components/media/` (`Photo`, `blurhash`, `mediaMath`) en est la première pièce : aucun jeton visuel, deux univers demandeurs. `src/ui/data/` reste ouvert — c'est une unification de kits divergents, pas un `git mv` | 05/09 |
 
 ## Décisions en attente, à ne pas contourner
 
