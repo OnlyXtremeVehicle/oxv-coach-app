@@ -19,8 +19,11 @@
 //     headers := jsonb_build_object('Content-Type', 'application/json')
 //   ); $$);
 //
-// verify_jwt = false : appelable sans auth (cron + admin manuel).
-// Mais on vérifie un secret header X-Cron-Token pour bloquer le public.
+// verify_jwt = false : appelable sans auth de plateforme (cron + admin manuel).
+// Le secret X-Cron-Token est donc la SEULE porte, et il est fail-closed depuis
+// le 05/09/2026 : sans secret configuré, la fonction refuse (voir la note au
+// handler). Elle porte deux travaux : l'analyse des séances en attente, et le
+// balayage des lectures — `{"mode":"insights"}` — qui appelle v3.
 
 import 'jsr:@supabase/functions-js/edge-runtime.d.ts';
 import { createClient } from 'jsr:@supabase/supabase-js@2.114.0';
@@ -174,13 +177,32 @@ function marginZoneOf(p: number): 'green' | 'yellow' | 'red' {
 
 Deno.serve(async (req: Request) => {
   try {
-    // Optional security : check X-Cron-Token if present
+    /**
+     * LE CONTRÔLE DU JETON ÉTAIT FAIL-OPEN, ET SON COMMENTAIRE DISAIT L'INVERSE.
+     *
+     * Il lisait : « Optional security : check X-Cron-Token if present », et le
+     * `if (expectedToken)` faisait que **sans secret dans l'environnement, la
+     * fonction s'ouvrait au public** — sur une fonction en `verify_jwt = false`
+     * qui écrit dans `app_session_analyses` avec la clé de service.
+     *
+     * L'en-tête du fichier affirmait pourtant, sans condition : « on vérifie un
+     * secret header X-Cron-Token pour bloquer le public ». Vrai seulement quand
+     * le secret existe.
+     *
+     * MESURÉ LE 05/09/2026 avant de corriger : un appel sans en-tête rend bien
+     * `401 {"error":"unauthorized"}` — le secret EST posé aujourd'hui. Le défaut
+     * n'était donc pas ouvert, il était **armé** : le jour où quelqu'un renomme
+     * ou retire `CRON_TOKEN`, la porte s'ouvre sans que rien ne le dise.
+     *
+     * Fail-closed : pas de secret configuré → on refuse. Une fonction publique
+     * qui écrit doit se taire quand elle ne sait pas qui l'appelle.
+     */
     const expectedToken = Deno.env.get('CRON_TOKEN');
-    if (expectedToken) {
-      const got = req.headers.get('X-Cron-Token');
-      if (got !== expectedToken) {
-        return new Response(JSON.stringify({ error: 'unauthorized' }), { status: 401 });
-      }
+    if (!expectedToken) {
+      return new Response(JSON.stringify({ error: 'cron_token_absent' }), { status: 401 });
+    }
+    if (req.headers.get('X-Cron-Token') !== expectedToken) {
+      return new Response(JSON.stringify({ error: 'unauthorized' }), { status: 401 });
     }
 
     const supabase = createClient(
@@ -188,6 +210,32 @@ Deno.serve(async (req: Request) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
       { auth: { persistSession: false } }
     );
+
+    /**
+     * DEUX TRAVAUX, UNE SEULE PORTE — et c'est ce qui évite d'en ouvrir une autre.
+     *
+     * Le job 5 (`compute-insights-hourly`) visait `compute-session-insights`
+     * avec `{"all_pending": true}`. Il était doublement mort :
+     *
+     *   • sa cible est en `verify_jwt = true` et il n'envoie pas de JWT
+     *     → 401 UNAUTHORIZED_NO_AUTH_HEADER, six fois sur six mesuré le 05/09 ;
+     *   • et cette cible n'a JAMAIS eu de mode `all_pending` : elle lit
+     *     `{ sessionId }` et rend 400 sans lui. Même l'authentification
+     *     réparée, elle aurait répondu « sessionId requis ».
+     *
+     * Le réparer « en ouvrant une porte à jeton sur v3 » supposait d'écrire une
+     * DOUBLE authentification sur la fonction qui écrit les lectures — jeton
+     * pour le cron, JWT validé à la main pour l'application, qui l'appelle
+     * aussi. Beaucoup de surface neuve pour un balayage.
+     *
+     * Ici, aucune porte nouvelle : cette fonction est déjà la porte du cron, et
+     * elle porte la clé de service. Elle appelle v3 comme un appelant autorisé,
+     * `verify_jwt = true` reste en place sur v3, et son code n'est pas touché.
+     */
+    const corps = await req.json().catch(() => ({}));
+    if (corps && corps.mode === 'insights') {
+      return await balayerInsights(supabase);
+    }
 
     // Séances closes SANS LIGNE D'ANALYSE.
     //
@@ -285,6 +333,98 @@ Deno.serve(async (req: Request) => {
     return new Response(JSON.stringify({ error: msg }), { status: 500 });
   }
 });
+
+/** Le moteur d'insights courant. Une ligne d'une autre version redevient éligible. */
+const INSIGHTS_ENGINE = 'mirror-insights-v3';
+
+/**
+ * BALAYAGE DES LECTURES — les séances SEGMENTÉES qui n'ont pas de ligne v3.
+ *
+ * ===========================================================================
+ * LA CONDITION EST CELLE DE L'APPLICATION, PAS UNE AUTRE
+ * ===========================================================================
+ *
+ * `analyzeSessionService` ne lance les insights que `if (segmentsPersisted > 0)`.
+ * On reprend ce critère À LA LETTRE : sans segment, v3 écrirait une ligne dont
+ * tous les modules sont vides — un « rien » enregistré comme une lecture. Deux
+ * chemins qui écrivent la même table avec deux critères différents produisent
+ * des lignes qu'on ne sait plus expliquer.
+ *
+ * Mesuré le 05/09/2026 : `app_segment_analyses` est VIDE sur toute la table.
+ * Ce balayage traitera donc ZÉRO séance aujourd'hui, et c'est le bon résultat —
+ * la chaîne n'a jamais tourné, ce n'est pas au cron de faire semblant.
+ *
+ * ===========================================================================
+ * POURQUOI IL APPELLE v3 PLUTÔT QUE DE CALCULER
+ * ===========================================================================
+ *
+ * Le moteur vit dans `compute-session-insights-v3`, et il doit rester le seul.
+ * Recopier son calcul ici donnerait un second moteur à tenir d'accord — c'est
+ * exactement la maladie que `ecritureInsightsUnique` documente entre v1 et v3.
+ *
+ * L'appel passe par `functions.invoke`, donc avec la clé de service portée par
+ * ce client : v3 garde `verify_jwt = true`, et aucune porte publique ne s'ouvre.
+ */
+// deno-lint-ignore no-explicit-any
+async function balayerInsights(supabase: any) {
+  // 1) Les séances qui ONT des segments. Sans segment, rien à lire.
+  const { data: segRows, error: segErr } = await supabase
+    .from('app_segment_analyses')
+    .select('telemetry_session_id');
+  if (segErr) {
+    return new Response(JSON.stringify({ error: 'segments_unreadable', detail: segErr.message }), {
+      status: 500,
+    });
+  }
+  const segmentees = [
+    ...new Set(
+      (segRows ?? []).map((r: { telemetry_session_id: string }) => r.telemetry_session_id)
+    ),
+  ];
+
+  // 2) Celles qui portent DÉJÀ une lecture du moteur courant.
+  const { data: dejaLues, error: lueErr } = await supabase
+    .from('session_insights')
+    .select('telemetry_session_id')
+    .eq('engine_version', INSIGHTS_ENGINE);
+  if (lueErr) {
+    return new Response(JSON.stringify({ error: 'insights_unreadable', detail: lueErr.message }), {
+      status: 500,
+    });
+  }
+  const lues = new Set(
+    (dejaLues ?? []).map((r: { telemetry_session_id: string }) => r.telemetry_session_id)
+  );
+
+  const aTraiter = segmentees.filter((id) => !lues.has(id)).slice(0, MAX_SESSIONS_PER_RUN);
+
+  const results: { sessionId: string; ok: boolean; error?: string }[] = [];
+  for (const sessionId of aTraiter) {
+    try {
+      const { error } = await supabase.functions.invoke('compute-session-insights-v3', {
+        body: { sessionId },
+      });
+      results.push({ sessionId, ok: !error, error: error ? String(error.message ?? error) : undefined });
+    } catch (e) {
+      results.push({ sessionId, ok: false, error: e instanceof Error ? e.message : String(e) });
+    }
+  }
+
+  return new Response(
+    JSON.stringify({
+      ok: true,
+      mode: 'insights',
+      engine: INSIGHTS_ENGINE,
+      segmentees: segmentees.length,
+      deja_lues: lues.size,
+      processed: results.length,
+      successful: results.filter((r) => r.ok).length,
+      failed: results.filter((r) => !r.ok).length,
+      results,
+    }),
+    { status: 200, headers: { 'Content-Type': 'application/json' } }
+  );
+}
 
 // deno-lint-ignore no-explicit-any
 async function processSessions(supabase: any, sessions: any[]) {
