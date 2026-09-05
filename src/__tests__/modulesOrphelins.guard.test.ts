@@ -81,7 +81,60 @@ function fichiers(dir: string, acc: string[] = []): string[] {
   return acc;
 }
 
-const TOUS = [...fichiers(join(RACINE, 'app')), ...fichiers(join(RACINE, 'src'))];
+const TOUS_BRUTS = [...fichiers(join(RACINE, 'app')), ...fichiers(join(RACINE, 'src'))];
+
+/**
+ * LES FICHIERS D'EXCEPTIONS SONT DU MATÉRIEL DE GARDE — racines, jamais
+ * candidats. Ajoutés le 05/09/2026.
+ *
+ * ===========================================================================
+ * LE CAS QUI L'A IMPOSÉ
+ * ===========================================================================
+ *
+ * `src/lib/deuxEntrees.exceptions.ts` est né le 05/09 avec la garde R1. Il
+ * porte les quatre-vingt-dix-sept écrans à une seule entrée, rangés en six
+ * familles, chacune avec sa raison et sa date. **Seule `deuxEntrees.guard` le
+ * lit** — et cette mesure-ci l'a donc déclaré orphelin NEUF, à raison au sens
+ * strict et à tort au sens utile.
+ *
+ * C'est le même raisonnement que la racine ajoutée le 01/09 pour les scripts de
+ * CI, et il faut le dire dans les mêmes termes : **un module lu par une garde
+ * n'est pas dormant** — la garde s'exécute à chaque intégration et refuse la
+ * fusion. `surfacesRestitution.ts` a été traité ainsi plutôt qu'inscrit à
+ * `CONNUS`, parce qu'une entrée qui ne peut jamais sortir n'est pas une dette,
+ * c'est une fiction.
+ *
+ * ===========================================================================
+ * POURQUOI CE MOTIF-LÀ, ET PAS « LES GARDES SONT RACINES »
+ * ===========================================================================
+ *
+ * La solution large — faire des `*.guard.test.ts` des racines — a été MESURÉE
+ * avant d'être écartée, et elle est fausse :
+ *
+ *     racines actuelles                36 orphelins
+ *     + les 58 gardes                  32   (−4)
+ *     + les 357 tests                  11   (−25)
+ *
+ * Les quatre que les gardes feraient disparaître sont trois pièces d'outillage
+ * — ce fichier-ci, `codeSeul`, `entreesOptionnelles` — **et un quatrième qui
+ * n'en est pas une** : `sessionInsightsEngine.ts`, le miroir app-side du moteur
+ * edge. Ses trois « consommateurs » ne le citent qu'en COMMENTAIRE ; il est
+ * réellement dormant, et la liste doit continuer de le dire. Une racine trop
+ * large l'aurait effacé en silence — exactement le défaut que cette garde
+ * existe pour empêcher.
+ *
+ * `*.exceptions.ts` est en revanche une famille NOMMÉE PAR LES SPÉCIFICATIONS,
+ * pas une convention inventée ici : `D_Navigation.md:53` demande
+ * `deuxEntrees.exceptions.ts`, `G_MotsCles.md:61` demande
+ * `restitutionSansPhrase.exceptions.ts`. Un fichier de cette forme n'a aucun
+ * rôle d'exécution : il n'existe que pour être relu par un humain et lu par une
+ * garde.
+ */
+const estFichierDExceptions = (f: string): boolean => /\.exceptions\.tsx?$/.test(f);
+
+const TOUS = TOUS_BRUTS.filter((f) => !estFichierDExceptions(f));
+const EXCEPTIONS_DE_GARDE = TOUS_BRUTS.filter(estFichierDExceptions);
+
 /**
  * Les scripts sont des RACINES, jamais des candidats : on cherche les modules
  * de `src/` que personne n'atteint, pas les scripts morts. Ils sont donc hors
@@ -112,7 +165,7 @@ function resoudre(depuis: string, spec: string): string | null {
 
 const SPEC = /from\s+'([^']+)'|require\(\s*'([^']+)'\s*\)/g;
 
-const PAR_NORM = new Map([...TOUS, ...SCRIPTS].map((f) => [norm(f), f]));
+const PAR_NORM = new Map([...TOUS, ...SCRIPTS, ...EXCEPTIONS_DE_GARDE].map((f) => [norm(f), f]));
 
 /** Ce qu'un module importe, résolu en chemins réels. */
 function importsDe(fichierNorm: string): string[] {
@@ -175,7 +228,11 @@ function orphelins(): string[] {
    * Les scripts sont racines, jamais candidats : on ne cherche pas les scripts
    * morts ici.
    */
-  const racines = [...TOUS.map(norm).filter((f) => f.startsWith(racineApp)), ...SCRIPTS.map(norm)];
+  const racines = [
+    ...TOUS.map(norm).filter((f) => f.startsWith(racineApp)),
+    ...SCRIPTS.map(norm),
+    ...EXCEPTIONS_DE_GARDE.map(norm),
+  ];
 
   const atteints = new Set<string>(racines);
   const pile = [...racines];

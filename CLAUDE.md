@@ -147,7 +147,7 @@ contenu client, sous aucun nom.
 
 | # | Règle | Garde | État |
 |---|---|---|---|
-| R1 | Tout écran a **deux** entrées. Exceptions listées, justifiées, datées | `deuxEntrees` | **mesurée le 05/09 : 0 orphelin, 97 écrans à une entrée.** La première entrée est déjà gardée (`orphelinsApp2`) ; le périmètre de la seconde attend une décision |
+| R1 | Tout écran a **deux** entrées. Exceptions listées, justifiées, datées | `deuxEntrees` | **en place** (05/09) — 0 orphelin, 97 exceptions en six familles, dont **dix tiroirs pilotes datés au 19/09** |
 | R2 | Aucun orphelin **neuf**, et aucune entrée périmée dans la liste connue | `modulesOrphelins` | en place |
 | R3 | Les deux univers visuels ne se mélangent pas ; seule la couche 2 traverse | `frontiereUnivers` | **en place** (05/09) — cinq franchissements levés |
 | R4 | L'assistant ne conseille jamais | `aiSafetyFilter`, étendu | en place |
@@ -415,11 +415,52 @@ et trois d'entre elles sont des formes JUSTES :
    `vous/support`. **Une douzaine d'écrans**, et c'est exactement ce que D-3
    vise : « Les tiroirs sous chaque porte. Chacun a deux entrées. »
 
-**Pourquoi la garde n'est pas écrite dans la foulée.** Elle serait rouge sur
-quatre-vingt-dix-sept écrans. La rendre verte suppose de trancher son PÉRIMÈTRE
-— tout l'arbre, ou les seuls tiroirs pilotes que la spécification vise — et cela
-change le fichier d'exceptions du simple au décuple. **C'est une décision de
-navigation, donc du fondateur, et je ne la prends pas en écrivant un fichier.**
+**Le périmètre a été tranché le 05/09 : tout l'arbre, familles justifiées.**
+`src/lib/deuxEntrees.exceptions.ts` porte les quatre-vingt-dix-sept, rangés en
+six familles — moyeu de console (41), entonnoir (16), depuis sa liste (12),
+depuis son écran (16), outil interne (2), **tiroir pilote (10)**. Chaque route
+en ressort au format exact de D-3, `{ route, raison, jusquau }` : la raison et
+la date viennent de la famille, ce qui est plus honnête que de recopier
+quatre-vingt-dix-sept variantes d'une même phrase — et D-3 pose sa condition,
+« une liste d'exceptions datées se relit en trente secondes », que quatre-vingt-
+dix-sept phrases ne tiendraient pas.
+
+**Les cinq familles structurelles sont datées au 31/12 ; les dix tiroirs pilotes
+au 19/09.** Passée cette date, la garde est ROUGE. Ce n'est pas un accident,
+c'est le mécanisme : « une exception sans date n'est pas une exception, c'est un
+abandon ».
+
+**Et la garde attrape aussi l'inverse** : une route qui gagne sa seconde entrée
+sans quitter la liste fait échouer le test des entrées périmées. Elle l'a
+d'ailleurs prouvé sur elle-même — au premier passage, le fichier d'exceptions
+citait les quatre-vingt-dix-sept routes dans des littéraux et **se comptait donc
+comme une entrée pour chacune**. Tout le monde avait deux entrées, toutes les
+exceptions étaient périmées d'un coup. Un fichier qui LISTE des routes n'est pas
+un fichier qui y MÈNE.
+
+### La seconde entrée des quatre tiroirs du Club — ce que la base a répondu
+
+Décision du 05/09 : les quatre du Club en reçoivent une. En cherchant où
+l'accrocher, la production a répondu autre chose :
+
+| Table | Lignes |
+|---|---|
+| `session_media` | **0** |
+| `scenic_routes` | **0** |
+| `social_pings` | **0** |
+| `partner_offers` | 1 |
+
+La galerie n'a rien à montrer, les belles routes non plus, et le territoire ne
+porte que les six circuits. **Une seconde entrée conditionnée à ces données ne
+s'afficherait donc jamais** — et ce défaut-là est déjà documenté : l'en-tête
+d'`orphelinsApp2.guard` dit qu'« un lien enfermé sous une condition de donnée
+jamais vraie » satisfait la garde sans rien ouvrir, « c'est précisément ce qui
+s'était produit », sur ces écrans-là, au Club.
+
+La seconde entrée devra donc être **inconditionnelle**, et mener à un état vide
+honnête — ce que R6 exige déjà. Le geste n'est pas bloqué, il est simplement
+plus étroit qu'il n'en avait l'air : ce n'est pas « où accrocher un lien
+contextuel », c'est « quel lien permanent ». La butée du 19/09 le rappellera.
 
 ---
 
@@ -691,6 +732,8 @@ secteurs officiels, l'ouverture du coach.
 | **Imports edge** | **Épinglés sur 2.114.0, les vingt-huit.** Épingler la SOURCE suffit — les artefacts déployés sont bundlés, le pin agit au prochain déploiement. On ne redéploie pas vingt-huit fonctions pour un changement sans effet à l'exécution | 03/09 |
 | **Marge et cron** | **L'application nomme sa version** (`app-v1.0`) et le cron l'exclut de sa file. Une séance analysée par l'application ne sera plus reprise par un moteur qui en sait moins — même quand la version du cron sera incrémentée | 03/09 |
 | **Frontière R3** | **Les cinq franchissements levés, `frontiereUnivers` écrite et falsifiée.** Elle remonte le graphe d'imports depuis chaque route : ce qui décide n'est pas où le fichier vit, c'est quel écran l'atteint | 05/09 |
+| **Périmètre R1** | **Tout l'arbre, familles justifiées.** 97 exceptions en six familles ; cinq sont des formes justes, la sixième — dix tiroirs pilotes — est la seule dette, datée au **19/09** | 05/09 |
+| **Tiroirs du Club** | **Une seconde entrée pour les quatre.** Mesure faite en cherchant où l'accrocher : `session_media`, `scenic_routes` et `social_pings` sont VIDES, donc le lien devra être **inconditionnel** — un lien sous condition de donnée jamais vraie est le défaut déjà nommé par `orphelinsApp2.guard` | 05/09 |
 | **Couche 2** | **Elle se construit, elle ne se déclare pas.** `src/components/media/` (`Photo`, `blurhash`, `mediaMath`) en est la première pièce : aucun jeton visuel, deux univers demandeurs. `src/ui/data/` reste ouvert — c'est une unification de kits divergents, pas un `git mv` | 05/09 |
 
 ## Décisions en attente, à ne pas contourner
